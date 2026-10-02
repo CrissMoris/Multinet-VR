@@ -1,0 +1,35 @@
+{
+  "backend": {
+    "supabaseUrl": "https://YOUR-PROJECT-REF.supabase.co",
+    "supabaseAnonKey": "YOUR-ANON-OR-PUBLISHABLE-KEY",
+    "eventSlug": "multitravel-2026",
+    "eventAccessCode": "SET-TO-events.access_code",
+    "stationId": "VR-01",
+    "requestTimeoutSeconds": 10,
+    "maxAutoRetries": 5
+  },
+  "gameplay": {
+    "completionMode": "RequiredItemsPlaced",
+    "timeLimitSeconds": 0,
+    "revertScoreOnRemoval": true,
+    "countdownSeconds": 3,
+    "enableLocomotion": false,
+    "shuffleSpawnPositions": true
+  },
+  "texts": {
+    "welcomeTitle": "MultiTravel Valiz Challenge",
+    "welcomeSubtitle": "Arabayla, 1 gece konaklamalı toplantı seyahati",
+    "instructionsText": "Valizi iş seyahati için hazırlayın. Doğru ürünler puan kazandırır, gereksiz ürünler puan kaybettirir. Gerekli tüm ürünler valize girince oyun biter.",
+    "scenarioText": "Arabayla, 1 gece konaklamalı toplantı seyahati"
+  },
+  "privacy": {
+    "consentText": "",
+    "consentVersion": ""
+  },
+  "branding": {
+    "productTitle": "MultiTravel Valiz Challenge"
+  },
+  "debug": {
+    "enableDeviceSimulatorWhenNoHmd": false
+  }
+}
