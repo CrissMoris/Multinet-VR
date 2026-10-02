@@ -13,7 +13,7 @@
     "timeLimitSeconds": 0,
     "revertScoreOnRemoval": true,
     "countdownSeconds": 3,
-    "enableLocomotion": false,
+    "enableLocomotion": true,
     "shuffleSpawnPositions": true
   },
   "texts": {
