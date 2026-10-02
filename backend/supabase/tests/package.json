@@ -1,0 +1,19 @@
+{
+  "name": "multitravel-backend-tests",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Integration tests for the MultiTravel Valiz Challenge Supabase backend (RPC contract).",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test pglite.test.mjs",
+    "test:rest": "node --test rest.test.mjs",
+    "test:all": "node run.mjs"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.3.0",
+    "pg": "^8.13.0"
+  }
+}
