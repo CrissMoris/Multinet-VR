@@ -28,3 +28,8 @@ MonoBehaviour:
     GrabScale: 1
     TwoHanded: 0
     HoldOffset: {x: 0, y: 0, z: 0}
+  Presentation:
+    Zone: 6
+    Packed: 4
+    Grip: 0
+    HasHangingVariant: 0

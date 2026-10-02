@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2acc832562da3e74d8e903845efaf7d4, type: 3}
+  m_Name: party-tiara
+  m_EditorClassIdentifier: MultiTravel.Core::MultiTravel.Core.Products.ProductDefinition
+  Id: party-tiara
+  DisplayName: "Parti Tac\u0131"
+  Category: 9
+  Availability: 1
+  IsCorrect: 0
+  ScoreOverride: 0
+  IsRequiredForCompletion: 0
+  requiredExplicitlySet: 1
+  lastAutoRequired: 0
+  VisualPrefab: {fileID: 1388410482171346855, guid: 24ece06cfbc8c134c99ae989fd443c5a, type: 3}
+  BrandSprite: {fileID: 0}
+  Interaction:
+    Mass: 0.1
+    GrabScale: 1
+    TwoHanded: 0
+    HoldOffset: {x: 0, y: 0, z: 0}
+  Presentation:
+    Zone: 5
+    Packed: 4
+    Grip: 0
+    HasHangingVariant: 0
