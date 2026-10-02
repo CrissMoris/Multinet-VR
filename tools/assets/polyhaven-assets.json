@@ -1,0 +1,4 @@
+{
+  "models": ["round_spectacles", "rubber_duck_toy", "garden_gnome", "Ukulele_01", "football", "fishermans_hat", "binoculars"],
+  "textures": ["cotton_jersey", "waffle_pique_cotton", "rough_linen", "denim_fabric", "poly_wool_herringbone", "brown_leather", "leather_white", "fabric_leather_02", "terry_cloth", "knitted_fleece", "velour_velvet", "quatrefoil_jacquard_fabric", "wool_boucle", "herringbone_parquet", "white_plaster_02", "white_oak_veneer"]
+}

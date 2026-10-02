@@ -1,0 +1,38 @@
+{
+    "name": "MultiTravel.Editor",
+    "rootNamespace": "MultiTravel.EditorTools",
+    "references": [
+        "MultiTravel.Core",
+        "MultiTravel.Gameplay",
+        "MultiTravel.Operator",
+        "Unity.XR.Interaction.Toolkit",
+        "Unity.XR.CoreUtils",
+        "Unity.InputSystem",
+        "UnityEngine.UI",
+        "Unity.TextMeshPro",
+        "Unity.TextMeshPro.Editor",
+        "Unity.RenderPipelines.Universal.Runtime",
+        "Unity.XR.Management",
+        "Unity.XR.Management.Editor",
+        "Unity.XR.OpenXR",
+        "Unity.XR.OpenXR.Editor",
+        "Unity.Pipeline.Attributes"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "com.unity.pipeline",
+            "expression": "",
+            "define": "MT_HAS_PIPELINE"
+        }
+    ],
+    "noEngineReferences": false
+}
