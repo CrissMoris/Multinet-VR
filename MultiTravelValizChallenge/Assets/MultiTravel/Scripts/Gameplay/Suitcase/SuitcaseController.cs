@@ -1,0 +1,659 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using MultiTravel.Core.Completion;
+using MultiTravel.Core.Products;
+using MultiTravel.Core.Scoring;
+using MultiTravel.Gameplay.Common;
+using MultiTravel.Gameplay.Items;
+using UnityEngine;
+
+namespace MultiTravel.Gameplay.Suitcase
+{
+    /// <summary>
+    /// The suitcase (ARCHITECTURE.md §2.8). Owns the placement volume and the slots, places / removes items and applies
+    /// score and completion progress.
+    /// <para>
+    /// Placement is triggered by (a) a non-canceled release whose anchor is inside <see cref="PlacementVolume"/> or
+    /// (b) <see cref="SettleWatcher"/> for unheld items that come to rest inside it. No trigger callbacks are used:
+    /// containment is a geometric test, and every path goes through <see cref="TryPlace"/>, which only accepts Free
+    /// items that are not already placed. Together with <see cref="ScoreService.TryApplyPlacement"/> (once per id)
+    /// physics jitter can never double-score.
+    /// </para>
+    /// <para>
+    /// Grabbing a placed item removes it: the slot is freed, the score reverted (policy
+    /// <see cref="ScoreService.RevertScoreOnRemoval"/>) and <see cref="CompletionEvaluator.NotifyRemoved"/> called.
+    /// </para>
+    /// </summary>
+    [DisallowMultipleComponent]
+    public sealed class SuitcaseController : MonoBehaviour
+    {
+        [SerializeField]
+        [Tooltip("Trigger BoxCollider covering the interior plus ~15 cm above the rim.")]
+        private BoxCollider placementVolume;
+
+        [SerializeField]
+        [Tooltip("Slots inside the suitcase base, in fill order. When empty, SuitcaseSlot children are collected.")]
+        private List<SuitcaseSlot> slots = new List<SuitcaseSlot>();
+
+        [SerializeField]
+        [Tooltip("Pool whose items are watched for grab / release.")]
+        private ItemPool itemPool;
+
+        [SerializeField]
+        [Tooltip("Catalog used for ProductCatalog.ScoreFor. Falls back to an AppServices registration.")]
+        private ProductCatalog catalog;
+
+        [SerializeField]
+        [Tooltip("Duration of the tween into the slot (unscaled seconds).")]
+        [Min(0f)]
+        private float tweenSeconds = 0.25f;
+
+        private readonly List<ProductItem> placedItems = new List<ProductItem>();
+        private readonly Dictionary<ProductItem, SuitcaseSlot> slotByItem = new Dictionary<ProductItem, SuitcaseSlot>();
+        private readonly Dictionary<ProductItem, Coroutine> tweens = new Dictionary<ProductItem, Coroutine>();
+        private readonly HashSet<ProductItem> subscribedItems = new HashSet<ProductItem>();
+        private readonly List<ProductItem> scratch = new List<ProductItem>();
+
+        private ScoreService scoreService;
+        private CompletionEvaluator completionEvaluator;
+        private bool servicesReady;
+        private bool warnedNoSlot;
+
+        /// <summary>Raised after an item was placed. The change has Delta 0 when the product was already counted.</summary>
+        public event Action<ProductItem, ScoreChange> ItemPlaced;
+
+        /// <summary>Raised after an item was removed. The change has Delta 0 when nothing was reverted.</summary>
+        public event Action<ProductItem, ScoreChange> ItemRemoved;
+
+        /// <summary>When false (outside Playing) releases and settle checks never place items. Direct <see cref="TryPlace"/> calls are also rejected.</summary>
+        public bool AcceptPlacements { get; set; } = true;
+
+        /// <summary>The placement trigger.</summary>
+        public BoxCollider PlacementVolume => placementVolume;
+
+        /// <summary>The slots.</summary>
+        public IReadOnlyList<SuitcaseSlot> Slots => slots;
+
+        /// <summary>Items currently placed, in placement order.</summary>
+        public IReadOnlyList<ProductItem> PlacedItems => placedItems;
+
+        /// <summary>Number of placed items.</summary>
+        public int PlacedCount => placedItems.Count;
+
+        /// <summary>The pool watched by the suitcase.</summary>
+        public ItemPool Pool => itemPool;
+
+        // ----- setup -----
+
+        /// <summary>
+        /// Injects the services explicitly (tests, or callers that already hold them). Services not passed (null) are
+        /// resolved from AppServices in <c>Start</c>.
+        /// </summary>
+        public void Bind(ScoreService score, CompletionEvaluator evaluator, ProductCatalog productCatalog)
+        {
+            if (score != null)
+            {
+                scoreService = score;
+            }
+
+            if (evaluator != null)
+            {
+                completionEvaluator = evaluator;
+            }
+
+            if (productCatalog != null)
+            {
+                catalog = productCatalog;
+            }
+
+            servicesReady = scoreService != null && completionEvaluator != null && catalog != null;
+        }
+
+        /// <summary>Generator / test API: placement volume and slots.</summary>
+        public void Configure(BoxCollider volume, IList<SuitcaseSlot> slotList)
+        {
+            placementVolume = volume;
+            if (placementVolume != null)
+            {
+                placementVolume.isTrigger = true;
+            }
+
+            slots.Clear();
+            if (slotList != null)
+            {
+                for (int i = 0; i < slotList.Count; i++)
+                {
+                    if (slotList[i] != null)
+                    {
+                        slots.Add(slotList[i]);
+                    }
+                }
+            }
+        }
+
+        /// <summary>Generator / test API: the pool whose items are watched. Subscribes to its items.</summary>
+        public void SetPool(ItemPool pool)
+        {
+            if (itemPool == pool)
+            {
+                SubscribePool();
+                return;
+            }
+
+            UnsubscribeAll();
+            UnsubscribePool();
+            itemPool = pool;
+            SubscribePool();
+        }
+
+        /// <summary>Subscribes to grab / release / state events of an item (pool items are watched automatically).</summary>
+        public void Watch(ProductItem item)
+        {
+            if (item == null || subscribedItems.Contains(item))
+            {
+                return;
+            }
+
+            subscribedItems.Add(item);
+            item.Grabbed += OnItemGrabbed;
+            item.Released += OnItemReleased;
+            item.StateChanged += OnItemStateChanged;
+        }
+
+        // ----- queries -----
+
+        /// <summary>True when the item's anchor is inside the placement volume.</summary>
+        public bool IsInsideVolume(ProductItem item)
+        {
+            return item != null && IsInsideVolume(item.AnchorPosition);
+        }
+
+        /// <summary>True when the world position is inside the placement volume (oriented box test).</summary>
+        public bool IsInsideVolume(Vector3 worldPosition)
+        {
+            if (placementVolume == null)
+            {
+                return false;
+            }
+
+            var local = placementVolume.transform.InverseTransformPoint(worldPosition) - placementVolume.center;
+            var half = placementVolume.size * 0.5f;
+            return Mathf.Abs(local.x) <= half.x && Mathf.Abs(local.y) <= half.y && Mathf.Abs(local.z) <= half.z;
+        }
+
+        /// <summary>True when the item is placed in this suitcase.</summary>
+        public bool Contains(ProductItem item)
+        {
+            return item != null && slotByItem.ContainsKey(item);
+        }
+
+        /// <summary>Slot of a placed item (null when placed without a free slot).</summary>
+        public bool TryGetSlot(ProductItem item, out SuitcaseSlot slot)
+        {
+            slot = null;
+            return item != null && slotByItem.TryGetValue(item, out slot) && slot != null;
+        }
+
+        /// <summary>Number of free slots.</summary>
+        public int FreeSlotCount
+        {
+            get
+            {
+                int count = 0;
+                for (int i = 0; i < slots.Count; i++)
+                {
+                    if (slots[i] != null && !slots[i].IsOccupied)
+                    {
+                        count++;
+                    }
+                }
+
+                return count;
+            }
+        }
+
+        // ----- commands -----
+
+        /// <summary>
+        /// Places a Free item: takes the free slot nearest to the item, freezes it, tweens it in, applies the score once
+        /// and notifies the completion evaluator. Returns false (and changes nothing) for any other state, an item that is
+        /// already placed, missing services, or while <see cref="AcceptPlacements"/> is false.
+        /// </summary>
+        public bool TryPlace(ProductItem item)
+        {
+            if (item == null || !AcceptPlacements || item.State != ProductItemState.Free || slotByItem.ContainsKey(item))
+            {
+                return false;
+            }
+
+            if (!EnsureServices())
+            {
+                return false;
+            }
+
+            var definition = item.Definition;
+            if (definition == null || string.IsNullOrEmpty(definition.Id))
+            {
+                Debug.LogError(ServiceResolver.LogPrefix + "SuitcaseController: item '" + item.name + "' has no ProductDefinition; not placed.", item);
+                return false;
+            }
+
+            if (!item.EnterPlaced())
+            {
+                return false;
+            }
+
+            var slot = TakeNearestFreeSlot(item.AnchorPosition);
+            if (slot != null)
+            {
+                slot.Occupy(item);
+            }
+            else if (!warnedNoSlot)
+            {
+                warnedNoSlot = true;
+                Debug.LogWarning(ServiceResolver.LogPrefix + "SuitcaseController: no free slot left; items are placed where they rest. Add more SuitcaseSlots.", this);
+            }
+
+            slotByItem.Add(item, slot);
+            placedItems.Add(item);
+            Watch(item);
+
+            int delta = catalog.ScoreFor(definition);
+            ScoreChange change;
+            if (scoreService.TryApplyPlacement(definition.Id, delta))
+            {
+                change = new ScoreChange(definition.Id, delta, scoreService.Score, ScoreChangeReason.Placed);
+            }
+            else
+            {
+                change = new ScoreChange(definition.Id, 0, scoreService.Score, ScoreChangeReason.Placed);
+            }
+
+            completionEvaluator.NotifyPlaced(definition.Id);
+
+            if (slot != null)
+            {
+                StartTween(item, slot);
+            }
+
+            ItemPlaced?.Invoke(item, change);
+            return true;
+        }
+
+        /// <summary>
+        /// Removes a placed item: frees its slot, reverts the score (when the policy is on) and notifies the evaluator.
+        /// A Placed item becomes Free (dynamic again); a Held item (removal through grab) stays Held. Returns false when the
+        /// item is not in the suitcase.
+        /// </summary>
+        public bool Remove(ProductItem item)
+        {
+            if (item == null || !slotByItem.TryGetValue(item, out var slot))
+            {
+                return false;
+            }
+
+            StopTween(item);
+            slotByItem.Remove(item);
+            placedItems.Remove(item);
+            if (slot != null)
+            {
+                slot.Release();
+                CompactColumn(slot);
+            }
+
+            string id = item.ProductId;
+            ScoreChange change = new ScoreChange(id, 0, scoreService != null ? scoreService.Score : 0, ScoreChangeReason.Removed);
+            if (scoreService != null && !string.IsNullOrEmpty(id))
+            {
+                int counted = scoreService.CountedDeltaFor(id);
+                if (scoreService.RevertScoreOnRemoval && scoreService.TryRevertPlacement(id))
+                {
+                    change = new ScoreChange(id, -counted, scoreService.Score, ScoreChangeReason.Removed);
+                }
+            }
+
+            if (completionEvaluator != null && !string.IsNullOrEmpty(id))
+            {
+                completionEvaluator.NotifyRemoved(id);
+            }
+
+            if (item.State == ProductItemState.Placed)
+            {
+                item.ExitPlacedToFree();
+            }
+
+            ItemRemoved?.Invoke(item, change);
+            return true;
+        }
+
+        /// <summary>
+        /// Empties the suitcase without touching the score (the session reset clears the score). Stops all tweens,
+        /// frees all slots, notifies the evaluator and makes still-placed items Free again.
+        /// </summary>
+        public void Clear()
+        {
+            scratch.Clear();
+            scratch.AddRange(placedItems);
+            for (int i = 0; i < scratch.Count; i++)
+            {
+                var item = scratch[i];
+                StopTween(item);
+                if (completionEvaluator != null && item != null && !string.IsNullOrEmpty(item.ProductId))
+                {
+                    completionEvaluator.NotifyRemoved(item.ProductId);
+                }
+            }
+
+            placedItems.Clear();
+            slotByItem.Clear();
+            for (int i = 0; i < slots.Count; i++)
+            {
+                if (slots[i] != null)
+                {
+                    slots[i].Release();
+                    slots[i].ResetVisual();
+                }
+            }
+
+            for (int i = 0; i < scratch.Count; i++)
+            {
+                var item = scratch[i];
+                if (item != null && item.State == ProductItemState.Placed)
+                {
+                    item.ExitPlacedToFree();
+                }
+            }
+
+            scratch.Clear();
+            warnedNoSlot = false;
+        }
+
+        // ----- Unity -----
+
+        private void Awake()
+        {
+            if (slots.Count == 0)
+            {
+                GetComponentsInChildren(true, slots);
+            }
+
+            if (placementVolume != null)
+            {
+                placementVolume.isTrigger = true;
+            }
+        }
+
+        private void Start()
+        {
+            EnsureServices();
+            if (placementVolume == null)
+            {
+                Debug.LogError(ServiceResolver.LogPrefix + "SuitcaseController: no PlacementVolume (BoxCollider) assigned.", this);
+            }
+
+            if (itemPool != null)
+            {
+                SubscribePool();
+                itemPool.EnsureCreated();
+                SubscribeToPoolItems();
+            }
+        }
+
+        private void OnDisable()
+        {
+            // Coroutines die with the component; snap running tweens to their target so no item is left half-way.
+            scratch.Clear();
+            foreach (var pair in tweens)
+            {
+                scratch.Add(pair.Key);
+            }
+
+            for (int i = 0; i < scratch.Count; i++)
+            {
+                var item = scratch[i];
+                if (item != null && slotByItem.TryGetValue(item, out var slot) && slot != null)
+                {
+                    var pose = slot.PoseFor(item);
+                    item.transform.SetPositionAndRotation(pose.position, pose.rotation);
+                }
+            }
+
+            tweens.Clear();
+            scratch.Clear();
+        }
+
+        private void OnDestroy()
+        {
+            UnsubscribePool();
+            UnsubscribeAll();
+        }
+
+        // ----- internals -----
+
+        private bool EnsureServices()
+        {
+            if (servicesReady)
+            {
+                return true;
+            }
+
+            bool ok = ServiceResolver.Resolve(ref scoreService, this, nameof(SuitcaseController));
+            ok &= ServiceResolver.Resolve(ref completionEvaluator, this, nameof(SuitcaseController));
+            ok &= ServiceResolver.ResolveCatalog(ref catalog, this, nameof(SuitcaseController));
+            servicesReady = ok;
+            return ok;
+        }
+
+        private void SubscribePool()
+        {
+            if (itemPool == null)
+            {
+                return;
+            }
+
+            itemPool.ItemsCreated -= OnItemsCreated;
+            itemPool.ItemRegistered -= Watch;
+            itemPool.ItemsCreated += OnItemsCreated;
+            itemPool.ItemRegistered += Watch;
+            SubscribeToPoolItems();
+        }
+
+        private void UnsubscribePool()
+        {
+            if (itemPool == null)
+            {
+                return;
+            }
+
+            itemPool.ItemsCreated -= OnItemsCreated;
+            itemPool.ItemRegistered -= Watch;
+        }
+
+        private void OnItemsCreated(ItemPool pool)
+        {
+            SubscribeToPoolItems();
+        }
+
+        private void SubscribeToPoolItems()
+        {
+            if (itemPool == null)
+            {
+                return;
+            }
+
+            var items = itemPool.AllItems;
+            for (int i = 0; i < items.Count; i++)
+            {
+                Watch(items[i]);
+            }
+        }
+
+        private void UnsubscribeAll()
+        {
+            foreach (var item in subscribedItems)
+            {
+                if (item == null)
+                {
+                    continue;
+                }
+
+                item.Grabbed -= OnItemGrabbed;
+                item.Released -= OnItemReleased;
+                item.StateChanged -= OnItemStateChanged;
+            }
+
+            subscribedItems.Clear();
+        }
+
+        private void OnItemGrabbed(ProductItem item, Transform interactor, ProductItemState previous)
+        {
+            if (previous == ProductItemState.Placed || slotByItem.ContainsKey(item))
+            {
+                Remove(item);
+            }
+        }
+
+        private void OnItemReleased(ProductItem item, Transform interactor, bool canceled)
+        {
+            if (canceled || !AcceptPlacements || item.State != ProductItemState.Free)
+            {
+                return;
+            }
+
+            if (IsInsideVolume(item))
+            {
+                TryPlace(item);
+            }
+        }
+
+        private void OnItemStateChanged(ProductItem item, ProductItemState previous, ProductItemState next)
+        {
+            // An item pulled back into the pool while placed (reset paths) must not keep a slot.
+            if (next == ProductItemState.Pooled && slotByItem.TryGetValue(item, out var slot))
+            {
+                StopTween(item);
+                slotByItem.Remove(item);
+                placedItems.Remove(item);
+                if (slot != null)
+                {
+                    slot.Release();
+                }
+            }
+        }
+
+        /// <summary>
+        /// After a slot in a packing column is emptied, every item above it drops one slot down (re-tweened), so a column
+        /// never has a gap. Standalone slots (no column links) are unaffected.
+        /// </summary>
+        private void CompactColumn(SuitcaseSlot emptied)
+        {
+            var target = emptied;
+            var source = emptied.Above;
+            int guard = 0;
+            while (source != null && source.IsOccupied && guard++ < 256)
+            {
+                var moving = source.Occupant;
+                source.Release();
+                target.Occupy(moving);
+                slotByItem[moving] = target;
+                StartTween(moving, target);
+                target = source;
+                source = source.Above;
+            }
+        }
+
+        private SuitcaseSlot TakeNearestFreeSlot(Vector3 position)
+        {
+            SuitcaseSlot best = null;
+            float bestDistance = float.MaxValue;
+            for (int i = 0; i < slots.Count; i++)
+            {
+                var slot = slots[i];
+                if (slot == null || !slot.IsAvailable)
+                {
+                    continue;
+                }
+
+                // Columns are chosen by horizontal distance to the drop point; a taller stack costs a little extra so
+                // items spread over the suitcase floor before piling up.
+                float distance;
+                if (slot.Below != null || slot.Above != null)
+                {
+                    var bottom = slot.ColumnBottom.transform.position;
+                    var flat = new Vector2(bottom.x - position.x, bottom.z - position.z);
+                    float stack = slot.SurfacePoint.y - bottom.y;
+                    distance = flat.sqrMagnitude + stack * stack * 4f;
+                }
+                else
+                {
+                    distance = (slot.transform.position - position).sqrMagnitude;
+                }
+                if (distance < bestDistance)
+                {
+                    bestDistance = distance;
+                    best = slot;
+                }
+            }
+
+            return best;
+        }
+
+        private void StartTween(ProductItem item, SuitcaseSlot slot)
+        {
+            StopTween(item);
+            var target = slot.PoseFor(item);
+            if (tweenSeconds <= 0f || !isActiveAndEnabled)
+            {
+                item.transform.SetPositionAndRotation(target.position, target.rotation);
+                return;
+            }
+
+            tweens[item] = StartCoroutine(TweenRoutine(item, target));
+        }
+
+        private void StopTween(ProductItem item)
+        {
+            if (item != null && tweens.TryGetValue(item, out var routine))
+            {
+                if (routine != null)
+                {
+                    StopCoroutine(routine);
+                }
+
+                tweens.Remove(item);
+            }
+        }
+
+        private IEnumerator TweenRoutine(ProductItem item, Pose target)
+        {
+            var itemTransform = item.transform;
+            var startPosition = itemTransform.position;
+            var startRotation = itemTransform.rotation;
+            float t = 0f;
+            while (t < tweenSeconds)
+            {
+                if (item == null || item.State != ProductItemState.Placed)
+                {
+                    tweens.Remove(item);
+                    yield break;
+                }
+
+                t += Time.unscaledDeltaTime;
+                float k = Mathf.Clamp01(t / tweenSeconds);
+                k = k * k * (3f - 2f * k);
+                itemTransform.SetPositionAndRotation(
+                    Vector3.Lerp(startPosition, target.position, k),
+                    Quaternion.Slerp(startRotation, target.rotation, k));
+                yield return null;
+            }
+
+            if (item != null && item.State == ProductItemState.Placed)
+            {
+                itemTransform.SetPositionAndRotation(target.position, target.rotation);
+            }
+
+            tweens.Remove(item);
+        }
+    }
+}
