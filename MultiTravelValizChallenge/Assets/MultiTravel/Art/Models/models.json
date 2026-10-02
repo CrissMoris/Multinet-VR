@@ -143,146 +143,103 @@
   },
   "console-table-business": {
     "name": "console-table-business",
-    "tris": 3314,
+    "tris": 5640,
     "dims_xyz": [
-      0.5945,
-      0.5949,
-      1.55
+      0.8972,
+      1.0469,
+      0.752
     ],
     "materials": [
-      "lacquer_white_gloss",
-      "lacquer_white",
-      "brass",
       "oak_warm",
+      "velvet_navy",
       "led_strip",
-      "leather_tan",
-      "leather_cognac"
+      "chrome_dark"
     ],
     "nodes": {
       "console-table-business": {
-        "tris": 3314,
+        "tris": 5640,
         "parent": null
       }
     },
     "empties": {
-      "SLOT.business.01": {
+      "SLOT.business.01.W": {
         "parent": null,
         "pos_unity": [
-          -0.4415,
-          0.92,
-          0.2347
+          -0.9438,
+          0.85,
+          1.1008
         ]
       },
-      "SLOT.business.02": {
+      "SLOT.business.02.S": {
         "parent": null,
         "pos_unity": [
-          -0.429,
-          0.92,
-          0.36
+          -1.1542,
+          0.85,
+          0.8777
         ]
       },
-      "SLOT.business.03": {
+      "SLOT.business.03.S": {
         "parent": null,
         "pos_unity": [
-          -0.5262,
-          0.92,
-          0.1915
+          -1.26,
+          0.85,
+          0.7175
         ]
       },
-      "SLOT.business.04": {
+      "SLOT.business.04.S": {
         "parent": null,
         "pos_unity": [
-          -0.5266,
-          1.02,
-          0.4302
+          -1.3438,
+          0.85,
+          0.5447
         ]
       },
-      "SLOT.business.05": {
+      "SLOT.business.05.W": {
         "parent": null,
         "pos_unity": [
-          -0.5782,
-          1.02,
-          0.3578
+          -0.9679,
+          1.17,
+          1.0797
         ]
       },
-      "SLOT.business.06": {
+      "SLOT.business.06.S": {
         "parent": null,
         "pos_unity": [
-          -0.62,
-          1.02,
-          0.2793
+          -1.2098,
+          1.17,
+          0.7994
         ]
       },
-      "SLOT.business.07": {
+      "SLOT.business.07.S": {
         "parent": null,
         "pos_unity": [
-          -0.6511,
-          1.02,
-          0.196
+          -1.3315,
+          1.17,
+          0.5742
         ]
       },
-      "SLOT.business.08": {
+      "SLOT.business.08.M": {
         "parent": null,
         "pos_unity": [
-          -0.441,
-          1.55,
-          0.2756
+          -0.9249,
+          1.49,
+          1.1167
         ]
       },
-      "SLOT.business.09": {
+      "SLOT.business.09.M": {
         "parent": null,
         "pos_unity": [
-          -0.4886,
-          1.55,
-          0.1779
+          -1.1786,
+          1.49,
+          0.8447
         ]
       },
-      "SLOT.business.10": {
+      "SLOT.business.10.S": {
         "parent": null,
         "pos_unity": [
-          -0.4689,
-          1.55,
-          0.4924
-        ]
-      },
-      "SLOT.business.11": {
-        "parent": null,
-        "pos_unity": [
-          -0.527,
-          1.55,
-          0.4298
-        ]
-      },
-      "SLOT.business.12": {
-        "parent": null,
-        "pos_unity": [
-          -0.5767,
-          1.55,
-          0.3603
-        ]
-      },
-      "SLOT.business.13": {
-        "parent": null,
-        "pos_unity": [
-          -0.6173,
-          1.55,
-          0.2852
-        ]
-      },
-      "SLOT.business.14": {
-        "parent": null,
-        "pos_unity": [
-          -0.6482,
-          1.55,
-          0.2056
-        ]
-      },
-      "LIGHT.spot_business": {
-        "parent": null,
-        "pos_unity": [
-          -0.4664,
-          2.05,
-          0.2915
+          -1.3321,
+          1.49,
+          0.5727
         ]
       }
     },
@@ -290,131 +247,95 @@
   },
   "console-table-leisure": {
     "name": "console-table-leisure",
-    "tris": 3644,
+    "tris": 5640,
     "dims_xyz": [
-      0.5945,
-      0.6991,
-      1.55
+      0.8351,
+      0.8953,
+      0.752
     ],
     "materials": [
-      "lacquer_white_gloss",
-      "lacquer_white",
-      "brass",
       "oak_warm",
+      "mat_teal",
       "led_strip",
-      "wicker",
-      "leather_cognac",
-      "towel_turquoise"
+      "chrome_dark"
     ],
     "nodes": {
       "console-table-leisure": {
-        "tris": 3644,
+        "tris": 5640,
         "parent": null
       }
     },
     "empties": {
-      "SLOT.leisure.01": {
+      "SLOT.leisure.01.W": {
         "parent": null,
         "pos_unity": [
-          0.5006,
-          0.93,
-          0.0973
+          0.9457,
+          0.85,
+          1.0992
         ]
       },
-      "SLOT.leisure.02": {
+      "SLOT.leisure.02.S": {
         "parent": null,
         "pos_unity": [
-          0.429,
-          0.92,
-          0.36
+          1.1587,
+          0.85,
+          0.8717
         ]
       },
-      "SLOT.leisure.03": {
+      "SLOT.leisure.03.S": {
         "parent": null,
         "pos_unity": [
-          0.5262,
-          0.92,
-          0.1915
+          1.2662,
+          0.85,
+          0.7066
         ]
       },
-      "SLOT.leisure.04": {
+      "SLOT.leisure.04.W": {
         "parent": null,
         "pos_unity": [
-          0.441,
-          1.55,
-          0.2756
+          0.9457,
+          1.17,
+          1.0992
         ]
       },
-      "SLOT.leisure.05": {
+      "SLOT.leisure.05.S": {
         "parent": null,
         "pos_unity": [
-          0.4886,
-          1.55,
-          0.1779
+          1.1587,
+          1.17,
+          0.8717
         ]
       },
-      "SLOT.leisure.06": {
+      "SLOT.leisure.06.S": {
         "parent": null,
         "pos_unity": [
-          0.4626,
-          1.55,
-          0.4707
+          1.2662,
+          1.17,
+          0.7066
         ]
       },
-      "SLOT.leisure.07": {
+      "SLOT.leisure.07.M": {
         "parent": null,
         "pos_unity": [
-          0.5305,
-          1.55,
-          0.3926
+          0.902,
+          1.49,
+          1.1353
         ]
       },
-      "SLOT.leisure.08": {
+      "SLOT.leisure.08.M": {
         "parent": null,
         "pos_unity": [
-          0.5854,
-          1.55,
-          0.3048
+          1.1248,
+          1.49,
+          0.9151
         ]
       },
-      "SLOT.leisure.09": {
+      "SLOT.leisure.09.S": {
         "parent": null,
         "pos_unity": [
-          0.6259,
-          1.55,
-          0.2094
-        ]
-      },
-      "SLOT.leisure.10": {
-        "parent": null,
-        "pos_unity": [
-          0.67,
-          1.55,
-          0.4186
-        ]
-      },
-      "SLOT.leisure.11": {
-        "parent": null,
-        "pos_unity": [
-          0.7217,
-          1.55,
-          0.3213
-        ]
-      },
-      "SLOT.leisure.12": {
-        "parent": null,
-        "pos_unity": [
-          0.7594,
-          1.55,
-          0.2178
-        ]
-      },
-      "LIGHT.spot_leisure": {
-        "parent": null,
-        "pos_unity": [
-          0.4664,
-          2.05,
-          0.2915
+          1.267,
+          1.49,
+          0.7051
         ]
       }
     },
@@ -1032,22 +953,71 @@
   },
   "room-shell": {
     "name": "room-shell",
-    "tris": 1228,
+    "tris": 2752,
     "dims_xyz": [
-      7.14,
-      5.94,
-      3.1
+      8.88,
+      11.03,
+      3.2
     ],
     "materials": [
       "parquet",
       "ceiling_white",
       "plaster_wall",
       "oak_veneer",
+      "walnut",
       "lacquer_white",
       "brass",
       "window_glass",
       "led_strip"
     ],
+    "nodes": {
+      "room-shell": {
+        "tris": 2752,
+        "parent": null
+      }
+    },
+    "empties": {
+      "LIGHT.room_la": {
+        "parent": null,
+        "pos_unity": [
+          -2.4,
+          2.65,
+          -6.0
+        ]
+      },
+      "LIGHT.room_ra": {
+        "parent": null,
+        "pos_unity": [
+          2.4,
+          2.65,
+          -6.0
+        ]
+      },
+      "LIGHT.room_lb": {
+        "parent": null,
+        "pos_unity": [
+          -2.4,
+          2.65,
+          -3.2
+        ]
+      },
+      "LIGHT.room_rb": {
+        "parent": null,
+        "pos_unity": [
+          2.4,
+          2.65,
+          -3.2
+        ]
+      },
+      "MARK.start": {
+        "parent": null,
+        "pos_unity": [
+          0.0,
+          0.0,
+          -5.6
+        ]
+      }
+    },
     "folder": "Environment"
   },
   "rug": {
@@ -1714,40 +1684,142 @@
   },
   "wardrobe-carcass": {
     "name": "wardrobe-carcass",
-    "tris": 9768,
+    "tris": 12088,
     "dims_xyz": [
-      1.9711,
-      0.7126,
-      2.26
+      3.3693,
+      2.8407,
+      2.23
     ],
     "materials": [
-      "lacquer_white",
-      "oak_warm",
-      "led_strip",
       "lacquer_greige",
-      "brass"
+      "oak_warm",
+      "velvet_navy",
+      "led_strip",
+      "lacquer_white",
+      "leather_tan",
+      "towel_orange",
+      "mat_teal",
+      "leather_cognac",
+      "walnut",
+      "velvet_wine"
     ],
     "nodes": {
       "wardrobe-carcass": {
-        "tris": 9768,
+        "tris": 12088,
         "parent": null
       }
     },
     "empties": {
-      "LIGHT.wing_left": {
+      "LIGHT.wardrobe_business": {
         "parent": null,
         "pos_unity": [
-          -0.636,
-          2.15,
-          0.3974
+          -0.7092,
+          2.45,
+          0.5541
         ]
       },
-      "LIGHT.wing_right": {
+      "UI.header_business": {
         "parent": null,
         "pos_unity": [
-          0.636,
-          2.15,
-          0.3974
+          -1.2561,
+          2.03,
+          0.9814
+        ]
+      },
+      "LIGHT.wardrobe_hanging": {
+        "parent": null,
+        "pos_unity": [
+          -0.8998,
+          2.45,
+          -0.0173
+        ]
+      },
+      "UI.header_hanging": {
+        "parent": null,
+        "pos_unity": [
+          -1.5937,
+          2.03,
+          -0.0306
+        ]
+      },
+      "LIGHT.wardrobe_folded": {
+        "parent": null,
+        "pos_unity": [
+          -0.7354,
+          2.45,
+          -0.5188
+        ]
+      },
+      "UI.header_folded": {
+        "parent": null,
+        "pos_unity": [
+          -1.3025,
+          2.03,
+          -0.9188
+        ]
+      },
+      "LIGHT.wardrobe_leisure": {
+        "parent": null,
+        "pos_unity": [
+          0.6741,
+          2.45,
+          0.5964
+        ]
+      },
+      "UI.header_leisure": {
+        "parent": null,
+        "pos_unity": [
+          1.1938,
+          2.03,
+          1.0562
+        ]
+      },
+      "LIGHT.wardrobe_shoes": {
+        "parent": null,
+        "pos_unity": [
+          0.8807,
+          2.45,
+          0.1856
+        ]
+      },
+      "UI.header_shoes": {
+        "parent": null,
+        "pos_unity": [
+          1.5597,
+          2.03,
+          0.3287
+        ]
+      },
+      "LIGHT.wardrobe_accessories": {
+        "parent": null,
+        "pos_unity": [
+          0.8725,
+          2.45,
+          -0.2208
+        ]
+      },
+      "UI.header_accessories": {
+        "parent": null,
+        "pos_unity": [
+          1.5453,
+          2.03,
+          -0.391
+        ]
+      },
+      "LIGHT.wardrobe_jewellery": {
+        "parent": null,
+        "pos_unity": [
+          0.6709,
+          2.45,
+          -0.5999
+        ]
+      },
+      "UI.header_jewellery": {
+        "parent": null,
+        "pos_unity": [
+          1.1883,
+          2.03,
+          -1.0625
         ]
       }
     },
@@ -1755,80 +1827,47 @@
   },
   "wardrobe-door-left": {
     "name": "wardrobe-door-left",
-    "tris": 1228,
+    "tris": 5640,
     "dims_xyz": [
-      0.9481,
-      0.5712,
-      2.3366
+      0.3678,
+      0.5195,
+      0.752
     ],
     "materials": [
-      "lacquer_white",
       "oak_warm",
-      "chrome_dark",
-      "brass",
-      "chrome"
+      "leather_cognac",
+      "led_strip",
+      "chrome_dark"
     ],
     "nodes": {
       "wardrobe-door-left": {
-        "tris": 1228,
+        "tris": 5640,
         "parent": null
       }
     },
     "empties": {
-      "SLOT.shoes.01": {
+      "SLOT.shoes.01.M": {
         "parent": null,
         "pos_unity": [
-          -0.5189,
-          0.88,
-          -0.0009
+          1.4188,
+          0.85,
+          0.299
         ]
       },
-      "SLOT.shoes.02": {
+      "SLOT.shoes.02.M": {
         "parent": null,
         "pos_unity": [
-          -0.6532,
-          1.08,
-          0.1335
+          1.4188,
+          1.17,
+          0.299
         ]
       },
-      "SLOT.shoes.03": {
+      "SLOT.shoes.03.M": {
         "parent": null,
         "pos_unity": [
-          -0.5118,
-          1.08,
-          -0.008
-        ]
-      },
-      "SLOT.shoes.04": {
-        "parent": null,
-        "pos_unity": [
-          -0.6532,
-          1.28,
-          0.1335
-        ]
-      },
-      "SLOT.shoes.05": {
-        "parent": null,
-        "pos_unity": [
-          -0.5118,
-          1.28,
-          -0.008
-        ]
-      },
-      "SLOT.shoes.06": {
-        "parent": null,
-        "pos_unity": [
-          -0.5825,
-          1.44,
-          0.0627
-        ]
-      },
-      "LIGHT.spot_shoes": {
-        "parent": null,
-        "pos_unity": [
-          -0.4482,
-          2.05,
-          0.183
+          1.4188,
+          1.49,
+          0.299
         ]
       }
     },
@@ -1836,163 +1875,112 @@
   },
   "wardrobe-door-right": {
     "name": "wardrobe-door-right",
-    "tris": 6776,
+    "tris": 11280,
     "dims_xyz": [
-      0.5894,
-      0.409,
-      2.14
+      0.7961,
+      1.3106,
+      0.752
     ],
     "materials": [
-      "lacquer_white",
       "oak_warm",
-      "chrome_dark",
-      "brass",
-      "velvet_navy",
-      "lacquer_white_gloss",
       "walnut",
+      "led_strip",
+      "chrome_dark",
       "velvet_wine"
     ],
     "nodes": {
       "wardrobe-door-right": {
-        "tris": 6776,
+        "tris": 11280,
         "parent": null
       }
     },
     "empties": {
-      "SLOT.accessories.01": {
+      "SLOT.accessories.01.W": {
         "parent": null,
         "pos_unity": [
-          0.4906,
-          0.95,
-          0.0274
+          1.4057,
+          0.85,
+          -0.3557
         ]
       },
-      "SLOT.accessories.02": {
+      "SLOT.accessories.02.M": {
         "parent": null,
         "pos_unity": [
-          0.4058,
-          0.95,
-          -0.0575
+          1.4365,
+          1.17,
+          -0.1976
         ]
       },
-      "SLOT.accessories.03": {
+      "SLOT.accessories.03.M": {
         "parent": null,
         "pos_unity": [
-          0.4906,
-          1.12,
-          0.0274
+          1.3576,
+          1.17,
+          -0.5094
         ]
       },
-      "SLOT.accessories.04": {
+      "SLOT.accessories.04.M": {
         "parent": null,
         "pos_unity": [
-          0.4058,
-          1.12,
-          -0.0575
+          1.4321,
+          1.49,
+          -0.2273
         ]
       },
-      "SLOT.accessories.05": {
+      "SLOT.accessories.05.S": {
         "parent": null,
         "pos_unity": [
-          0.5047,
-          1.26,
-          -0.0716
+          1.3468,
+          1.49,
+          -0.5374
         ]
       },
-      "SLOT.accessories.06": {
+      "SLOT.jewellery.01.S": {
         "parent": null,
         "pos_unity": [
-          0.5047,
-          1.38,
-          -0.0716
+          1.1437,
+          0.85,
+          -0.8914
         ]
       },
-      "SLOT.accessories.07": {
+      "SLOT.jewellery.02.S": {
         "parent": null,
         "pos_unity": [
-          0.7027,
-          1.48,
-          0.1122
+          1.0133,
+          0.85,
+          -1.0372
         ]
       },
-      "SLOT.accessories.08": {
+      "SLOT.jewellery.03.S": {
         "parent": null,
         "pos_unity": [
-          0.533,
-          1.48,
-          -0.0575
+          1.1437,
+          1.17,
+          -0.8914
         ]
       },
-      "SLOT.jewellery.01": {
+      "SLOT.jewellery.04.S": {
         "parent": null,
         "pos_unity": [
-          0.7215,
-          1.05,
-          0.1359
+          1.0133,
+          1.17,
+          -1.0372
         ]
       },
-      "SLOT.jewellery.02": {
+      "SLOT.jewellery.05.S": {
         "parent": null,
         "pos_unity": [
-          0.6367,
-          1.05,
-          0.051
+          1.1437,
+          1.49,
+          -0.8914
         ]
       },
-      "SLOT.jewellery.03": {
+      "SLOT.jewellery.06.S": {
         "parent": null,
         "pos_unity": [
-          0.7026,
-          1.15,
-          0.1548
-        ]
-      },
-      "SLOT.jewellery.04": {
-        "parent": null,
-        "pos_unity": [
-          0.6177,
-          1.15,
-          0.07
-        ]
-      },
-      "SLOT.jewellery.05": {
-        "parent": null,
-        "pos_unity": [
-          0.6837,
-          1.25,
-          0.1738
-        ]
-      },
-      "SLOT.jewellery.06": {
-        "parent": null,
-        "pos_unity": [
-          0.5988,
-          1.25,
-          0.0889
-        ]
-      },
-      "SLOT.jewellery.07": {
-        "parent": null,
-        "pos_unity": [
-          0.6647,
-          1.35,
-          0.1927
-        ]
-      },
-      "SLOT.jewellery.08": {
-        "parent": null,
-        "pos_unity": [
-          0.5799,
-          1.35,
-          0.1078
-        ]
-      },
-      "LIGHT.spot_accessories": {
-        "parent": null,
-        "pos_unity": [
-          0.4482,
-          2.05,
-          0.183
+          1.0133,
+          1.49,
+          -1.0372
         ]
       }
     },
@@ -2000,110 +1988,63 @@
   },
   "wardrobe-folded-module": {
     "name": "wardrobe-folded-module",
-    "tris": 3432,
+    "tris": 5640,
     "dims_xyz": [
-      0.5279,
-      0.5446,
-      1.405
+      0.7307,
+      0.8807,
+      0.752
     ],
     "materials": [
       "oak_warm",
-      "brass",
-      "led_strip"
+      "towel_orange",
+      "led_strip",
+      "chrome_dark"
     ],
     "nodes": {
       "wardrobe-folded-module": {
-        "tris": 3432,
+        "tris": 5640,
         "parent": null
       }
     },
     "empties": {
-      "SLOT.folded.01": {
+      "SLOT.folded.01.W": {
         "parent": null,
         "pos_unity": [
-          0.5996,
-          0.98,
-          0.299
+          -1.2692,
+          0.85,
+          -0.7012
         ]
       },
-      "SLOT.folded.02": {
+      "SLOT.folded.02.M": {
         "parent": null,
         "pos_unity": [
-          0.6456,
-          0.98,
-          0.179
+          -1.0491,
+          0.85,
+          -1.0009
         ]
       },
-      "SLOT.folded.03": {
+      "SLOT.folded.03.W": {
         "parent": null,
         "pos_unity": [
-          0.463,
-          1.18,
-          0.3816
+          -1.1849,
+          1.17,
+          -0.8358
         ]
       },
-      "SLOT.folded.04": {
+      "SLOT.folded.04.M": {
         "parent": null,
         "pos_unity": [
-          0.5543,
-          1.18,
-          0.2296
+          -1.2823,
+          1.49,
+          -0.677
         ]
       },
-      "SLOT.folded.05": {
+      "SLOT.folded.05.M": {
         "parent": null,
         "pos_unity": [
-          0.6171,
-          1.18,
-          0.4084
-        ]
-      },
-      "SLOT.folded.06": {
-        "parent": null,
-        "pos_unity": [
-          0.6931,
-          1.18,
-          0.2592
-        ]
-      },
-      "SLOT.folded.07": {
-        "parent": null,
-        "pos_unity": [
-          0.463,
-          1.4,
-          0.3816
-        ]
-      },
-      "SLOT.folded.08": {
-        "parent": null,
-        "pos_unity": [
-          0.5543,
-          1.4,
-          0.2296
-        ]
-      },
-      "SLOT.folded.09": {
-        "parent": null,
-        "pos_unity": [
-          0.6109,
-          1.4,
-          0.4521
-        ]
-      },
-      "SLOT.folded.10": {
-        "parent": null,
-        "pos_unity": [
-          0.7071,
-          1.4,
-          0.2785
-        ]
-      },
-      "LIGHT.spot_folded": {
-        "parent": null,
-        "pos_unity": [
-          0.5258,
-          2.05,
-          0.3285
+          -1.0679,
+          1.49,
+          -0.9809
         ]
       }
     },
@@ -2111,18 +2052,18 @@
   },
   "wardrobe-hanging-module": {
     "name": "wardrobe-hanging-module",
-    "tris": 288,
+    "tris": 1196,
     "dims_xyz": [
-      0.2949,
-      0.4642,
-      0.058
+      0.3443,
+      0.8167,
+      0.04
     ],
     "materials": [
       "chrome"
     ],
     "nodes": {
       "wardrobe-hanging-module": {
-        "tris": 288,
+        "tris": 1196,
         "parent": null
       }
     },
@@ -2130,137 +2071,105 @@
       "HOOK.01": {
         "parent": null,
         "pos_unity": [
-          -0.5408,
-          1.496,
-          0.5248
+          -1.3128,
+          1.871,
+          0.1373
         ]
       },
-      "SLOT.hanging.01": {
+      "SLOT.hanging.01.WT": {
         "parent": null,
         "pos_unity": [
-          -0.5408,
-          1.496,
-          0.5248
+          -1.3128,
+          1.871,
+          0.1373
         ]
       },
       "HOOK.02": {
         "parent": null,
         "pos_unity": [
-          -0.5666,
-          1.496,
-          0.4811
+          -1.3199,
+          1.871,
+          0.0123
         ]
       },
-      "SLOT.hanging.02": {
+      "SLOT.hanging.02.WT": {
         "parent": null,
         "pos_unity": [
-          -0.5666,
-          1.496,
-          0.4811
+          -1.3199,
+          1.871,
+          0.0123
         ]
       },
       "HOOK.03": {
         "parent": null,
         "pos_unity": [
-          -0.5924,
-          1.496,
-          0.4373
+          -1.3152,
+          1.871,
+          -0.1129
         ]
       },
-      "SLOT.hanging.03": {
+      "SLOT.hanging.03.WT": {
         "parent": null,
         "pos_unity": [
-          -0.5924,
-          1.496,
-          0.4373
+          -1.3152,
+          1.871,
+          -0.1129
         ]
       },
       "HOOK.04": {
         "parent": null,
         "pos_unity": [
-          -0.6181,
-          1.496,
-          0.3936
+          -1.4482,
+          1.871,
+          0.0731
         ]
       },
-      "SLOT.hanging.04": {
+      "SLOT.hanging.04.WT": {
         "parent": null,
         "pos_unity": [
-          -0.6181,
-          1.496,
-          0.3936
+          -1.4482,
+          1.871,
+          0.0731
         ]
       },
       "HOOK.05": {
         "parent": null,
         "pos_unity": [
-          -0.6439,
-          1.496,
-          0.3498
+          -1.4483,
+          1.871,
+          -0.0711
         ]
       },
-      "SLOT.hanging.05": {
+      "SLOT.hanging.05.WT": {
         "parent": null,
         "pos_unity": [
-          -0.6439,
-          1.496,
-          0.3498
+          -1.4483,
+          1.871,
+          -0.0711
         ]
       },
       "HOOK.06": {
         "parent": null,
         "pos_unity": [
-          -0.6697,
-          1.496,
-          0.3061
+          -1.434,
+          1.871,
+          -0.2145
         ]
       },
-      "SLOT.hanging.06": {
+      "SLOT.hanging.06.WT": {
         "parent": null,
         "pos_unity": [
-          -0.6697,
-          1.496,
-          0.3061
-        ]
-      },
-      "HOOK.07": {
-        "parent": null,
-        "pos_unity": [
-          -0.6954,
-          1.496,
-          0.2623
-        ]
-      },
-      "SLOT.hanging.07": {
-        "parent": null,
-        "pos_unity": [
-          -0.6954,
-          1.496,
-          0.2623
-        ]
-      },
-      "HOOK.08": {
-        "parent": null,
-        "pos_unity": [
-          -0.7212,
-          1.496,
-          0.2186
-        ]
-      },
-      "SLOT.hanging.08": {
-        "parent": null,
-        "pos_unity": [
-          -0.7212,
-          1.496,
-          0.2186
+          -1.434,
+          1.871,
+          -0.2145
         ]
       },
       "LIGHT.spot_hanging": {
         "parent": null,
         "pos_unity": [
-          -0.5258,
-          2.05,
-          0.3285
+          -0.4489,
+          2.0,
+          -0.0314
         ]
       }
     },

@@ -27,6 +27,11 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
+      name: led_strip
+    second: {fileID: 2100000, guid: e063de7bcf24d0944bc6f00e33ca441b, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
       name: oak_warm
     second: {fileID: 2100000, guid: 7b46ee79f51b6074fa6c47559c7dda9e, type: 2}
   - first:
@@ -86,7 +91,7 @@ ModelImporter:
     nodeNameCollisionStrategy: 1
     fileIdsGeneration: 2
     swapUVChannels: 0
-    generateSecondaryUV: 0
+    generateSecondaryUV: 1
     useFileUnits: 1
     keepQuads: 0
     weldVertices: 1

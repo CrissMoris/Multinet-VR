@@ -12,6 +12,11 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
+      name: chrome_dark
+    second: {fileID: 2100000, guid: fb0d0605dd0db544d91416050d9f5013, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
       name: lacquer_white
     second: {fileID: 2100000, guid: 2ac6deeb4200fde41a7cd35480a455c8, type: 2}
   - first:
@@ -39,6 +44,11 @@ ModelImporter:
       assembly: UnityEngine.CoreModule
       name: oak_warm
     second: {fileID: 2100000, guid: 7b46ee79f51b6074fa6c47559c7dda9e, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: velvet_navy
+    second: {fileID: 2100000, guid: 4d3db2f2f9d7de74eb79aec055b815b8, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0
@@ -81,7 +91,7 @@ ModelImporter:
     nodeNameCollisionStrategy: 1
     fileIdsGeneration: 2
     swapUVChannels: 0
-    generateSecondaryUV: 0
+    generateSecondaryUV: 1
     useFileUnits: 1
     keepQuads: 0
     weldVertices: 1

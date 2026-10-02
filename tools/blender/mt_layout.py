@@ -12,7 +12,7 @@ Every SLOT / HOOK produced here is checked against OVERHAUL_PLAN §1:
 import math
 
 SHOULDERS = ((-0.19, 0.0, 1.40), (0.19, 0.0, 1.40))
-REACH_ALL, REACH_90, Z_MIN, Z_MAX, AZ_MAX = 0.72, 0.65, 0.80, 1.55, 115.0
+REACH_ALL, REACH_90, Z_MIN, Z_MAX, AZ_MAX = 9.0, 9.0, 0.40, 2.10, 170.0   # v5: the cabin is walked, reach no longer limits
 
 # ---------------------------------------------------------------------------------------------- key dimensions
 SUITCASE_CENTRE_Y = 0.40          # interior centre (Unity z)
@@ -98,93 +98,172 @@ def door_yaw(side):
 
 
 # ---------------------------------------------------------------------------------------------- the slot plan
-def hooks():
-    """8 hooks on a straight rail (chord) at RAIL_Z, left wing. HOOK.nn and SLOT.hanging.nn coincide."""
-    t0, t1 = -44.0, -75.0
-    p0, p1 = pol(RAIL_R, t0, HOOK_Z), pol(RAIL_R, t1, HOOK_Z)
-    out = []
-    for i in range(8):
-        f = (i + 0.5) / 8
-        p = tuple(p0[k] + (p1[k] - p0[k]) * f for k in range(3))
-        t = math.degrees(math.atan2(p[0], p[1]))
-        out.append(Slot(f"SLOT.hanging.{i + 1:02d}", p, yaw_towards_player(t)))
+# v5 "walk-in cabin": the participant walks (controller sticks) into a round dressing cabin.  A curved shelf wall of three
+# rows runs around it (radius WALL_R); the front (|theta| < FRONT_OPEN_T, behind the suitcase) stays free for the stopwatch,
+# scoreboard and logo, the rear (theta ~ 180) is the entrance from the hotel room.  Every zone owns an angular wedge with
+# its own accent colour and header band.  Items keep (almost) real size (ProductItem.DisplayScale) and the slots are sized by
+# item class:  S (<= 0.15 m wide), M (<= 0.26 m), W (wider).  Slot names carry the class: SLOT.<zone>.<nn>.<S|M|W>[T].
+WALL_R = 1.45                          # slot centre radius
+SHELF_IN, SHELF_OUT = 1.31, 1.59       # shelf boards, 0.28 m deep
+BACK_IN, BACK_OUT = 1.61, 1.63
+SKIN_OUT = 1.655                       # white outer skin seen from the hotel room
+ROW_Z = (0.85, 1.17, 1.49)             # shelf surface heights = slot heights (0.32 m apart: nothing is tall)
+TOP_ROW = len(ROW_Z) - 1
+FREE_ROW = 0                           # no row is clipped (the suitcase is far from the wall)
+WEDGE_MARGIN = 0.07                    # slot-free margin at each wedge boundary (m)
+HEADER_Z = (1.90, 2.16)
+WALL_TOP = 2.14
+WALL_BOTTOM = 0.0
+SLOT_W = {"S": 0.19, "M": 0.31, "W": 0.42}
+SLOT_GAP = 0.0
+FRONT_OPEN_T = 28.0                    # wall starts here (stopwatch / scoreboard / logo stay visible in front)
+ENTRANCE_T = 152.0                     # wall ends here (rear opening = entrance, 56 deg wide)
+
+# zone -> (side, class string of plain slots, class string of tall slots, accent material, front flag (unused))
+ZONES = {
+    "business": (-1, "SSSSSSMMWW", "", "velvet_navy", False),
+    "folded": (-1, "MMMWW", "", "towel_orange", False),
+    "leisure": (1, "SSSSSMMWW", "", "mat_teal", False),
+    "shoes": (1, "MMM", "", "leather_cognac", False),
+    "accessories": (1, "MMMWS", "", "walnut", False),
+    "jewellery": (1, "SSSSSS", "", "velvet_wine", False),
+}
+ACCENT = {z: v[3] for z, v in ZONES.items()}
+ACCENT["hanging"] = "leather_tan"
+HANGING_SIDE = -1
+HANGING_WIDTH = 30.0
+GAP_DEG = 1.6
+FIRST_T = FRONT_OPEN_T + 1.5
+RAILS = ((1.32, 1.86, 3), (1.45, 1.86, 3))      # hanging rails: (radius, height z, hooks); the rear rail is offset half a step
+
+
+def row_start_angle(r=WALL_R):
+    return 0.0
+
+
+def _row_avail(t0, t1, front, ri):
+    """(lo, hi) degrees usable by slots of a row inside the wedge t0..t1."""
+    m = math.degrees(WEDGE_MARGIN / WALL_R)
+    return t0 + m, t1 - m
+
+
+def pack_zone(zone, t0, t1):
+    """Rows -> list of (class, tall) placed greedily, or None when the zone does not fit in the wedge."""
+    side, plain, tall, accent, front = ZONES[zone]
+    items = [(c, True) for c in tall] + [(c, False) for c in plain]
+    items.sort(key=lambda x: (not x[1], -SLOT_W[x[0]]))
+    avail = []
+    for ri in range(len(ROW_Z)):
+        lo, hi = _row_avail(t0, t1, front, ri)
+        avail.append(math.radians(max(0.0, hi - lo)) * WALL_R)
+    used = [0.0] * len(ROW_Z)
+    rows = [[] for _ in ROW_Z]
+    for c, t in items:
+        cand = [TOP_ROW] if t else range(len(ROW_Z))
+        best = None
+        for ri in cand:
+            if used[ri] + SLOT_W[c] <= avail[ri] + 1e-9 and (best is None or used[ri] < used[best]):
+                best = ri
+        if best is None:
+            return None
+        used[best] += SLOT_W[c] + SLOT_GAP
+        rows[best].append((c, t))
+    return rows
+
+
+def _build_wedges():
+    """Packs the zones side by side; returns {zone: (side, t0, t1, rows)} and the hanging wedge."""
+    out = {}
+    cursor = {-1: FIRST_T, 1: FIRST_T}
+    order = [("business", -1), ("hanging", -1), ("folded", -1), ("leisure", 1), ("shoes", 1), ("accessories", 1), ("jewellery", 1)]
+    for zone, side in order:
+        t0 = cursor[side]
+        if zone == "hanging":
+            out[zone] = (side, t0, t0 + HANGING_WIDTH, None)
+            cursor[side] = t0 + HANGING_WIDTH + GAP_DEG
+            continue
+        for w in range(8, 160):
+            rows = pack_zone(zone, t0, t0 + w)
+            if rows is not None:
+                out[zone] = (side, t0, t0 + w, rows)
+                cursor[side] = t0 + w + GAP_DEG
+                break
+        else:
+            raise RuntimeError(f"zone {zone} does not fit")
     return out
 
 
-def rail_ends():
-    return pol(RAIL_R, -40.0, RAIL_Z), pol(RAIL_R, -78.0, RAIL_Z)
+WEDGES = _build_wedges()
+MAX_THETA = max(v[2] for v in WEDGES.values())
+
+
+def wedge_slots(zone):
+    side, t0, t1, rows = WEDGES[zone]
+    front = ZONES[zone][4]
+    out = []
+    n_idx = 1
+    for ri, row in enumerate(rows):
+        if not row:
+            continue
+        lo, hi = _row_avail(t0, t1, front, ri)
+        total = sum(SLOT_W[c] for c, _ in row)
+        span = math.radians(hi - lo) * WALL_R
+        gap = (span - total) / len(row)
+        x = gap / 2
+        for c, tall in row:
+            centre = x + SLOT_W[c] / 2
+            t = side * (lo + math.degrees(centre / WALL_R))
+            suffix = c + ("T" if tall else "")
+            out.append(Slot(f"SLOT.{zone}.{n_idx:02d}.{suffix}", pol(WALL_R, t, ROW_Z[ri]), yaw_towards_player(t)))
+            n_idx += 1
+            x += SLOT_W[c] + gap
+    return out
+
+
+def hooks():
+    side, t0, t1, _ = WEDGES["hanging"]
+    out = []
+    idx = 1
+    for k, (r, z, n) in enumerate(RAILS):
+        m = math.degrees(0.12 / r)
+        step = (t1 - t0 - 2 * m) / n
+        lo = t0 + m + (0.0 if k == 0 else step / 2)
+        hi = t1 - m - (step / 2 if k == 0 else 0.0)
+        for i in range(n):
+            t = side * (lo + (hi - lo) * (i + 0.5) / n)
+            out.append(Slot(f"SLOT.hanging.{idx:02d}.WT", pol(r, t, z + 0.011), yaw_towards_player(t)))
+            idx += 1
+    return out
+
+
+def rail_arcs():
+    """[(radius, z, theta_from, theta_to)] (signed degrees) of the hanging rails."""
+    side, t0, t1, _ = WEDGES["hanging"]
+    return [(r, z, side * (t0 + 1.0), side * (t1 - 1.0)) for r, z, _ in RAILS]
 
 
 def business_slots():
-    s = []
-    s += arc_row("business", 1, 0.50, CONSOLE_TOP, 54, 70, 1, -1)       # console front row
-    s += arc_row("business", 2, 0.56, CONSOLE_TOP, 40, 80, 2, -1)       # console back row
-    s += arc_row("business", 4, 0.68, RISER_TOP, 47, 77, 4, -1)         # riser under the hanging garments
-    s += arc_row("business", 8, 0.52, TOP_SHELF, 52, 76, 2, -1)         # top shelf front
-    s += arc_row("business", 10, 0.68, TOP_SHELF, 40, 76, 5, -1)         # top shelf back
-    return s
+    return wedge_slots("business")
 
 
 def leisure_slots():
-    s = []
-    s += [Slot("SLOT.leisure.01", pol(0.51, 79, CONSOLE_TOP + 0.01), yaw_towards_player(79))]   # inside the wicker basket
-    s += arc_row("leisure", 2, 0.56, CONSOLE_TOP, 40, 80, 2, 1)
-    s += arc_row("leisure", 4, 0.52, TOP_SHELF, 52, 76, 2, 1)
-    s += arc_row("leisure", 6, 0.66, TOP_SHELF, 40, 76, 4, 1)
-    s += arc_row("leisure", 10, 0.79, TOP_SHELF, 54, 78, 3, 1)
-    return s
+    return wedge_slots("leisure")
 
 
 def folded_slots():
-    s = []
-    s += arc_row("folded", 1, 0.67, FOLDED_SHELVES[0], 58, 80, 2, 1)
-    s += arc_row("folded", 3, 0.60, FOLDED_SHELVES[1], 42, 76, 2, 1)
-    s += arc_row("folded", 5, 0.74, FOLDED_SHELVES[1], 50, 76, 2, 1)
-    s += arc_row("folded", 7, 0.60, FOLDED_SHELVES[2], 42, 76, 2, 1)
-    s += arc_row("folded", 9, 0.76, FOLDED_SHELVES[2], 46, 76, 2, 1)
-    return s
-
-
-SHOE_TIERS = (0.88, 1.08, 1.28)      # rack tier surfaces (tilted 12 deg), slot at the tier centre
-SHOE_DEPTH = 0.12                    # from the leaf face to the slot
+    return wedge_slots("folded")
 
 
 def shoe_slots():
-    side = -1
-    yaw = door_yaw(side)
-    pts = [(0.33, SHOE_TIERS[0]), (0.14, SHOE_TIERS[1]), (0.34, SHOE_TIERS[1]), (0.14, SHOE_TIERS[2]), (0.34, SHOE_TIERS[2]),
-           (0.24, 1.44)]   # a 4th high rail for the 6th pair
-    return [Slot(f"SLOT.shoes.{i + 1:02d}", door_point(side, s, SHOE_DEPTH, z), yaw, tilt=12.0) for i, (s, z) in enumerate(pts)]
-
-
-DRAWER_Z = (0.95, 1.12)          # drawer floors (slots) - organiser cabinet on the right door
-LEDGE_Z = (1.26, 1.38)
-PEG_Z = 1.48
-TRAY_Z = (1.05, 1.15, 1.25, 1.35)
-TRAY_S = (0.09, 0.21)
-DRAWER_S = (0.33, 0.45)
+    return wedge_slots("shoes")
 
 
 def accessory_slots():
-    side = 1
-    yaw = door_yaw(side)
-    pts = [(DRAWER_S[0], DRAWER_Z[0], 0.16), (DRAWER_S[1], DRAWER_Z[0], 0.16),   # lower drawer (pulled out)
-           (DRAWER_S[0], DRAWER_Z[1], 0.16), (DRAWER_S[1], DRAWER_Z[1], 0.16),   # upper drawer
-           (0.39, LEDGE_Z[0], 0.08), (0.39, LEDGE_Z[1], 0.08),                   # small ledges
-           (0.12, PEG_Z, 0.07), (0.36, PEG_Z, 0.07)]                             # two hat pegs
-    return [Slot(f"SLOT.accessories.{i + 1:02d}", door_point(side, s, d, z), yaw) for i, (s, z, d) in enumerate(pts)]
+    return wedge_slots("accessories")
 
 
 def jewellery_slots():
-    side = 1
-    yaw = door_yaw(side)
-    out = []
-    i = 1
-    for z in TRAY_Z:
-        for s in TRAY_S:
-            out.append(Slot(f"SLOT.jewellery.{i:02d}", door_point(side, s, 0.06 + (z - 1.0) * math.tan(math.radians(15)), z), yaw, tilt=15.0))
-            i += 1
-    return out
+    return wedge_slots("jewellery")
 
 
 def all_slots():
@@ -247,6 +326,4 @@ if __name__ == "__main__":
     print("\n".join(lines))
     from collections import Counter
     print(Counter(s.name.split(".")[1] for s in slots))
-    h, d, n = door_frame(1)
-    print("door R hinge", h, "dir", d, "normal", n, "tip", door_point(1, DOOR_W, 0, 0))
     print("AUDIT", "PASS" if ok else "FAIL")

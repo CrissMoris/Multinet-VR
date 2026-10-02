@@ -12,6 +12,11 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
+      name: chrome_dark
+    second: {fileID: 2100000, guid: fb0d0605dd0db544d91416050d9f5013, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
       name: lacquer_white
     second: {fileID: 2100000, guid: 2ac6deeb4200fde41a7cd35480a455c8, type: 2}
   - first:
@@ -29,6 +34,11 @@ ModelImporter:
       assembly: UnityEngine.CoreModule
       name: led_strip
     second: {fileID: 2100000, guid: e063de7bcf24d0944bc6f00e33ca441b, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: mat_teal
+    second: {fileID: 2100000, guid: 8d8da32bd4b29cc46b8a0693fd431d82, type: 2}
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
@@ -86,7 +96,7 @@ ModelImporter:
     nodeNameCollisionStrategy: 1
     fileIdsGeneration: 2
     swapUVChannels: 0
-    generateSecondaryUV: 0
+    generateSecondaryUV: 1
     useFileUnits: 1
     keepQuads: 0
     weldVertices: 1

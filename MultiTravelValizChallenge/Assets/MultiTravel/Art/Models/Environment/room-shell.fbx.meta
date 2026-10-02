@@ -42,6 +42,11 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
+      name: walnut
+    second: {fileID: 2100000, guid: e547541919d92484e9538f91c4298819, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
       name: window_glass
     second: {fileID: 2100000, guid: a1404edafd39a4a4386d757a6dfb6ff7, type: 2}
   materials:
@@ -86,7 +91,7 @@ ModelImporter:
     nodeNameCollisionStrategy: 1
     fileIdsGeneration: 2
     swapUVChannels: 0
-    generateSecondaryUV: 0
+    generateSecondaryUV: 1
     useFileUnits: 1
     keepQuads: 0
     weldVertices: 1

@@ -22,13 +22,48 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
+      name: leather_cognac
+    second: {fileID: 2100000, guid: f73132fc0e165184888ba09c913814cf, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: leather_tan
+    second: {fileID: 2100000, guid: 13e0879a081cd8147bf07f4828e7f1f2, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
       name: led_strip
     second: {fileID: 2100000, guid: e063de7bcf24d0944bc6f00e33ca441b, type: 2}
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
+      name: mat_teal
+    second: {fileID: 2100000, guid: 8d8da32bd4b29cc46b8a0693fd431d82, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
       name: oak_warm
     second: {fileID: 2100000, guid: 7b46ee79f51b6074fa6c47559c7dda9e, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: towel_orange
+    second: {fileID: 2100000, guid: 441c45bcf3925eb4ab68fa9149f290f6, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: velvet_navy
+    second: {fileID: 2100000, guid: 4d3db2f2f9d7de74eb79aec055b815b8, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: velvet_wine
+    second: {fileID: 2100000, guid: 97d8c50cb1dfe344a8f9ac81f537ca5e, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: walnut
+    second: {fileID: 2100000, guid: e547541919d92484e9538f91c4298819, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0
@@ -71,7 +106,7 @@ ModelImporter:
     nodeNameCollisionStrategy: 1
     fileIdsGeneration: 2
     swapUVChannels: 0
-    generateSecondaryUV: 0
+    generateSecondaryUV: 1
     useFileUnits: 1
     keepQuads: 0
     weldVertices: 1

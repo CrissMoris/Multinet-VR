@@ -9,7 +9,7 @@ import bmesh
 import bpy
 from mathutils import Matrix, Vector
 
-from mtlib import (add_bevel, add_subsurf, arc_points, box, cylinder, extrude_outline, from_bmesh, rotate, rounded_rect,
+from mtlib import (empty, add_bevel, add_subsurf, arc_points, box, cylinder, extrude_outline, from_bmesh, rotate, rounded_rect,
                    soft_body, sphere, sweep, torus, translate)
 
 BUILDERS = {}
@@ -271,29 +271,40 @@ def hanger_rail_decor():
         soft_body("garment", g, mat, voxel=0.01, smooth=6, wrinkle=0.006, wrinkle_scale=0.12, target_tris=900)
 
 
+ROOM = dict(x0=-4.3, x1=4.3, y0=-8.0, y1=2.75, h=3.0, t=0.14)     # interior (Blender y = Unity z)
+DOOR_X = 1.7                                                         # centre of the (closed) room door on the entrance wall
+WINDOW = dict(y0=-5.6, y1=-2.9, z0=0.9, z1=2.5)                      # window in the left wall
+
+
 @builder("room-shell")
 def room_shell():
-    """Hotel-room shell: floor, four walls (window opening on the left, door on the back), skirting, ceiling.
-    Interior: x -3.3..3.6, y -2.9..2.8 (y = Unity z), height 2.9 m."""
-    x0, x1, y0, y1, h, t = -3.3, 3.6, -2.9, 2.8, 2.9, 0.12
+    """Hotel-room shell around the cabin: parquet floor, plaster walls with skirting, ceiling with downlights, a closed door
+    on the entrance wall (y0) and a window in the left wall.  The cabin (shelf ring, r ~ 1.65) stands at the far end."""
+    r = ROOM
+    x0, x1, y0, y1, h, t = r["x0"], r["x1"], r["y0"], r["y1"], r["h"], r["t"]
     cx, cy, w, d = (x0 + x1) / 2, (y0 + y1) / 2, x1 - x0, y1 - y0
     box("floor", (w + 2 * t, d + 2 * t, 0.1), (cx, cy, -0.05), mat="parquet")
     box("ceiling", (w + 2 * t, d + 2 * t, 0.1), (cx, cy, h + 0.05), mat="ceiling_white")
     box("wall_front", (w + 2 * t, t, h), (cx, y1 + t / 2, h / 2), mat="plaster_wall")
     box("wall_right", (t, d, h), (x1 + t / 2, cy, h / 2), mat="plaster_wall")
-    # back wall with a door opening (x 1.6..2.5)
-    box("wall_back_a", (1.6 - x0, t, h), ((x0 + 1.6) / 2, y0 - t / 2, h / 2), mat="plaster_wall")
-    box("wall_back_b", (x1 - 2.5, t, h), ((2.5 + x1) / 2, y0 - t / 2, h / 2), mat="plaster_wall")
-    box("wall_back_c", (0.9, t, h - 2.15), (2.05, y0 - t / 2, 2.15 + (h - 2.15) / 2), mat="plaster_wall")
-    box("door", (0.86, 0.04, 2.12), (2.05, y0 + 0.0, 1.06), mat="oak_veneer", bevel=0.004)
-    box("door_frame", (1.0, 0.06, 0.06), (2.05, y0 + 0.01, 2.17), mat="lacquer_white")
-    for x in (1.57, 2.53):
-        box("door_jamb", (0.06, 0.06, 2.17), (x, y0 + 0.01, 1.085), mat="lacquer_white")
-    cylinder("door_handle", 0.01, 0.13, (2.35, y0 + 0.05, 1.0), (0, math.radians(90), 0), mat="brass", segments=12)
-    # left wall with a window opening (y -0.9..1.3, z 0.85..2.45)
-    wy0, wy1, wz0, wz1 = -0.9, 1.3, 0.85, 2.45
-    box("wall_left_a", (t, wy0 - y0, h), (x0 - t / 2, (y0 + wy0) / 2, h / 2), mat="plaster_wall")
-    box("wall_left_b", (t, y1 - wy1, h), (x0 - t / 2, (wy1 + y1) / 2, h / 2), mat="plaster_wall")
+    # entrance wall with the door opening (closed door fills it)
+    dw, dh = 0.96, 2.12
+    xa, xb = DOOR_X - dw / 2, DOOR_X + dw / 2
+    box("wall_back_a", (xa - x0 + t, t, h), ((x0 - t + xa) / 2, y0 - t / 2, h / 2), mat="plaster_wall")
+    box("wall_back_b", (x1 + t - xb, t, h), ((xb + x1 + t) / 2, y0 - t / 2, h / 2), mat="plaster_wall")
+    box("wall_back_c", (dw, t, h - dh), (DOOR_X, y0 - t / 2, dh + (h - dh) / 2), mat="plaster_wall")
+    box("door", (dw - 0.04, 0.05, dh - 0.02), (DOOR_X, y0 - 0.02, (dh - 0.02) / 2 + 0.01), mat="oak_veneer", bevel=0.004)
+    for z in (0.55, 1.07, 1.6):                                                   # door panels
+        box("door_panel", (dw - 0.3, 0.012, 0.36), (DOOR_X, y0 + 0.008, z), mat="walnut", bevel=0.003)
+    box("door_lintel", (dw + 0.16, 0.08, 0.07), (DOOR_X, y0 + 0.01, dh + 0.035), mat="lacquer_white")
+    for x in (xa - 0.04, xb + 0.04):
+        box("door_jamb", (0.08, 0.08, dh + 0.07), (x, y0 + 0.01, (dh + 0.07) / 2), mat="lacquer_white")
+    cylinder("door_handle", 0.012, 0.15, (xb - 0.1, y0 + 0.06, 1.0), (0, math.radians(90), 0), mat="brass", segments=12)
+    cylinder("door_rose", 0.03, 0.01, (xb - 0.05, y0 + 0.035, 1.0), (math.radians(90), 0, 0), mat="brass", segments=20)
+    # left wall with a window opening
+    wy0, wy1, wz0, wz1 = WINDOW["y0"], WINDOW["y1"], WINDOW["z0"], WINDOW["z1"]
+    box("wall_left_a", (t, wy0 - y0 + t, h), (x0 - t / 2, (y0 - t + wy0) / 2, h / 2), mat="plaster_wall")
+    box("wall_left_b", (t, y1 - wy1 + t, h), (x0 - t / 2, (wy1 + y1 + t) / 2, h / 2), mat="plaster_wall")
     box("wall_left_c", (t, wy1 - wy0, wz0), (x0 - t / 2, (wy0 + wy1) / 2, wz0 / 2), mat="plaster_wall")
     box("wall_left_d", (t, wy1 - wy0, h - wz1), (x0 - t / 2, (wy0 + wy1) / 2, wz1 + (h - wz1) / 2), mat="plaster_wall")
     box("window_glass", (0.02, wy1 - wy0, wz1 - wz0), (x0 - t * 0.7, (wy0 + wy1) / 2, (wz0 + wz1) / 2), mat="window_glass")
@@ -301,15 +312,23 @@ def room_shell():
         box("mullion", (0.08, 0.05, wz1 - wz0), (x0 - t / 2, y, (wz0 + wz1) / 2), mat="lacquer_white")
     for z in (wz0, wz1):
         box("transom", (0.1, wy1 - wy0 + 0.05, 0.05), (x0 - t / 2 + 0.01, (wy0 + wy1) / 2, z), mat="lacquer_white")
-    box("sill", (0.2, wy1 - wy0 + 0.1, 0.03), (x0 + 0.06, (wy0 + wy1) / 2, wz0 - 0.015), mat="lacquer_white")
-    # skirting
-    sk = 0.08
-    box("skirt", (w, 0.015, sk), (cx, y1 - 0.0075, sk / 2), mat="lacquer_white")
-    box("skirt", (0.015, d, sk), (x1 - 0.0075, cy, sk / 2), mat="lacquer_white")
-    box("skirt", (0.015, d, sk), (x0 + 0.0075, cy, sk / 2), mat="lacquer_white")
-    box("skirt", (1.6 - x0, 0.015, sk), ((x0 + 1.6) / 2, y0 + 0.0075, sk / 2), mat="lacquer_white")
-    box("skirt", (x1 - 2.5, 0.015, sk), ((2.5 + x1) / 2, y0 + 0.0075, sk / 2), mat="lacquer_white")
-    # recessed ceiling downlights (emissive discs)
-    for x in (-1.6, 0.0, 1.8):
-        for y in (-1.6, 0.4, 2.0):
-            cylinder("downlight", 0.06, 0.01, (x, y, h - 0.004), mat="led_strip", segments=20)
+    box("sill", (0.22, wy1 - wy0 + 0.1, 0.03), (x0 + 0.07, (wy0 + wy1) / 2, wz0 - 0.015), mat="lacquer_white")
+    # skirting + crown moulding
+    sk = 0.1
+    box("skirt", (w, 0.016, sk), (cx, y1 - 0.008, sk / 2), mat="lacquer_white")
+    box("skirt", (0.016, d, sk), (x1 - 0.008, cy, sk / 2), mat="lacquer_white")
+    box("skirt", (0.016, d, sk), (x0 + 0.008, cy, sk / 2), mat="lacquer_white")
+    box("skirt", (xa - x0, 0.016, sk), ((x0 + xa) / 2, y0 + 0.008, sk / 2), mat="lacquer_white")
+    box("skirt", (x1 - xb, 0.016, sk), ((xb + x1) / 2, y0 + 0.008, sk / 2), mat="lacquer_white")
+    for (bx, by, bw, bd) in ((cx, y1 - 0.03, w, 0.06), (cx, y0 + 0.03, w, 0.06), (x0 + 0.03, cy, 0.06, d), (x1 - 0.03, cy, 0.06, d)):
+        box("crown", (bw, bd, 0.07), (bx, by, h - 0.035), mat="lacquer_white")
+    # ceiling downlights: emissive discs on a grid (the lighting is baked from the LIGHT markers below)
+    for x in (-3.0, -1.5, 0.0, 1.5, 3.0):
+        for y in (-7.0, -5.2, -3.4, -1.6):
+            cylinder("downlight", 0.07, 0.012, (x, y, h - 0.006), mat="led_strip", segments=20)
+    # light hints
+    for (x, y) in ((-2.4, -6.0), (2.4, -6.0), (-2.4, -3.2), (2.4, -3.2)):
+        empty(f"LIGHT.room_{'l' if x < 0 else 'r'}{'a' if y < -4.5 else 'b'}", (x, y, h - 0.35), rot=(0, 0, 0), display="CONE", size=0.1)
+    empty("MARK.start", (0.0, -5.6, 0.0), rot=(0, 0, 0))
+
+
