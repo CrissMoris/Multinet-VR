@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="MultiTravel Valiz Challenge canlı liderlik tablosu">
+  <title>MultiTravel Valiz Challenge — Liderlik Tablosu</title>
+  <style>
+    /* --------------------------------------------------------------------
+       Design tokens (palette inspired by Multinet: deep blue, teal, orange)
+       -------------------------------------------------------------------- */
+    :root {
+      --blue-900: #0B3C8C;
+      --blue-700: #0E4DB5;
+      --blue-100: #E3EBFA;
+      --teal: #19B394;
+      --teal-100: #DDF5EE;
+      --orange: #F39200;
+      --orange-100: #FFF0DB;
+      --gold: #F39200;
+      --silver: #8F9DB5;
+      --bronze: #C0763C;
+      --bg: #F3F6FB;
+      --card: #FFFFFF;
+      --ink: #0F1B33;
+      --muted: #5B6B8A;
+      --line: #E1E7F2;
+      --danger: #D64545;
+      --danger-100: #FDECEC;
+      --radius: 18px;
+      --shadow: 0 10px 30px rgba(11, 60, 140, 0.10);
+      --font: "Segoe UI", Inter, Roboto, Arial, "Helvetica Neue", sans-serif;
+      --gutter: 16px;
+      /* Type scale: readable on a TV from 3 m, still fine on a phone. */
+      --fs-title: clamp(28px, 4.2vw, 60px);
+      --fs-subtitle: clamp(16px, 1.8vw, 28px);
+      --fs-table: clamp(17px, 2.1vw, 34px);
+      --fs-head: clamp(13px, 1.1vw, 18px);
+      --fs-meta: clamp(13px, 1.1vw, 18px);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--ink);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* --------------------------------------------------------------------
+       Header: brand + live status
+       -------------------------------------------------------------------- */
+    .topbar {
+      background: linear-gradient(100deg, var(--blue-900) 0%, var(--blue-700) 70%, #1560D6 100%);
+      color: #fff;
+      padding: clamp(12px, 1.6vw, 22px) var(--gutter);
+    }
+    .topbar__inner {
+      max-width: 1600px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; min-height: 40px; }
+    .brand__logo { height: clamp(32px, 3.6vw, 56px); width: auto; display: block; }
+    .brand__wordmark {
+      font-weight: 800;
+      font-size: clamp(20px, 2.4vw, 36px);
+      letter-spacing: 0.4px;
+      line-height: 1;
+    }
+    .brand__wordmark span { color: var(--orange); }
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 10px 18px;
+      flex-wrap: wrap;
+      font-size: var(--fs-meta);
+      opacity: 0.95;
+    }
+    .dot {
+      display: inline-block;
+      width: 0.85em; height: 0.85em;
+      border-radius: 50%;
+      background: #AEB9CF;
+      box-shadow: 0 0 0 3px rgba(255,255,255,0.18);
+      vertical-align: -0.05em;
+      margin-right: 6px;
+    }
+    .dot--live { background: var(--teal); box-shadow: 0 0 0 3px rgba(25,179,148,0.30); }
+    .dot--error { background: #FF7A7A; box-shadow: 0 0 0 3px rgba(255,122,122,0.30); }
+    .dot--loading { background: var(--orange); box-shadow: 0 0 0 3px rgba(243,146,0,0.30); animation: pulse 1.2s ease-in-out infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+    .status__sep { opacity: 0.4; }
+
+    /* --------------------------------------------------------------------
+       Hero
+       -------------------------------------------------------------------- */
+    main {
+      flex: 1;
+      width: 100%;
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: clamp(16px, 2.4vw, 36px) var(--gutter) clamp(24px, 3vw, 48px);
+    }
+    .hero { text-align: center; margin-bottom: clamp(14px, 2vw, 28px); }
+    .hero h1 {
+      margin: 0 0 6px;
+      font-size: var(--fs-title);
+      font-weight: 800;
+      line-height: 1.1;
+      color: var(--blue-900);
+      letter-spacing: -0.5px;
+    }
+    .hero p {
+      margin: 0;
+      font-size: var(--fs-subtitle);
+      color: var(--muted);
+      font-weight: 500;
+    }
+    .hero__accent {
+      display: inline-block;
+      width: 72px; height: 6px;
+      border-radius: 6px;
+      margin-top: 14px;
+      background: linear-gradient(90deg, var(--teal), var(--orange));
+    }
+
+    /* --------------------------------------------------------------------
+       Banner (offline / error / config)
+       -------------------------------------------------------------------- */
+    .banner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      background: var(--danger-100);
+      border: 1px solid #F5C2C2;
+      color: #7A1F1F;
+      border-radius: 12px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      font-size: var(--fs-meta);
+    }
+    .banner[hidden] { display: none; }
+    .banner--warn { background: var(--orange-100); border-color: #F7D9A6; color: #6B4100; }
+    .banner__text { flex: 1 1 320px; line-height: 1.4; }
+    .btn {
+      font: inherit;
+      font-weight: 700;
+      border: 0;
+      border-radius: 10px;
+      padding: 10px 18px;
+      cursor: pointer;
+      background: var(--blue-700);
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(14,77,181,0.25);
+    }
+    .btn:hover { background: var(--blue-900); }
+    .btn:focus-visible { outline: 3px solid var(--orange); outline-offset: 2px; }
+
+    /* --------------------------------------------------------------------
+       Leaderboard card + table
+       -------------------------------------------------------------------- */
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .card__scroll { overflow-x: auto; }
+    table.board {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: var(--fs-table);
+      font-variant-numeric: tabular-nums;
+    }
+    table.board[hidden] { display: none; }
+    .board thead th {
+      text-align: left;
+      font-size: var(--fs-head);
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--muted);
+      background: var(--blue-100);
+      padding: 0.6em 0.8em;
+      white-space: nowrap;
+    }
+    .board tbody td {
+      padding: 0.45em 0.8em;
+      border-top: 1px solid var(--line);
+      white-space: nowrap;
+      vertical-align: middle;
+    }
+    .board tbody tr:nth-child(even) td { background: #FAFBFE; }
+    .board .col-rank { width: 1%; text-align: center; }
+    .board .col-name { width: 100%; white-space: normal; overflow-wrap: anywhere; font-weight: 600; }
+    .board .col-score { text-align: right; font-weight: 800; color: var(--blue-900); }
+    .board .col-time { text-align: right; color: var(--ink); }
+    .board .col-gender { text-align: center; color: var(--muted); }
+    .board thead .col-score, .board thead .col-time { text-align: right; }
+    .board thead .col-rank, .board thead .col-gender { text-align: center; }
+
+    .rank-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 1.9em; height: 1.9em;
+      padding: 0 0.35em;
+      border-radius: 999px;
+      font-weight: 800;
+      color: var(--blue-900);
+      background: var(--blue-100);
+      line-height: 1;
+    }
+    .row-top td { background: #FFFDF8 !important; }
+    .row-top td:first-child { box-shadow: inset 6px 0 0 var(--gold); }
+    .row-top-1 .rank-badge { background: linear-gradient(135deg, #F39200, #FFB84D); color: #fff; box-shadow: 0 4px 12px rgba(243,146,0,0.35); }
+    .row-top-2 td:first-child { box-shadow: inset 6px 0 0 var(--silver); }
+    .row-top-2 .rank-badge { background: linear-gradient(135deg, #8F9DB5, #C5CFE0); color: #fff; }
+    .row-top-3 td:first-child { box-shadow: inset 6px 0 0 var(--bronze); }
+    .row-top-3 .rank-badge { background: linear-gradient(135deg, #B8692E, #D9A06B); color: #fff; }
+    .row-top-1 .col-score { color: var(--orange); }
+
+    .pill {
+      display: inline-block;
+      padding: 0.15em 0.7em;
+      border-radius: 999px;
+      font-size: 0.78em;
+      font-weight: 700;
+      background: var(--teal-100);
+      color: #0E6F5B;
+    }
+    .pill--male { background: var(--blue-100); color: var(--blue-900); }
+
+    .state {
+      padding: clamp(28px, 5vw, 64px) var(--gutter);
+      text-align: center;
+      font-size: var(--fs-subtitle);
+      color: var(--muted);
+    }
+    .state[hidden] { display: none; }
+    .state__icon {
+      width: 56px; height: 56px;
+      margin: 0 auto 12px;
+      border-radius: 50%;
+      background: var(--blue-100);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--blue-700);
+      font-weight: 800;
+      font-size: 24px;
+    }
+    .spinner {
+      width: 44px; height: 44px;
+      margin: 0 auto 14px;
+      border-radius: 50%;
+      border: 5px solid var(--blue-100);
+      border-top-color: var(--blue-700);
+      animation: spin 0.9s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    footer {
+      text-align: center;
+      color: var(--muted);
+      font-size: var(--fs-meta);
+      padding: 12px var(--gutter) 20px;
+    }
+    footer .event-slug { opacity: 0.7; }
+
+    @media (max-width: 640px) {
+      .status { font-size: 13px; gap: 6px 12px; }
+      .board thead th, .board tbody td { padding-left: 0.5em; padding-right: 0.5em; }
+      .board .col-gender { display: none; }
+      .board .col-time { font-size: 0.9em; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .dot--loading, .spinner { animation: none; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar__inner">
+      <div class="brand" aria-label="MultiTravel">
+        <img id="brand-logo" class="brand__logo" src="assets/logo.png" alt="MultiTravel" hidden
+             onload="this.hidden = false; document.getElementById('brand-wordmark').hidden = true;"
+             onerror="this.hidden = true; this.remove(); document.getElementById('brand-wordmark').hidden = false;">
+        <div id="brand-wordmark" class="brand__wordmark">Multi<span>Travel</span></div>
+      </div>
+      <div class="status" aria-live="polite">
+        <span><span id="status-dot" class="dot dot--loading"></span><span id="status-text">Yükleniyor…</span></span>
+        <span class="status__sep" aria-hidden="true">•</span>
+        <span id="countdown">Yenileme: — sn</span>
+        <span class="status__sep" aria-hidden="true">•</span>
+        <span id="last-updated">Son güncelleme: —</span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <h1>MultiTravel Valiz Challenge</h1>
+      <p>Arabayla, 1 gece konaklamalı toplantı seyahati</p>
+      <span class="hero__accent" aria-hidden="true"></span>
+    </section>
+
+    <div id="banner" class="banner" role="alert" hidden>
+      <span id="banner-text" class="banner__text"></span>
+      <button id="retry" class="btn" type="button">Yeniden dene</button>
+    </div>
+
+    <section class="card" aria-label="Liderlik tablosu">
+      <div class="card__scroll">
+        <table id="board" class="board" hidden>
+          <thead>
+            <tr>
+              <th class="col-rank" scope="col">Sıra</th>
+              <th class="col-name" scope="col">Ad Soyad</th>
+              <th class="col-score" scope="col">Puan</th>
+              <th class="col-time" scope="col">Süre</th>
+              <th class="col-gender" scope="col">Cinsiyet</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+      <div id="state" class="state">
+        <div class="spinner" aria-hidden="true"></div>
+        <div id="state-text">Yükleniyor…</div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <span id="footer-text">Liderlik tablosu otomatik olarak yenilenir.</span>
+    <span id="footer-event" class="event-slug"></span>
+  </footer>
+
+  <!-- Client-safe configuration. config.local.js (git-ignored) may override values for a machine. -->
+  <script src="config.js"></script>
+  <script src="config.local.js" onerror="this.remove()"></script>
+  <script>
+    (function () {
+      'use strict';
+
+      // ---------------------------------------------------------------
+      // Configuration
+      // ---------------------------------------------------------------
+      var cfg = window.MT_CONFIG || {};
+      var params = new URLSearchParams(window.location.search);
+
+      function toInt(value, min, max, fallback) {
+        var n = parseInt(value, 10);
+        if (isNaN(n)) return fallback;
+        return Math.min(max, Math.max(min, n));
+      }
+
+      var SUPABASE_URL = String(cfg.SUPABASE_URL || '').trim().replace(/\/+$/, '');
+      var SUPABASE_ANON_KEY = String(cfg.SUPABASE_ANON_KEY || '').trim();
+      var EVENT_SLUG = String(params.get('event') || cfg.EVENT_SLUG || '').trim();
+      var REFRESH_SECONDS = toInt(cfg.REFRESH_SECONDS, 3, 3600, 15);
+      var TOP_N = toInt(cfg.TOP_N, 1, 1000, 20);
+      var REQUEST_TIMEOUT_MS = 10000;
+
+      var MESSAGES = {
+        config: 'Yapılandırma eksik: config.js içindeki SUPABASE_URL, SUPABASE_ANON_KEY ve EVENT_SLUG alanlarını doldurun.',
+        offline: 'İnternet bağlantısı yok. Bağlantı geri geldiğinde tablo otomatik olarak yenilenecek.',
+        network: 'Sunucuya ulaşılamadı. Bağlantı kontrol ediliyor…',
+        timeout: 'Sunucu yanıt vermedi (zaman aşımı). Yeniden denenecek.',
+        http: 'Sunucu hatası (HTTP {status}). Yeniden denenecek.',
+        EVENT_ACCESS_DENIED: 'Etkinlik bulunamadı. config.js içindeki EVENT_SLUG değerini (veya ?event= parametresini) kontrol edin.',
+        EVENT_INACTIVE: 'Etkinlik şu anda aktif değil.',
+        'VALIDATION_FAILED:limit': 'TOP_N değeri 1 ile 1000 arasında olmalıdır.',
+        stale: 'Gösterilen liste son başarılı güncellemeye aittir.',
+        empty: 'Henüz sonuç yok',
+        emptyHint: 'İlk oyuncu valizini tamamladığında burada görünecek.',
+        loading: 'Yükleniyor…',
+        live: 'Canlı',
+        error: 'Bağlantı hatası',
+        refreshIn: 'Yenileme: {n} sn',
+        refreshing: 'Yenileniyor…',
+        lastUpdated: 'Son güncelleme: {t}',
+        footer: 'Liderlik tablosu her {n} saniyede bir yenilenir. İlk {top} oyuncu gösterilir.',
+        genderFemale: 'Kadın',
+        genderMale: 'Erkek'
+      };
+
+      // ---------------------------------------------------------------
+      // DOM
+      // ---------------------------------------------------------------
+      var el = {
+        statusDot: document.getElementById('status-dot'),
+        statusText: document.getElementById('status-text'),
+        countdown: document.getElementById('countdown'),
+        lastUpdated: document.getElementById('last-updated'),
+        banner: document.getElementById('banner'),
+        bannerText: document.getElementById('banner-text'),
+        retry: document.getElementById('retry'),
+        board: document.getElementById('board'),
+        rows: document.getElementById('rows'),
+        state: document.getElementById('state'),
+        stateText: document.getElementById('state-text'),
+        footerText: document.getElementById('footer-text'),
+        footerEvent: document.getElementById('footer-event')
+      };
+
+      var hasRenderedData = false;
+      var secondsLeft = REFRESH_SECONDS;
+      var inFlight = false;
+      var timer = null;
+
+      el.footerText.textContent = MESSAGES.footer.replace('{n}', REFRESH_SECONDS).replace('{top}', TOP_N);
+      el.footerEvent.textContent = EVENT_SLUG ? ' · ' + EVENT_SLUG : '';
+
+      // ---------------------------------------------------------------
+      // Formatting helpers
+      // ---------------------------------------------------------------
+      function pad2(n) { return (n < 10 ? '0' : '') + n; }
+
+      // completion_ms -> mm:ss.SS (centiseconds)
+      function formatDuration(ms) {
+        var total = Math.max(0, Math.floor(Number(ms) || 0));
+        var minutes = Math.floor(total / 60000);
+        var seconds = Math.floor((total % 60000) / 1000);
+        var centis = Math.floor((total % 1000) / 10);
+        return pad2(minutes) + ':' + pad2(seconds) + '.' + pad2(centis);
+      }
+
+      function formatGender(g) {
+        if (g === 'female') return MESSAGES.genderFemale;
+        if (g === 'male') return MESSAGES.genderMale;
+        return '—';
+      }
+
+      function formatClock(date) {
+        try {
+          return date.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        } catch (e) {
+          return pad2(date.getHours()) + ':' + pad2(date.getMinutes()) + ':' + pad2(date.getSeconds());
+        }
+      }
+
+      // ---------------------------------------------------------------
+      // UI state
+      // ---------------------------------------------------------------
+      function setStatus(kind, text) {
+        el.statusDot.className = 'dot ' + (kind === 'live' ? 'dot--live' : kind === 'error' ? 'dot--error' : 'dot--loading');
+        el.statusText.textContent = text;
+      }
+
+      function showBanner(text, warn) {
+        el.bannerText.textContent = text;
+        el.banner.className = 'banner' + (warn ? ' banner--warn' : '');
+        el.banner.hidden = false;
+      }
+
+      function hideBanner() { el.banner.hidden = true; }
+
+      function showState(kind) {
+        el.board.hidden = true;
+        el.state.hidden = false;
+        el.state.innerHTML = '';
+        if (kind === 'loading') {
+          var spinner = document.createElement('div');
+          spinner.className = 'spinner';
+          spinner.setAttribute('aria-hidden', 'true');
+          el.state.appendChild(spinner);
+          el.state.appendChild(document.createTextNode(MESSAGES.loading));
+        } else {
+          var icon = document.createElement('div');
+          icon.className = 'state__icon';
+          icon.setAttribute('aria-hidden', 'true');
+          icon.textContent = '0';
+          var title = document.createElement('div');
+          title.textContent = MESSAGES.empty;
+          title.style.fontWeight = '700';
+          title.style.color = 'var(--ink)';
+          var hint = document.createElement('div');
+          hint.textContent = MESSAGES.emptyHint;
+          hint.style.fontSize = '0.8em';
+          hint.style.marginTop = '6px';
+          el.state.appendChild(icon);
+          el.state.appendChild(title);
+          el.state.appendChild(hint);
+        }
+      }
+
+      function renderRows(entries) {
+        var fragment = document.createDocumentFragment();
+        entries.forEach(function (entry) {
+          var rank = Number(entry.rank) || 0;
+          var tr = document.createElement('tr');
+          if (rank >= 1 && rank <= 3) tr.className = 'row-top row-top-' + rank;
+
+          var tdRank = document.createElement('td');
+          tdRank.className = 'col-rank';
+          var badge = document.createElement('span');
+          badge.className = 'rank-badge';
+          badge.textContent = rank > 0 ? String(rank) : '—';
+          tdRank.appendChild(badge);
+
+          var tdName = document.createElement('td');
+          tdName.className = 'col-name';
+          tdName.textContent = String(entry.display_name || '—');
+
+          var tdScore = document.createElement('td');
+          tdScore.className = 'col-score';
+          tdScore.textContent = String(Number(entry.score) || 0);
+
+          var tdTime = document.createElement('td');
+          tdTime.className = 'col-time';
+          tdTime.textContent = formatDuration(entry.completion_ms);
+
+          var tdGender = document.createElement('td');
+          tdGender.className = 'col-gender';
+          var pill = document.createElement('span');
+          pill.className = 'pill' + (entry.gender === 'male' ? ' pill--male' : '');
+          pill.textContent = formatGender(entry.gender);
+          tdGender.appendChild(pill);
+
+          tr.appendChild(tdRank);
+          tr.appendChild(tdName);
+          tr.appendChild(tdScore);
+          tr.appendChild(tdTime);
+          tr.appendChild(tdGender);
+          fragment.appendChild(tr);
+        });
+
+        el.rows.innerHTML = '';
+        el.rows.appendChild(fragment);
+        el.state.hidden = true;
+        el.board.hidden = false;
+      }
+
+      function updateCountdown() {
+        el.countdown.textContent = inFlight ? MESSAGES.refreshing : MESSAGES.refreshIn.replace('{n}', secondsLeft);
+      }
+
+      // ---------------------------------------------------------------
+      // Data
+      // ---------------------------------------------------------------
+      function fetchLeaderboard() {
+        var controller = typeof AbortController === 'function' ? new AbortController() : null;
+        var timeoutId = controller ? setTimeout(function () { controller.abort(); }, REQUEST_TIMEOUT_MS) : null;
+
+        return fetch(SUPABASE_URL + '/rest/v1/rpc/get_leaderboard', {
+          method: 'POST',
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ p_event_slug: EVENT_SLUG, p_limit: TOP_N }),
+          signal: controller ? controller.signal : undefined,
+          cache: 'no-store'
+        }).then(function (response) {
+          return response.text().then(function (text) {
+            var json = null;
+            try { json = text ? JSON.parse(text) : null; } catch (e) { json = null; }
+            if (!response.ok) {
+              var code = json && typeof json.message === 'string' ? json.message : '';
+              var err = new Error(code || ('HTTP ' + response.status));
+              err.code = code;
+              err.status = response.status;
+              throw err;
+            }
+            if (!Array.isArray(json)) throw new Error('Beklenmeyen yanıt');
+            return json;
+          });
+        }).finally(function () {
+          if (timeoutId) clearTimeout(timeoutId);
+        });
+      }
+
+      function describeError(err) {
+        if (err && err.code && MESSAGES[err.code]) return MESSAGES[err.code];
+        if (err && err.name === 'AbortError') return MESSAGES.timeout;
+        if (err && err.status) return MESSAGES.http.replace('{status}', err.status);
+        if (!navigator.onLine) return MESSAGES.offline;
+        return MESSAGES.network;
+      }
+
+      function refresh() {
+        if (inFlight) return;
+        if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !EVENT_SLUG) {
+          setStatus('error', MESSAGES.error);
+          showBanner(MESSAGES.config, true);
+          showState('empty');
+          secondsLeft = REFRESH_SECONDS;
+          updateCountdown();
+          return;
+        }
+
+        inFlight = true;
+        updateCountdown();
+        if (!hasRenderedData) {
+          setStatus('loading', MESSAGES.loading);
+          showState('loading');
+        }
+
+        fetchLeaderboard().then(function (entries) {
+          hasRenderedData = true;
+          if (entries.length === 0) showState('empty'); else renderRows(entries);
+          hideBanner();
+          setStatus('live', MESSAGES.live);
+          el.lastUpdated.textContent = MESSAGES.lastUpdated.replace('{t}', formatClock(new Date()));
+        }).catch(function (err) {
+          setStatus('error', MESSAGES.error);
+          var text = describeError(err);
+          if (hasRenderedData) text += ' ' + MESSAGES.stale;
+          showBanner(text, false);
+          if (!hasRenderedData) showState('empty');
+        }).finally(function () {
+          inFlight = false;
+          secondsLeft = REFRESH_SECONDS;
+          updateCountdown();
+        });
+      }
+
+      function tick() {
+        if (inFlight) return;
+        secondsLeft -= 1;
+        if (secondsLeft <= 0) {
+          refresh();
+          return;
+        }
+        updateCountdown();
+      }
+
+      // ---------------------------------------------------------------
+      // Wiring
+      // ---------------------------------------------------------------
+      el.retry.addEventListener('click', function () { refresh(); });
+      window.addEventListener('online', function () { refresh(); });
+      window.addEventListener('offline', function () {
+        setStatus('error', MESSAGES.error);
+        showBanner(MESSAGES.offline + (hasRenderedData ? ' ' + MESSAGES.stale : ''), false);
+      });
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'visible') refresh();
+      });
+      document.addEventListener('keydown', function (event) {
+        if (event.key === 'r' || event.key === 'R') refresh();
+      });
+
+      timer = setInterval(tick, 1000);
+      refresh();
+    })();
+  </script>
+</body>
+</html>
