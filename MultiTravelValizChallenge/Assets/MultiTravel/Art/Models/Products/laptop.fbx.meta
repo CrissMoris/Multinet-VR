@@ -12,6 +12,16 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
+      name: glass_screen
+    second: {fileID: 2100000, guid: a6d9d133cca0af245947bb684e222ae9, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: keyboard_keys
+    second: {fileID: 2100000, guid: d168a82da12babb458d5b59167d9e0f6, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
       name: plastic_black
     second: {fileID: 2100000, guid: 4471c4972bb87494891f4ba88048c254, type: 2}
   - first:
@@ -50,7 +60,7 @@ ModelImporter:
     extraExposedTransformPaths: []
     extraUserProperties: []
     clipAnimations: []
-    isReadable: 0
+    isReadable: 1
   meshes:
     lODScreenPercentages: []
     globalScale: 1

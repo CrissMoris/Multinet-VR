@@ -12,8 +12,23 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
+      name: chrome_dark
+    second: {fileID: 2100000, guid: fb0d0605dd0db544d91416050d9f5013, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: lid_mesh
+    second: {fileID: 2100000, guid: dfc4938948f2cd54984a48a860a5c68a, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
       name: lining_jacquard
     second: {fileID: 2100000, guid: 4d636aec51b078240b9453ae3a1eee64, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: lining_satin
+    second: {fileID: 2100000, guid: 8225204eee33eee49a58d9ac8cf97034, type: 2}
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
@@ -34,6 +49,11 @@ ModelImporter:
       assembly: UnityEngine.CoreModule
       name: space_grey
     second: {fileID: 2100000, guid: b8e061a55a26efa42a0d8cfde1747382, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: strap_elastic
+    second: {fileID: 2100000, guid: 136bbfe0e55e1a94da2162b866a0697a, type: 2}
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule

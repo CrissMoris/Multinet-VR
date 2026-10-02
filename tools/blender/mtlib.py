@@ -15,6 +15,7 @@ import bpy
 from mathutils import Matrix, Vector
 
 PALETTE = {}
+NODE_PARENT = {}   # node / empty name -> parent node / empty name (export hierarchy)
 
 
 def load_palette(path):
@@ -28,7 +29,61 @@ def reset():
     for block in (bpy.data.meshes, bpy.data.materials, bpy.data.textures, bpy.data.curves, bpy.data.images):
         for item in list(block):
             block.remove(item)
+    NODE_PARENT.clear()
     random.seed(1234)
+
+
+def empty(name, loc=(0, 0, 0), rot=(0, 0, 0), scale=(1, 1, 1), parent=None, display="PLAIN_AXES", size=0.05):
+    """Named empty exported as a transform (SLOT.*, HOOK.*, PACK.*, PIVOT.*, UI.*, VOL.*, LIGHT.*).
+
+    rot = euler degrees. VOL.* boxes: scale = full box size in metres (Unity: BoxCollider size (1,1,1) under it).
+    """
+    if bpy.data.objects.get(name) is not None:
+        raise ValueError(f"duplicate empty name {name}")
+    obj = bpy.data.objects.new(name, None)
+    obj.empty_display_type = display
+    obj.empty_display_size = size
+    bpy.context.scene.collection.objects.link(obj)
+    obj.location = loc
+    obj.rotation_euler = tuple(math.radians(a) for a in rot)
+    obj.scale = scale
+    obj["mt_empty"] = True
+    if parent:
+        NODE_PARENT[name] = parent
+    return obj
+
+
+def assign_node(objs, node, parent=None):
+    """Puts mesh objects into the named export node (one merged mesh object per node)."""
+    for o in objs:
+        o["mt_node"] = node
+    if parent:
+        NODE_PARENT[node] = parent
+    return objs
+
+
+def scene_meshes():
+    return [o for o in bpy.context.scene.objects if o.type == "MESH" and "mt_mat" in o]
+
+
+def scene_empties():
+    return [o for o in bpy.context.scene.objects if o.type == "EMPTY" and "mt_empty" in o]
+
+
+def world_bounds(objs=None):
+    """(min, max) Vectors of the evaluated meshes in world space."""
+    bpy.context.view_layer.update()
+    dg = bpy.context.evaluated_depsgraph_get()
+    lo = Vector((1e9, 1e9, 1e9))
+    hi = Vector((-1e9, -1e9, -1e9))
+    for o in objs or scene_meshes():
+        me = bpy.data.meshes.new_from_object(o.evaluated_get(dg))
+        for v in me.vertices:
+            w = o.matrix_world @ v.co
+            lo = Vector((min(lo.x, w.x), min(lo.y, w.y), min(lo.z, w.z)))
+            hi = Vector((max(hi.x, w.x), max(hi.y, w.y), max(hi.z, w.z)))
+        bpy.data.meshes.remove(me)
+    return lo, hi
 
 
 def _link(name, mesh, mat):
@@ -193,6 +248,30 @@ def extrude_outline(name, outline, thickness, mat, loc=(0, 0, 0), rot=(0, 0, 0),
     return obj
 
 
+def sector_outline(r_in, r_out, t0, t1, steps=None):
+    """2D ring-sector outline (CCW) between azimuths t0..t1 (deg, 0 = +Y, positive = +X)."""
+    steps = steps or max(4, int(abs(t1 - t0) / 4))
+    pts = []
+    for i in range(steps + 1):
+        a = math.radians(t0 + (t1 - t0) * i / steps)
+        pts.append((r_out * math.sin(a), r_out * math.cos(a)))
+    for i in range(steps, -1, -1):
+        a = math.radians(t0 + (t1 - t0) * i / steps)
+        pts.append((r_in * math.sin(a), r_in * math.cos(a)))
+    # make CCW
+    area = sum(pts[i][0] * pts[(i + 1) % len(pts)][1] - pts[(i + 1) % len(pts)][0] * pts[i][1] for i in range(len(pts)))
+    return pts if area > 0 else list(reversed(pts))
+
+
+def arc_slab(name, r_in, r_out, t0, t1, z0, z1, mat, steps=None, bevel=0.0):
+    """Ring-sector prism (curved shelf / wall / cove) from z0 to z1."""
+    return extrude_outline(name, sector_outline(r_in, r_out, t0, t1, steps), z1 - z0, mat, loc=(0, 0, z0), bevel=bevel)
+
+
+def polyline_extrude(name, pts2d, z0, z1, mat, bevel=0.0):
+    return extrude_outline(name, pts2d, z1 - z0, mat, loc=(0, 0, z0), bevel=bevel)
+
+
 def soft_body(name, parts, mat, voxel=0.004, smooth=6, wrinkle=0.0, wrinkle_scale=0.05, target_tris=4000):
     """Union of rough ``parts`` turned into one soft, watertight fabric/foam shape.
 
@@ -306,15 +385,8 @@ def _box_uv(bm, uv_layer):
             loop[uv_layer].uv = (u, v)
 
 
-def export_asset(name, out_dir, origin="bottom", sharp_angle=40.0, keep=False):
-    """Merges every object in the scene into ``name``, writes UVs/normals and exports ``out_dir/name.fbx``.
-
-    origin: 'bottom' = centre of the bounding box footprint at the lowest point; 'none' = keep world origin.
-    Returns a dict with triangle count and dimensions.
-    """
-    bpy.context.view_layer.update()
-    dg = bpy.context.evaluated_depsgraph_get()
-    objs = [o for o in bpy.context.scene.objects if o.type == "MESH" and "mt_mat" in o]
+def _merge_node(node, objs, dg, sharp_angle):
+    """Merges mesh objects (world space) into one mesh named ``node``; returns (object, tris, material keys)."""
     bm = bmesh.new()
     keys = []
     for o in objs:
@@ -330,18 +402,8 @@ def export_asset(name, out_dir, origin="bottom", sharp_angle=40.0, keep=False):
             p.material_index = idx
         bm.from_mesh(me)
         bpy.data.meshes.remove(me)
-    for o in list(bpy.context.scene.objects):
-        bpy.data.objects.remove(o)
     bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-6)
     bm.normal_update()
-    if origin == "bottom":
-        xs = [v.co.x for v in bm.verts]
-        ys = [v.co.y for v in bm.verts]
-        zs = [v.co.z for v in bm.verts]
-        shift = Vector(((min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2, min(zs)))
-        bmesh.ops.translate(bm, verts=bm.verts, vec=-shift)
-    # Blender (+X right, +Y forward) -> Unity (+X right, +Z forward) through the -Z/Y FBX axis setting needs a half turn.
-    bmesh.ops.rotate(bm, verts=bm.verts, cent=(0, 0, 0), matrix=Matrix.Rotation(math.pi, 3, "Z"))
     uv = bm.loops.layers.uv.new("UVMap")
     _box_uv(bm, uv)
     cos_limit = math.cos(math.radians(sharp_angle))
@@ -352,27 +414,113 @@ def export_asset(name, out_dir, origin="bottom", sharp_angle=40.0, keep=False):
             e.smooth = e.link_faces[0].normal.dot(e.link_faces[1].normal) > cos_limit
         else:
             e.smooth = False
-    mesh = bpy.data.meshes.new(name)
+    mesh = bpy.data.meshes.new(node)
     bm.to_mesh(mesh)
     tris = sum(len(p.vertices) - 2 for p in mesh.polygons)
     bm.free()
-    obj = bpy.data.objects.new(name, mesh)
-    bpy.context.scene.collection.objects.link(obj)
     for key in keys:
         mat = bpy.data.materials.get(key) or bpy.data.materials.new(key)
         hexv = PALETTE[key]["tint"]
         mat.diffuse_color = (int(hexv[0:2], 16) / 255, int(hexv[2:4], 16) / 255, int(hexv[4:6], 16) / 255, 1)
         mesh.materials.append(mat)
+    obj = bpy.data.objects.new(node, mesh)
+    bpy.context.scene.collection.objects.link(obj)
+    return obj, tris, keys
+
+
+def export_asset(name, out_dir, origin="bottom", sharp_angle=40.0, keep=False):
+    """Merges the scene meshes per node (``mt_node``, default = ``name``), keeps the named empties, applies the
+    declared hierarchy (NODE_PARENT) and exports ``out_dir/name.fbx`` for Unity.
+
+    origin: 'bottom' = centre of the footprint at the lowest point; 'none' = keep the authoring origin;
+            (x, y, z) = that authoring-frame point becomes the origin.
+    Authoring frame X right / Y forward / Z up becomes Unity X right / Z forward / Y up (axis relabel, no mirror):
+    the merged geometry is turned 180 deg about Z and exported with -Z forward / Y up (as the v1 pipeline did);
+    the same transform is applied to the root empties so every transform stays world-correct.
+    Returns a manifest dict (tris, dims, materials, nodes, empties).
+    """
+    bpy.context.view_layer.update()
+    dg = bpy.context.evaluated_depsgraph_get()
+    meshes = scene_meshes()
+    empties = scene_empties()
+    groups = {}
+    for o in meshes:
+        groups.setdefault(o.get("mt_node", name), []).append(o)
+    # origin shift from the union of all meshes
+    lo, hi = world_bounds(meshes)
+    if origin == "bottom":
+        shift = Vector(((lo.x + hi.x) / 2, (lo.y + hi.y) / 2, lo.z))
+    elif origin == "none":
+        shift = Vector((0, 0, 0))
+    else:
+        shift = Vector(origin)
+    A = Matrix.Rotation(math.pi, 4, "Z") @ Matrix.Translation(-shift)
+    # snapshot authoring-frame world matrices of the empties, then merge nodes
+    world = {e.name: e.matrix_world.copy() for e in empties}
+    nodes = {}
+    tris_total = 0
+    keys_all = []
+    tris_per_node = {}
+    for node, objs in groups.items():
+        obj, tris, keys = _merge_node(node, objs, dg, sharp_angle)
+        nodes[node] = obj
+        tris_total += tris
+        tris_per_node[node] = tris
+        for k in keys:
+            if k not in keys_all:
+                keys_all.append(k)
+        world[node] = Matrix.Identity(4)
+    for o in meshes:
+        bpy.data.objects.remove(o)
+    everything = dict(nodes)
+    everything.update({e.name: e for e in empties})
+    # hierarchy: child local = parent_world^-1 @ child_world (authoring frame); meshes get identity locals
+    for child_name, parent_name in NODE_PARENT.items():
+        child, parent = everything.get(child_name), everything.get(parent_name)
+        if child is None or parent is None:
+            raise KeyError(f"hierarchy: unknown node {child_name!r} or parent {parent_name!r}")
+        local = world[parent_name].inverted() @ world[child_name]
+        if child.type == "MESH":
+            child.data.transform(local)
+            local = Matrix.Identity(4)
+        child.parent = parent
+        child.matrix_parent_inverse = Matrix.Identity(4)
+        child.matrix_basis = local
+    # roots: bake A into root meshes (and fold it into their children's locals), apply to root empties
+    for nm, obj in everything.items():
+        if obj.parent is not None:
+            continue
+        if obj.type == "MESH":
+            obj.data.transform(A)
+            obj.matrix_basis = Matrix.Identity(4)
+            for c in obj.children:
+                c.matrix_basis = A @ c.matrix_basis
+        else:
+            obj.matrix_basis = A @ world[nm]
+    bpy.context.view_layer.update()
     os.makedirs(out_dir, exist_ok=True)
     path = os.path.join(out_dir, name + ".fbx")
     bpy.ops.object.select_all(action="DESELECT")
-    obj.select_set(True)
-    bpy.context.view_layer.objects.active = obj
+    for obj in everything.values():
+        obj.select_set(True)
+    bpy.context.view_layer.objects.active = next(iter(nodes.values()))
     bpy.ops.export_scene.fbx(filepath=path, use_selection=True, apply_scale_options="FBX_SCALE_ALL",
                              axis_forward="-Z", axis_up="Y", bake_space_transform=True, mesh_smooth_type="OFF",
                              use_mesh_modifiers=True, add_leaf_bones=False, bake_anim=False, path_mode="STRIP",
-                             use_custom_props=False, use_tspace=False)
-    dims = [round(d, 4) for d in obj.dimensions]
+                             use_custom_props=False, use_tspace=False, object_types={"EMPTY", "MESH"})
+    size = hi - shift - (lo - shift)
+    dims = [round(abs(v), 4) for v in size]
+    info = {"name": name, "tris": tris_total, "dims_xyz": dims, "materials": keys_all,
+            "nodes": {n: {"tris": t, "parent": NODE_PARENT.get(n)} for n, t in tris_per_node.items()},
+            "empties": {e.name: {"parent": NODE_PARENT.get(e.name),
+                                 "pos_unity": [round(v, 4) for v in _unity_pos(world[e.name].to_translation() - shift)]}
+                        for e in empties}}
     if not keep:
-        bpy.data.objects.remove(obj)
-    return {"name": name, "tris": tris, "dims_xyz": dims, "materials": keys}
+        for obj in list(everything.values()):
+            bpy.data.objects.remove(obj)
+    return info
+
+
+def _unity_pos(v):
+    """Authoring-frame point -> Unity (x, y, z)."""
+    return (v.x, v.z, v.y)

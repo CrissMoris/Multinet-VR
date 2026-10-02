@@ -372,12 +372,20 @@ def phone():
 
 @builder("laptop")
 def laptop():
+    """13-inch laptop, lid open ~70 deg so it reads as a laptop at arm's length (keyboard + dark screen)."""
     w, d = 0.312, 0.221
-    extrude_outline("base", rounded_rect(w, d, 0.012), 0.0085, "aluminium", bevel=0.0025)
-    extrude_outline("seam", rounded_rect(w - 0.004, d - 0.004, 0.011), 0.0009, "plastic_black", loc=(0, 0, 0.0085))
-    extrude_outline("lid", rounded_rect(w, d - 0.002, 0.012), 0.0062, "aluminium", loc=(0, 0.001, 0.0094), bevel=0.0022)
+    extrude_outline("base", rounded_rect(w, d, 0.012, 6), 0.0085, "aluminium", bevel=0.0025)
+    box("keyboard", (0.27, 0.105, 0.0012), (0, 0.012, 0.0085), mat="keyboard_keys", bevel=0.0004)
+    for r in range(5):
+        for c in range(14):
+            box("key", (0.016, 0.016, 0.0012), (-0.123 + c * 0.0189, 0.055 - r * 0.0195, 0.0098), mat="plastic_black")
+    extrude_outline("trackpad", rounded_rect(0.11, 0.065, 0.004, 4), 0.0006, "space_grey", loc=(0, -0.07, 0.0085))
+    lid = [extrude_outline("lid", rounded_rect(w, d - 0.002, 0.012, 6), 0.0062, "aluminium", loc=(0, 0.001, 0.0094), bevel=0.0022),
+           extrude_outline("screen", rounded_rect(w - 0.016, d - 0.02, 0.006, 4), 0.0006, "glass_screen", loc=(0, 0.001, 0.0088)),
+           box("notch", (0.05, 0.004, 0.0012), (0, -d / 2 + 0.001, 0.0092), mat="space_grey", bevel=0.0004)]
+    # the screen faces down when closed; open the lid 70 deg about the hinge (far edge), screen towards the user
+    rotate(lid, 70, "X", (0, d / 2 - 0.002, 0.0085))
     cylinder("hinge", 0.0045, w * 0.8, (0, d / 2 - 0.002, 0.0085), (0, math.radians(90), 0), mat="space_grey", segments=16)
-    box("notch", (0.05, 0.004, 0.0012), (0, -d / 2 + 0.001, 0.0092), mat="space_grey", bevel=0.0004)
     for x in (-1, 1):
         for y in (-1, 1):
             cylinder("foot", 0.006, 0.0012, (x * (w / 2 - 0.03), y * (d / 2 - 0.025), -0.0005), mat="rubber_feet", segments=16)

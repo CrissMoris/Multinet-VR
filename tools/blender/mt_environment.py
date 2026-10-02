@@ -1,4 +1,4 @@
-"""Environment models: open hard-shell suitcase, wardrobe bay, luggage bench, bed, nightstand, lamp, mirror, curtains.
+"""Legacy hotel-room environment models (v1 room): wardrobe bay, luggage bench, bed, nightstand, lamp, mirror, curtains.
 
 Axes: X right, Y forward (away from the participant), Z up. Units: metres. Origins are set to the bottom centre
 by export_asset, so Unity places each piece by its footprint.
@@ -46,8 +46,7 @@ def shell_ribs(w, d, h, z0, mat, count=3):
             box("rib", (0.006, d * 0.8, 0.01), (s * (w / 2 + 0.001), 0, z), mat=mat, bevel=0.003)
 
 
-@builder("suitcase-open")
-def suitcase_open():
+def suitcase_open_v1():  # superseded by mt_stage.suitcase_open (v2); kept for reference, not built
     """Medium spinner (70 x 46 cm), lying open: base towards the participant, lid hinged at the far side (+Y)."""
     w, d = 0.70, 0.46
     base_h, lid_h = 0.14, 0.11

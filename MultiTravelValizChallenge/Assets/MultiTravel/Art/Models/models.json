@@ -43,6 +43,29 @@
     ],
     "folder": "Products"
   },
+  "bikini-hanging": {
+    "name": "bikini-hanging",
+    "tris": 6568,
+    "dims_xyz": [
+      0.324,
+      0.0442,
+      0.3822
+    ],
+    "materials": [
+      "chrome",
+      "hanger_walnut",
+      "plastic_black",
+      "swim_tropical"
+    ],
+    "nodes": {
+      "bikini-hanging": {
+        "tris": 6568,
+        "parent": null
+      }
+    },
+    "empties": {},
+    "folder": "Products"
+  },
   "blazer": {
     "name": "blazer",
     "tris": 7188,
@@ -57,6 +80,30 @@
     ],
     "folder": "Products"
   },
+  "blazer-hanging": {
+    "name": "blazer-hanging",
+    "tris": 6376,
+    "dims_xyz": [
+      0.396,
+      0.1441,
+      0.4172
+    ],
+    "materials": [
+      "chrome",
+      "hanger_walnut",
+      "blazer_camel",
+      "lining_satin",
+      "button_horn"
+    ],
+    "nodes": {
+      "blazer-hanging": {
+        "tris": 6376,
+        "parent": null
+      }
+    },
+    "empties": {},
+    "folder": "Products"
+  },
   "blouse": {
     "name": "blouse",
     "tris": 8620,
@@ -69,6 +116,331 @@
       "blouse_silk",
       "button_pearl"
     ],
+    "folder": "Products"
+  },
+  "blouse-hanging": {
+    "name": "blouse-hanging",
+    "tris": 7012,
+    "dims_xyz": [
+      0.376,
+      0.1139,
+      0.4175
+    ],
+    "materials": [
+      "chrome",
+      "hanger_walnut",
+      "blouse_silk",
+      "button_pearl"
+    ],
+    "nodes": {
+      "blouse-hanging": {
+        "tris": 7012,
+        "parent": null
+      }
+    },
+    "empties": {},
+    "folder": "Products"
+  },
+  "console-table-business": {
+    "name": "console-table-business",
+    "tris": 3314,
+    "dims_xyz": [
+      0.5945,
+      0.5949,
+      1.55
+    ],
+    "materials": [
+      "lacquer_white_gloss",
+      "lacquer_white",
+      "brass",
+      "oak_warm",
+      "led_strip",
+      "leather_tan",
+      "leather_cognac"
+    ],
+    "nodes": {
+      "console-table-business": {
+        "tris": 3314,
+        "parent": null
+      }
+    },
+    "empties": {
+      "SLOT.business.01": {
+        "parent": null,
+        "pos_unity": [
+          -0.4415,
+          0.92,
+          0.2347
+        ]
+      },
+      "SLOT.business.02": {
+        "parent": null,
+        "pos_unity": [
+          -0.429,
+          0.92,
+          0.36
+        ]
+      },
+      "SLOT.business.03": {
+        "parent": null,
+        "pos_unity": [
+          -0.5262,
+          0.92,
+          0.1915
+        ]
+      },
+      "SLOT.business.04": {
+        "parent": null,
+        "pos_unity": [
+          -0.5266,
+          1.02,
+          0.4302
+        ]
+      },
+      "SLOT.business.05": {
+        "parent": null,
+        "pos_unity": [
+          -0.5782,
+          1.02,
+          0.3578
+        ]
+      },
+      "SLOT.business.06": {
+        "parent": null,
+        "pos_unity": [
+          -0.62,
+          1.02,
+          0.2793
+        ]
+      },
+      "SLOT.business.07": {
+        "parent": null,
+        "pos_unity": [
+          -0.6511,
+          1.02,
+          0.196
+        ]
+      },
+      "SLOT.business.08": {
+        "parent": null,
+        "pos_unity": [
+          -0.441,
+          1.55,
+          0.2756
+        ]
+      },
+      "SLOT.business.09": {
+        "parent": null,
+        "pos_unity": [
+          -0.4886,
+          1.55,
+          0.1779
+        ]
+      },
+      "SLOT.business.10": {
+        "parent": null,
+        "pos_unity": [
+          -0.4689,
+          1.55,
+          0.4924
+        ]
+      },
+      "SLOT.business.11": {
+        "parent": null,
+        "pos_unity": [
+          -0.527,
+          1.55,
+          0.4298
+        ]
+      },
+      "SLOT.business.12": {
+        "parent": null,
+        "pos_unity": [
+          -0.5767,
+          1.55,
+          0.3603
+        ]
+      },
+      "SLOT.business.13": {
+        "parent": null,
+        "pos_unity": [
+          -0.6173,
+          1.55,
+          0.2852
+        ]
+      },
+      "SLOT.business.14": {
+        "parent": null,
+        "pos_unity": [
+          -0.6482,
+          1.55,
+          0.2056
+        ]
+      },
+      "LIGHT.spot_business": {
+        "parent": null,
+        "pos_unity": [
+          -0.4664,
+          2.05,
+          0.2915
+        ]
+      }
+    },
+    "folder": "Environment"
+  },
+  "console-table-leisure": {
+    "name": "console-table-leisure",
+    "tris": 3644,
+    "dims_xyz": [
+      0.5945,
+      0.6991,
+      1.55
+    ],
+    "materials": [
+      "lacquer_white_gloss",
+      "lacquer_white",
+      "brass",
+      "oak_warm",
+      "led_strip",
+      "wicker",
+      "leather_cognac",
+      "towel_turquoise"
+    ],
+    "nodes": {
+      "console-table-leisure": {
+        "tris": 3644,
+        "parent": null
+      }
+    },
+    "empties": {
+      "SLOT.leisure.01": {
+        "parent": null,
+        "pos_unity": [
+          0.5006,
+          0.93,
+          0.0973
+        ]
+      },
+      "SLOT.leisure.02": {
+        "parent": null,
+        "pos_unity": [
+          0.429,
+          0.92,
+          0.36
+        ]
+      },
+      "SLOT.leisure.03": {
+        "parent": null,
+        "pos_unity": [
+          0.5262,
+          0.92,
+          0.1915
+        ]
+      },
+      "SLOT.leisure.04": {
+        "parent": null,
+        "pos_unity": [
+          0.441,
+          1.55,
+          0.2756
+        ]
+      },
+      "SLOT.leisure.05": {
+        "parent": null,
+        "pos_unity": [
+          0.4886,
+          1.55,
+          0.1779
+        ]
+      },
+      "SLOT.leisure.06": {
+        "parent": null,
+        "pos_unity": [
+          0.4626,
+          1.55,
+          0.4707
+        ]
+      },
+      "SLOT.leisure.07": {
+        "parent": null,
+        "pos_unity": [
+          0.5305,
+          1.55,
+          0.3926
+        ]
+      },
+      "SLOT.leisure.08": {
+        "parent": null,
+        "pos_unity": [
+          0.5854,
+          1.55,
+          0.3048
+        ]
+      },
+      "SLOT.leisure.09": {
+        "parent": null,
+        "pos_unity": [
+          0.6259,
+          1.55,
+          0.2094
+        ]
+      },
+      "SLOT.leisure.10": {
+        "parent": null,
+        "pos_unity": [
+          0.67,
+          1.55,
+          0.4186
+        ]
+      },
+      "SLOT.leisure.11": {
+        "parent": null,
+        "pos_unity": [
+          0.7217,
+          1.55,
+          0.3213
+        ]
+      },
+      "SLOT.leisure.12": {
+        "parent": null,
+        "pos_unity": [
+          0.7594,
+          1.55,
+          0.2178
+        ]
+      },
+      "LIGHT.spot_leisure": {
+        "parent": null,
+        "pos_unity": [
+          0.4664,
+          2.05,
+          0.2915
+        ]
+      }
+    },
+    "folder": "Environment"
+  },
+  "cufflinks": {
+    "name": "cufflinks",
+    "tris": 2112,
+    "dims_xyz": [
+      0.065,
+      0.05,
+      0.0515
+    ],
+    "materials": [
+      "velvet_navy",
+      "velvet_wine",
+      "gold",
+      "plastic_navy"
+    ],
+    "nodes": {
+      "cufflinks": {
+        "tris": 2112,
+        "parent": null
+      }
+    },
+    "empties": {},
     "folder": "Products"
   },
   "curtains": {
@@ -100,6 +472,30 @@
     ],
     "folder": "Products"
   },
+  "dress-hanging": {
+    "name": "dress-hanging",
+    "tris": 6148,
+    "dims_xyz": [
+      0.4863,
+      0.224,
+      0.4186
+    ],
+    "materials": [
+      "chrome",
+      "hanger_walnut",
+      "dress_burgundy",
+      "leather_black",
+      "gold"
+    ],
+    "nodes": {
+      "dress-hanging": {
+        "tris": 6148,
+        "parent": null
+      }
+    },
+    "empties": {},
+    "folder": "Products"
+  },
   "flip-flops": {
     "name": "flip-flops",
     "tris": 1136,
@@ -114,6 +510,36 @@
     ],
     "folder": "Products"
   },
+  "floor-mat": {
+    "name": "floor-mat",
+    "tris": 748,
+    "dims_xyz": [
+      0.9,
+      0.7,
+      0.0156
+    ],
+    "materials": [
+      "mat_navy",
+      "mat_teal"
+    ],
+    "nodes": {
+      "floor-mat": {
+        "tris": 748,
+        "parent": null
+      }
+    },
+    "empties": {
+      "UI.floor_text": {
+        "parent": null,
+        "pos_unity": [
+          0.0,
+          0.016,
+          -0.24
+        ]
+      }
+    },
+    "folder": "Environment"
+  },
   "floor-mirror": {
     "name": "floor-mirror",
     "tris": 680,
@@ -127,6 +553,27 @@
       "mirror_glass",
       "lacquer_greige"
     ],
+    "folder": "Environment"
+  },
+  "hanger": {
+    "name": "hanger",
+    "tris": 1576,
+    "dims_xyz": [
+      0.324,
+      0.0442,
+      0.1491
+    ],
+    "materials": [
+      "chrome",
+      "hanger_walnut"
+    ],
+    "nodes": {
+      "hanger": {
+        "tris": 1576,
+        "parent": null
+      }
+    },
+    "empties": {},
     "folder": "Environment"
   },
   "hanger-rail-decor": {
@@ -196,6 +643,30 @@
     ],
     "folder": "Products"
   },
+  "jacket-hanging": {
+    "name": "jacket-hanging",
+    "tris": 6428,
+    "dims_xyz": [
+      0.406,
+      0.1539,
+      0.4172
+    ],
+    "materials": [
+      "chrome",
+      "hanger_walnut",
+      "suit_navy",
+      "lining_satin",
+      "button_horn"
+    ],
+    "nodes": {
+      "jacket-hanging": {
+        "tris": 6428,
+        "parent": null
+      }
+    },
+    "empties": {},
+    "folder": "Products"
+  },
   "kids-book": {
     "name": "kids-book",
     "tris": 3252,
@@ -215,18 +686,27 @@
   },
   "laptop": {
     "name": "laptop",
-    "tris": 1872,
+    "tris": 15264,
     "dims_xyz": [
       0.313,
-      0.2245,
-      0.0167
+      0.2235,
+      0.2111
     ],
     "materials": [
       "aluminium",
+      "keyboard_keys",
       "plastic_black",
       "space_grey",
+      "glass_screen",
       "rubber_feet"
     ],
+    "nodes": {
+      "laptop": {
+        "tris": 15264,
+        "parent": null
+      }
+    },
+    "empties": {},
     "folder": "Products"
   },
   "laptop-bag": {
@@ -275,6 +755,29 @@
     ],
     "folder": "Environment"
   },
+  "luggage-rack": {
+    "name": "luggage-rack",
+    "tris": 3404,
+    "dims_xyz": [
+      0.632,
+      0.4869,
+      0.6207
+    ],
+    "materials": [
+      "chrome",
+      "chrome_dark",
+      "plastic_black",
+      "leather_tan"
+    ],
+    "nodes": {
+      "luggage-rack": {
+        "tris": 3404,
+        "parent": null
+      }
+    },
+    "empties": {},
+    "folder": "Environment"
+  },
   "men-shoes": {
     "name": "men-shoes",
     "tris": 14968,
@@ -316,6 +819,29 @@
     "materials": [
       "tshirt_navy"
     ],
+    "folder": "Products"
+  },
+  "minimal-necklace": {
+    "name": "minimal-necklace",
+    "tris": 2452,
+    "dims_xyz": [
+      0.068,
+      0.068,
+      0.095
+    ],
+    "materials": [
+      "walnut",
+      "velvet_navy",
+      "gold",
+      "crystal"
+    ],
+    "nodes": {
+      "minimal-necklace": {
+        "tris": 2452,
+        "parent": null
+      }
+    },
+    "empties": {},
     "folder": "Products"
   },
   "neck-pillow": {
@@ -364,6 +890,28 @@
     ],
     "folder": "Products"
   },
+  "party-tiara": {
+    "name": "party-tiara",
+    "tris": 2584,
+    "dims_xyz": [
+      0.13,
+      0.1117,
+      0.0675
+    ],
+    "materials": [
+      "velvet_wine",
+      "silver",
+      "crystal"
+    ],
+    "nodes": {
+      "party-tiara": {
+        "tris": 2584,
+        "parent": null
+      }
+    },
+    "empties": {},
+    "folder": "Products"
+  },
   "passport": {
     "name": "passport",
     "tris": 4736,
@@ -377,6 +925,30 @@
       "paper",
       "gold"
     ],
+    "folder": "Products"
+  },
+  "pearl-earrings": {
+    "name": "pearl-earrings",
+    "tris": 3144,
+    "dims_xyz": [
+      0.07,
+      0.055,
+      0.0622
+    ],
+    "materials": [
+      "velvet_navy",
+      "velvet_wine",
+      "box_card",
+      "gold",
+      "pearl"
+    ],
+    "nodes": {
+      "pearl-earrings": {
+        "tris": 3144,
+        "parent": null
+      }
+    },
+    "empties": {},
     "folder": "Products"
   },
   "pen": {
@@ -426,6 +998,38 @@
     ],
     "folder": "Products"
   },
+  "practice-tag": {
+    "name": "practice-tag",
+    "tris": 900,
+    "dims_xyz": [
+      0.0653,
+      0.1629,
+      0.0082
+    ],
+    "materials": [
+      "tag_blue",
+      "card_white",
+      "tag_teal",
+      "chrome"
+    ],
+    "nodes": {
+      "practice-tag": {
+        "tris": 900,
+        "parent": null
+      }
+    },
+    "empties": {
+      "UI.tag_text": {
+        "parent": null,
+        "pos_unity": [
+          -0.0037,
+          0.0065,
+          -0.0404
+        ]
+      }
+    },
+    "folder": "Products"
+  },
   "room-shell": {
     "name": "room-shell",
     "tris": 1228,
@@ -460,6 +1064,63 @@
     ],
     "folder": "Environment"
   },
+  "scoreboard": {
+    "name": "scoreboard",
+    "tris": 776,
+    "dims_xyz": [
+      0.9572,
+      0.4378,
+      0.48
+    ],
+    "materials": [
+      "glass_navy",
+      "chrome_dark",
+      "led_teal",
+      "chrome"
+    ],
+    "nodes": {
+      "scoreboard": {
+        "tris": 776,
+        "parent": null
+      }
+    },
+    "empties": {
+      "UI.scoreboard": {
+        "parent": null,
+        "pos_unity": [
+          0.6773,
+          1.7,
+          1.6763
+        ]
+      }
+    },
+    "folder": "Environment"
+  },
+  "shell-necklace": {
+    "name": "shell-necklace",
+    "tris": 2440,
+    "dims_xyz": [
+      0.1,
+      0.09,
+      0.0118
+    ],
+    "materials": [
+      "box_card",
+      "cord_natural",
+      "shell_cream",
+      "leather_tan",
+      "walnut",
+      "silver"
+    ],
+    "nodes": {
+      "shell-necklace": {
+        "tris": 2440,
+        "parent": null
+      }
+    },
+    "empties": {},
+    "folder": "Products"
+  },
   "shirt": {
     "name": "shirt",
     "tris": 7820,
@@ -472,6 +1133,29 @@
       "shirt_blue",
       "button_pearl"
     ],
+    "folder": "Products"
+  },
+  "shirt-hanging": {
+    "name": "shirt-hanging",
+    "tris": 6004,
+    "dims_xyz": [
+      0.392,
+      0.1256,
+      0.4173
+    ],
+    "materials": [
+      "chrome",
+      "hanger_walnut",
+      "shirt_blue",
+      "button_pearl"
+    ],
+    "nodes": {
+      "shirt-hanging": {
+        "tris": 6004,
+        "parent": null
+      }
+    },
+    "empties": {},
     "folder": "Products"
   },
   "snorkel-mask": {
@@ -503,26 +1187,402 @@
     ],
     "folder": "Products"
   },
+  "stage-backdrop": {
+    "name": "stage-backdrop",
+    "tris": 3308,
+    "dims_xyz": [
+      3.8986,
+      1.5405,
+      2.68
+    ],
+    "materials": [
+      "stage_grad_0",
+      "stage_grad_1",
+      "stage_grad_2",
+      "stage_grad_3",
+      "stage_grad_4",
+      "stage_grad_5",
+      "stage_grad_6",
+      "stage_grad_7",
+      "stage_grad_8",
+      "stage_grad_9",
+      "stage_grad_10",
+      "stage_grad_11",
+      "stage_grad_12",
+      "stage_grad_13",
+      "stage_grad_14",
+      "stage_grad_15",
+      "stage_lower",
+      "led_teal",
+      "stage_cove",
+      "stage_trim",
+      "led_cove",
+      "stage_logo"
+    ],
+    "nodes": {
+      "stage-backdrop": {
+        "tris": 3308,
+        "parent": null
+      }
+    },
+    "empties": {
+      "UI.logo": {
+        "parent": null,
+        "pos_unity": [
+          0.0,
+          2.22,
+          1.894
+        ]
+      },
+      "LIGHT.key": {
+        "parent": null,
+        "pos_unity": [
+          0.0,
+          2.75,
+          0.35
+        ]
+      },
+      "LIGHT.fill_left": {
+        "parent": null,
+        "pos_unity": [
+          -1.3,
+          2.4,
+          0.1
+        ]
+      },
+      "LIGHT.fill_right": {
+        "parent": null,
+        "pos_unity": [
+          1.3,
+          2.4,
+          0.1
+        ]
+      },
+      "LIGHT.backdrop_wash": {
+        "parent": null,
+        "pos_unity": [
+          0.0,
+          2.7,
+          1.2
+        ]
+      },
+      "LIGHT.suitcase_spot": {
+        "parent": null,
+        "pos_unity": [
+          0.0,
+          2.5,
+          -0.3
+        ]
+      }
+    },
+    "folder": "Environment"
+  },
+  "stage-floor": {
+    "name": "stage-floor",
+    "tris": 3062,
+    "dims_xyz": [
+      5.05,
+      5.05,
+      0.052
+    ],
+    "materials": [
+      "parquet_dark",
+      "stage_trim",
+      "mat_teal"
+    ],
+    "nodes": {
+      "stage-floor": {
+        "tris": 3062,
+        "parent": null
+      }
+    },
+    "empties": {},
+    "folder": "Environment"
+  },
+  "stopwatch": {
+    "name": "stopwatch",
+    "tris": 5732,
+    "dims_xyz": [
+      0.42,
+      0.159,
+      0.49
+    ],
+    "materials": [
+      "stopwatch_red",
+      "chrome",
+      "stopwatch_face",
+      "stopwatch_ink",
+      "chrome_dark",
+      "needle_red"
+    ],
+    "nodes": {
+      "stopwatch": {
+        "tris": 5264,
+        "parent": null
+      },
+      "Needle": {
+        "tris": 468,
+        "parent": "PIVOT.needle"
+      }
+    },
+    "empties": {
+      "PIVOT.needle": {
+        "parent": null,
+        "pos_unity": [
+          0.0,
+          1.7,
+          1.778
+        ]
+      },
+      "UI.stopwatch_face": {
+        "parent": null,
+        "pos_unity": [
+          0.0,
+          1.605,
+          1.777
+        ]
+      }
+    },
+    "folder": "Environment"
+  },
   "suitcase-open": {
     "name": "suitcase-open",
-    "tris": 11062,
+    "tris": 10468,
     "dims_xyz": [
-      0.708,
-      0.689,
-      0.6466
+      0.8065,
+      0.6315,
+      0.6934
     ],
     "materials": [
       "shell_navy",
-      "lining_jacquard",
-      "zipper_tape",
-      "strap_grey",
       "plastic_black",
+      "lining_jacquard",
+      "lining_satin",
+      "zipper_tape",
+      "zipper_metal",
       "chrome",
       "wheel_rubber",
-      "space_grey",
       "mesh_pocket",
-      "zipper_metal"
+      "strap_elastic",
+      "chrome_dark",
+      "lid_mesh"
     ],
+    "nodes": {
+      "Base": {
+        "tris": 6168,
+        "parent": null
+      },
+      "Organiser": {
+        "tris": 284,
+        "parent": "Base"
+      },
+      "Straps": {
+        "tris": 1152,
+        "parent": "Base"
+      },
+      "Lid": {
+        "tris": 2428,
+        "parent": "PIVOT.lid"
+      },
+      "LidPocket": {
+        "tris": 436,
+        "parent": "Lid"
+      }
+    },
+    "empties": {
+      "PIVOT.lid": {
+        "parent": null,
+        "pos_unity": [
+          0.0,
+          0.26,
+          0.22
+        ]
+      },
+      "PACK.lidpocket.01": {
+        "parent": "PIVOT.lid",
+        "pos_unity": [
+          -0.2,
+          0.4655,
+          0.3212
+        ]
+      },
+      "PACK.lidpocket.02": {
+        "parent": "PIVOT.lid",
+        "pos_unity": [
+          0.0,
+          0.4655,
+          0.3212
+        ]
+      },
+      "PACK.lidpocket.03": {
+        "parent": "PIVOT.lid",
+        "pos_unity": [
+          0.2,
+          0.4655,
+          0.3212
+        ]
+      },
+      "PACK.flat.01": {
+        "parent": "Base",
+        "pos_unity": [
+          -0.16,
+          0.063,
+          0.05
+        ]
+      },
+      "PACK.flat.02": {
+        "parent": "Base",
+        "pos_unity": [
+          0.16,
+          0.063,
+          0.05
+        ]
+      },
+      "PACK.flat.03": {
+        "parent": "Base",
+        "pos_unity": [
+          -0.16,
+          0.063,
+          0.14
+        ]
+      },
+      "PACK.flat.04": {
+        "parent": "Base",
+        "pos_unity": [
+          0.16,
+          0.063,
+          0.14
+        ]
+      },
+      "PACK.shoecorner.01": {
+        "parent": "Base",
+        "pos_unity": [
+          -0.24,
+          0.063,
+          -0.08
+        ]
+      },
+      "PACK.shoecorner.02": {
+        "parent": "Base",
+        "pos_unity": [
+          0.24,
+          0.063,
+          -0.08
+        ]
+      },
+      "PACK.upright.01": {
+        "parent": "Base",
+        "pos_unity": [
+          -0.07,
+          0.063,
+          -0.08
+        ]
+      },
+      "PACK.upright.02": {
+        "parent": "Base",
+        "pos_unity": [
+          0.07,
+          0.063,
+          -0.08
+        ]
+      },
+      "PACK.organiser.01": {
+        "parent": "Base",
+        "pos_unity": [
+          -0.2625,
+          0.063,
+          -0.158
+        ]
+      },
+      "PACK.organiser.02": {
+        "parent": "Base",
+        "pos_unity": [
+          -0.1575,
+          0.063,
+          -0.158
+        ]
+      },
+      "PACK.organiser.03": {
+        "parent": "Base",
+        "pos_unity": [
+          -0.0525,
+          0.063,
+          -0.158
+        ]
+      },
+      "PACK.organiser.04": {
+        "parent": "Base",
+        "pos_unity": [
+          0.0525,
+          0.063,
+          -0.158
+        ]
+      },
+      "PACK.organiser.05": {
+        "parent": "Base",
+        "pos_unity": [
+          0.1575,
+          0.063,
+          -0.158
+        ]
+      },
+      "PACK.organiser.06": {
+        "parent": "Base",
+        "pos_unity": [
+          0.2625,
+          0.063,
+          -0.158
+        ]
+      },
+      "PACK.top.01": {
+        "parent": "Base",
+        "pos_unity": [
+          -0.17,
+          0.28,
+          0.08
+        ]
+      },
+      "PACK.top.02": {
+        "parent": "Base",
+        "pos_unity": [
+          0.17,
+          0.28,
+          0.08
+        ]
+      },
+      "PACK.top.03": {
+        "parent": "Base",
+        "pos_unity": [
+          -0.1,
+          0.28,
+          -0.04
+        ]
+      },
+      "PACK.top.04": {
+        "parent": "Base",
+        "pos_unity": [
+          0.1,
+          0.28,
+          -0.04
+        ]
+      },
+      "VOL.placement": {
+        "parent": "Base",
+        "pos_unity": [
+          0.0,
+          0.2615,
+          0.0
+        ]
+      },
+      "LIGHT.suitcase_fill": {
+        "parent": null,
+        "pos_unity": [
+          0.0,
+          1.0,
+          -0.5
+        ]
+      }
+    },
     "folder": "Environment"
   },
   "swim-shorts": {
@@ -551,6 +1611,29 @@
     "materials": [
       "swim_coral"
     ],
+    "folder": "Products"
+  },
+  "swimsuit-hanging": {
+    "name": "swimsuit-hanging",
+    "tris": 5384,
+    "dims_xyz": [
+      0.324,
+      0.0442,
+      0.4221
+    ],
+    "materials": [
+      "chrome",
+      "hanger_walnut",
+      "plastic_black",
+      "swim_coral"
+    ],
+    "nodes": {
+      "swimsuit-hanging": {
+        "tris": 5384,
+        "parent": null
+      }
+    },
+    "empties": {},
     "folder": "Products"
   },
   "table-lamp": {
@@ -629,6 +1712,560 @@
     ],
     "folder": "Environment"
   },
+  "wardrobe-carcass": {
+    "name": "wardrobe-carcass",
+    "tris": 9768,
+    "dims_xyz": [
+      1.9711,
+      0.7126,
+      2.26
+    ],
+    "materials": [
+      "lacquer_white",
+      "oak_warm",
+      "led_strip",
+      "lacquer_greige",
+      "brass"
+    ],
+    "nodes": {
+      "wardrobe-carcass": {
+        "tris": 9768,
+        "parent": null
+      }
+    },
+    "empties": {
+      "LIGHT.wing_left": {
+        "parent": null,
+        "pos_unity": [
+          -0.636,
+          2.15,
+          0.3974
+        ]
+      },
+      "LIGHT.wing_right": {
+        "parent": null,
+        "pos_unity": [
+          0.636,
+          2.15,
+          0.3974
+        ]
+      }
+    },
+    "folder": "Environment"
+  },
+  "wardrobe-door-left": {
+    "name": "wardrobe-door-left",
+    "tris": 1228,
+    "dims_xyz": [
+      0.9481,
+      0.5712,
+      2.3366
+    ],
+    "materials": [
+      "lacquer_white",
+      "oak_warm",
+      "chrome_dark",
+      "brass",
+      "chrome"
+    ],
+    "nodes": {
+      "wardrobe-door-left": {
+        "tris": 1228,
+        "parent": null
+      }
+    },
+    "empties": {
+      "SLOT.shoes.01": {
+        "parent": null,
+        "pos_unity": [
+          -0.5189,
+          0.88,
+          -0.0009
+        ]
+      },
+      "SLOT.shoes.02": {
+        "parent": null,
+        "pos_unity": [
+          -0.6532,
+          1.08,
+          0.1335
+        ]
+      },
+      "SLOT.shoes.03": {
+        "parent": null,
+        "pos_unity": [
+          -0.5118,
+          1.08,
+          -0.008
+        ]
+      },
+      "SLOT.shoes.04": {
+        "parent": null,
+        "pos_unity": [
+          -0.6532,
+          1.28,
+          0.1335
+        ]
+      },
+      "SLOT.shoes.05": {
+        "parent": null,
+        "pos_unity": [
+          -0.5118,
+          1.28,
+          -0.008
+        ]
+      },
+      "SLOT.shoes.06": {
+        "parent": null,
+        "pos_unity": [
+          -0.5825,
+          1.44,
+          0.0627
+        ]
+      },
+      "LIGHT.spot_shoes": {
+        "parent": null,
+        "pos_unity": [
+          -0.4482,
+          2.05,
+          0.183
+        ]
+      }
+    },
+    "folder": "Environment"
+  },
+  "wardrobe-door-right": {
+    "name": "wardrobe-door-right",
+    "tris": 6776,
+    "dims_xyz": [
+      0.5894,
+      0.409,
+      2.14
+    ],
+    "materials": [
+      "lacquer_white",
+      "oak_warm",
+      "chrome_dark",
+      "brass",
+      "velvet_navy",
+      "lacquer_white_gloss",
+      "walnut",
+      "velvet_wine"
+    ],
+    "nodes": {
+      "wardrobe-door-right": {
+        "tris": 6776,
+        "parent": null
+      }
+    },
+    "empties": {
+      "SLOT.accessories.01": {
+        "parent": null,
+        "pos_unity": [
+          0.4906,
+          0.95,
+          0.0274
+        ]
+      },
+      "SLOT.accessories.02": {
+        "parent": null,
+        "pos_unity": [
+          0.4058,
+          0.95,
+          -0.0575
+        ]
+      },
+      "SLOT.accessories.03": {
+        "parent": null,
+        "pos_unity": [
+          0.4906,
+          1.12,
+          0.0274
+        ]
+      },
+      "SLOT.accessories.04": {
+        "parent": null,
+        "pos_unity": [
+          0.4058,
+          1.12,
+          -0.0575
+        ]
+      },
+      "SLOT.accessories.05": {
+        "parent": null,
+        "pos_unity": [
+          0.5047,
+          1.26,
+          -0.0716
+        ]
+      },
+      "SLOT.accessories.06": {
+        "parent": null,
+        "pos_unity": [
+          0.5047,
+          1.38,
+          -0.0716
+        ]
+      },
+      "SLOT.accessories.07": {
+        "parent": null,
+        "pos_unity": [
+          0.7027,
+          1.48,
+          0.1122
+        ]
+      },
+      "SLOT.accessories.08": {
+        "parent": null,
+        "pos_unity": [
+          0.533,
+          1.48,
+          -0.0575
+        ]
+      },
+      "SLOT.jewellery.01": {
+        "parent": null,
+        "pos_unity": [
+          0.7215,
+          1.05,
+          0.1359
+        ]
+      },
+      "SLOT.jewellery.02": {
+        "parent": null,
+        "pos_unity": [
+          0.6367,
+          1.05,
+          0.051
+        ]
+      },
+      "SLOT.jewellery.03": {
+        "parent": null,
+        "pos_unity": [
+          0.7026,
+          1.15,
+          0.1548
+        ]
+      },
+      "SLOT.jewellery.04": {
+        "parent": null,
+        "pos_unity": [
+          0.6177,
+          1.15,
+          0.07
+        ]
+      },
+      "SLOT.jewellery.05": {
+        "parent": null,
+        "pos_unity": [
+          0.6837,
+          1.25,
+          0.1738
+        ]
+      },
+      "SLOT.jewellery.06": {
+        "parent": null,
+        "pos_unity": [
+          0.5988,
+          1.25,
+          0.0889
+        ]
+      },
+      "SLOT.jewellery.07": {
+        "parent": null,
+        "pos_unity": [
+          0.6647,
+          1.35,
+          0.1927
+        ]
+      },
+      "SLOT.jewellery.08": {
+        "parent": null,
+        "pos_unity": [
+          0.5799,
+          1.35,
+          0.1078
+        ]
+      },
+      "LIGHT.spot_accessories": {
+        "parent": null,
+        "pos_unity": [
+          0.4482,
+          2.05,
+          0.183
+        ]
+      }
+    },
+    "folder": "Environment"
+  },
+  "wardrobe-folded-module": {
+    "name": "wardrobe-folded-module",
+    "tris": 3432,
+    "dims_xyz": [
+      0.5279,
+      0.5446,
+      1.405
+    ],
+    "materials": [
+      "oak_warm",
+      "brass",
+      "led_strip"
+    ],
+    "nodes": {
+      "wardrobe-folded-module": {
+        "tris": 3432,
+        "parent": null
+      }
+    },
+    "empties": {
+      "SLOT.folded.01": {
+        "parent": null,
+        "pos_unity": [
+          0.5996,
+          0.98,
+          0.299
+        ]
+      },
+      "SLOT.folded.02": {
+        "parent": null,
+        "pos_unity": [
+          0.6456,
+          0.98,
+          0.179
+        ]
+      },
+      "SLOT.folded.03": {
+        "parent": null,
+        "pos_unity": [
+          0.463,
+          1.18,
+          0.3816
+        ]
+      },
+      "SLOT.folded.04": {
+        "parent": null,
+        "pos_unity": [
+          0.5543,
+          1.18,
+          0.2296
+        ]
+      },
+      "SLOT.folded.05": {
+        "parent": null,
+        "pos_unity": [
+          0.6171,
+          1.18,
+          0.4084
+        ]
+      },
+      "SLOT.folded.06": {
+        "parent": null,
+        "pos_unity": [
+          0.6931,
+          1.18,
+          0.2592
+        ]
+      },
+      "SLOT.folded.07": {
+        "parent": null,
+        "pos_unity": [
+          0.463,
+          1.4,
+          0.3816
+        ]
+      },
+      "SLOT.folded.08": {
+        "parent": null,
+        "pos_unity": [
+          0.5543,
+          1.4,
+          0.2296
+        ]
+      },
+      "SLOT.folded.09": {
+        "parent": null,
+        "pos_unity": [
+          0.6109,
+          1.4,
+          0.4521
+        ]
+      },
+      "SLOT.folded.10": {
+        "parent": null,
+        "pos_unity": [
+          0.7071,
+          1.4,
+          0.2785
+        ]
+      },
+      "LIGHT.spot_folded": {
+        "parent": null,
+        "pos_unity": [
+          0.5258,
+          2.05,
+          0.3285
+        ]
+      }
+    },
+    "folder": "Environment"
+  },
+  "wardrobe-hanging-module": {
+    "name": "wardrobe-hanging-module",
+    "tris": 288,
+    "dims_xyz": [
+      0.2949,
+      0.4642,
+      0.058
+    ],
+    "materials": [
+      "chrome"
+    ],
+    "nodes": {
+      "wardrobe-hanging-module": {
+        "tris": 288,
+        "parent": null
+      }
+    },
+    "empties": {
+      "HOOK.01": {
+        "parent": null,
+        "pos_unity": [
+          -0.5408,
+          1.496,
+          0.5248
+        ]
+      },
+      "SLOT.hanging.01": {
+        "parent": null,
+        "pos_unity": [
+          -0.5408,
+          1.496,
+          0.5248
+        ]
+      },
+      "HOOK.02": {
+        "parent": null,
+        "pos_unity": [
+          -0.5666,
+          1.496,
+          0.4811
+        ]
+      },
+      "SLOT.hanging.02": {
+        "parent": null,
+        "pos_unity": [
+          -0.5666,
+          1.496,
+          0.4811
+        ]
+      },
+      "HOOK.03": {
+        "parent": null,
+        "pos_unity": [
+          -0.5924,
+          1.496,
+          0.4373
+        ]
+      },
+      "SLOT.hanging.03": {
+        "parent": null,
+        "pos_unity": [
+          -0.5924,
+          1.496,
+          0.4373
+        ]
+      },
+      "HOOK.04": {
+        "parent": null,
+        "pos_unity": [
+          -0.6181,
+          1.496,
+          0.3936
+        ]
+      },
+      "SLOT.hanging.04": {
+        "parent": null,
+        "pos_unity": [
+          -0.6181,
+          1.496,
+          0.3936
+        ]
+      },
+      "HOOK.05": {
+        "parent": null,
+        "pos_unity": [
+          -0.6439,
+          1.496,
+          0.3498
+        ]
+      },
+      "SLOT.hanging.05": {
+        "parent": null,
+        "pos_unity": [
+          -0.6439,
+          1.496,
+          0.3498
+        ]
+      },
+      "HOOK.06": {
+        "parent": null,
+        "pos_unity": [
+          -0.6697,
+          1.496,
+          0.3061
+        ]
+      },
+      "SLOT.hanging.06": {
+        "parent": null,
+        "pos_unity": [
+          -0.6697,
+          1.496,
+          0.3061
+        ]
+      },
+      "HOOK.07": {
+        "parent": null,
+        "pos_unity": [
+          -0.6954,
+          1.496,
+          0.2623
+        ]
+      },
+      "SLOT.hanging.07": {
+        "parent": null,
+        "pos_unity": [
+          -0.6954,
+          1.496,
+          0.2623
+        ]
+      },
+      "HOOK.08": {
+        "parent": null,
+        "pos_unity": [
+          -0.7212,
+          1.496,
+          0.2186
+        ]
+      },
+      "SLOT.hanging.08": {
+        "parent": null,
+        "pos_unity": [
+          -0.7212,
+          1.496,
+          0.2186
+        ]
+      },
+      "LIGHT.spot_hanging": {
+        "parent": null,
+        "pos_unity": [
+          -0.5258,
+          2.05,
+          0.3285
+        ]
+      }
+    },
+    "folder": "Environment"
+  },
   "women-shoes": {
     "name": "women-shoes",
     "tris": 11888,
@@ -669,6 +2306,33 @@
     "materials": [
       "tshirt_white"
     ],
+    "folder": "Products"
+  },
+  "wristwatch": {
+    "name": "wristwatch",
+    "tris": 2758,
+    "dims_xyz": [
+      0.085,
+      0.085,
+      0.0972
+    ],
+    "materials": [
+      "velvet_navy",
+      "velvet_wine",
+      "leather_tan",
+      "leather_watch",
+      "gold",
+      "watch_dial",
+      "crystal",
+      "stopwatch_ink"
+    ],
+    "nodes": {
+      "wristwatch": {
+        "tris": 2758,
+        "parent": null
+      }
+    },
+    "empties": {},
     "folder": "Products"
   }
 }
