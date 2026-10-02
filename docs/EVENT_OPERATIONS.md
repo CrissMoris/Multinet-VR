@@ -45,7 +45,8 @@ Monitör: Operatör ekranı 1920×1080 için tasarlanmıştır; daha düşük ç
 1. **Başla** — yeni oturum açılır.
 2. **Kayıt** — Ad, Soyad, Telefon, E-posta girilir. (KVKK onay metni yapılandırmada tanımlıysa onay kutusu görünür.)
 3. **Cinsiyet** — Kadın / Erkek. Ürün havuzu buna göre belirlenir.
-4. **Talimatlar** — Operatör katılımcıya başlığı taktırır; VR içinde de aynı talimat görünür. **Oyunu Başlat**.
+4. **Talimatlar** — Operatör katılımcıya başlığı taktırır; VR içinde de aynı talimat görünür. Katılımcı önce
+   havada duran **deneme etiketini** (puanlanmaz) tutup valize koyar; ardından operatör **Oyunu Başlat**'a basar.
 5. **Geri sayım (3-2-1)** VR içinde gösterilir; sayaç tam olarak oyun başladığında çalışır.
 6. **Oyun** — Katılımcı ürünlere **elini uzatarak** (el takibi: tutma/pinch; kumanda: grip tuşu) alır ve valize koyar.
    Uzaktan ışınla tutma kapalıdır; ürünlere fiziksel olarak uzanmak gerekir (gerekirse bir adım atılır). El bir ürüne
@@ -90,7 +91,12 @@ Aşağıdakiler geliştirme sırasında başlık olmadan doğrulanamadı; etkinl
 2. Kafa yüksekliği doğal (oda zemini ayak hizasında); gerekirse Quest'te zemin yüksekliğini / Guardian'ı yeniden ayarlayın.
 3. Eller (el takibi) görünüyor; bir ürüne uzanıp tutma (pinch/grab) ile alınabiliyor, bırakınca düşüyor.
 4. Kumandalarla da (grip) tutma çalışıyor.
-5. Üç raf katının (0,68 / 1,08 / 1,48 m) kısa ve uzun boylu katılımcılar için erişilebilir olduğu deneniyor.
+5. Sahne düzeninde (askılık, katlı dolap, ayakkabı rafı, aksesuar/mücevher masaları, iş ve tatil konsolları) her ürün
+   bölgesine ayakta, olduğu yerden uzanılabildiği; kısa (~1,50 m) ve uzun (~1,90 m) katılımcılarda `Oyuncu konumu`
+   zemin ofsetinin yeterli olduğu deneniyor. Askıdaki ürünler askıdan çıkarken sallanıyor, valizde askısız görünüyor.
+5a. Valiz kapağı: ürünler tipine göre (düz, ayakkabı köşesi, dik, kapak cebi, organizer) yerleşiyor; kapak kapanıp
+   tekrar açılabiliyor; sol ve sağ kayışlar ürünleri sabitliyor; süre durunca sonuç kartı kapağın üstünde okunuyor.
+5b. Önde duran kronometre, skor panosu ve sonuç kartı yazıları net (aynalı değil) ve 2 m'den okunabiliyor.
 6. Valize konan doğru ürün +10, yanlış ürün −5 yazıyor; ses ve titreşim geri bildirimi geliyor.
 7. Gerekli ürünlerin tamamı konunca oyun bitiyor; sonuç operatör ekranında ve liderlik tablosunda görünüyor.
 8. **Yeni Katılımcı** sonrası raflar ve valiz tamamen sıfırlanıyor.

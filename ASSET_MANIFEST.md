@@ -68,7 +68,7 @@ colour (not the scan's own colour) shows; `white_plaster_02` is used as normal m
 
 ## 3. Original project models (no third-party licence)
 
-Source: `tools/blender/mt_products.py`, `tools/blender/mt_environment.py`, `tools/blender/mtlib.py` (run with
+Source: `tools/blender/mt_products.py`, `mt_garments.py`, `mt_jewellery.py`, `mt_stage.py`, `mt_wardrobe.py`, `mt_layout.py`, `mt_environment.py`, `mtlib.py` (run with
 `blender -b --factory-startup --python tools/blender/mt_build_assets.py`). Output:
 `Assets/MultiTravel/Art/Models/{Products,Environment}/<name>.fbx`, triangle counts in `Art/Models/models.json`.
 Author: created for this project. Products are turned into prefabs (`Generated/Prefabs/<id>.prefab`: model + box collider
@@ -85,6 +85,12 @@ Author: created for this project. Products are turned into prefabs (`Generated/P
 | toiletry-bag, laptop-bag, travel-bag, beach-towel, snorkel-mask, neck-pillow | Bags and leisure items. |
 | suitcase-open | 70 × 46 cm hard-shell spinner, open (lid ~100°), jacquard lining, straps, zipper rim, wheels. Unbranded. |
 | wardrobe-bay | 45 cm dressing-room wardrobe module: 3 shelves (0.68 / 1.08 / 1.48 m), drawers, LED strips. 12 used. |
+| stage-floor, stage-backdrop, floor-mat | v2 stage: round parquet floor, curved navy-to-teal backdrop with LED bands, "Buraya bas" floor mat. |
+| wardrobe-carcass, wardrobe-hanging-module, wardrobe-folded-module, wardrobe-door-left, wardrobe-door-right, hanger | v2 dressing-room wardrobe: carcass with LED strips, hanging rail module, folded shelf module, shoe-rack door, drawer / hat-peg / valet-tray door, reusable hanger. |
+| console-table-business, console-table-leisure, luggage-rack | Accessory / jewellery consoles for the two scenario sets; luggage rack carries the suitcase at 0.52 m. |
+| stopwatch, scoreboard | Diegetic displays (needle pivot, UI anchors for TextMeshPro). |
+| shirt-hanging, blouse-hanging, jacket-hanging, blazer-hanging, dress-hanging, swimsuit-hanging, bikini-hanging | Hanger variants of the garments (shown on the rail, ≤ 8 k tris each). |
+| wristwatch, cufflinks, pearl-earrings, minimal-necklace, shell-necklace, party-tiara, practice-tag | Jewellery set and the tutorial practice tag (never scored). |
 | room-shell, bed, nightstand, table-lamp, floor-mirror, curtains, rug, luggage-bench, hanger-rail-decor | Hotel room: walls with window and door, queen bed, furniture, decorative clothes rack. |
 
 ## 4. Unity template / packages
