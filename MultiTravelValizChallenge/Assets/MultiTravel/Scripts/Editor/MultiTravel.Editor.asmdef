@@ -12,6 +12,7 @@
         "Unity.TextMeshPro",
         "Unity.TextMeshPro.Editor",
         "Unity.RenderPipelines.Universal.Runtime",
+        "Unity.RenderPipelines.Core.Runtime",
         "Unity.XR.Management",
         "Unity.XR.Management.Editor",
         "Unity.XR.OpenXR",

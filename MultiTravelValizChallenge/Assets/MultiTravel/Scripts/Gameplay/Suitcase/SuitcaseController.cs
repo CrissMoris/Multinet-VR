@@ -4,21 +4,36 @@ using System.Collections.Generic;
 using MultiTravel.Core.Completion;
 using MultiTravel.Core.Products;
 using MultiTravel.Core.Scoring;
+using MultiTravel.Gameplay.Audio;
 using MultiTravel.Gameplay.Common;
+using MultiTravel.Gameplay.Feedback;
 using MultiTravel.Gameplay.Items;
 using UnityEngine;
 
 namespace MultiTravel.Gameplay.Suitcase
 {
     /// <summary>
-    /// The suitcase (ARCHITECTURE.md §2.8). Owns the placement volume and the slots, places / removes items and applies
-    /// score and completion progress.
+    /// The suitcase (ARCHITECTURE.md §2.8, OVERHAUL_PLAN §5). Owns the placement volume and the slots, places / removes items
+    /// and applies score and completion progress.
     /// <para>
-    /// Placement is triggered by (a) a non-canceled release whose anchor is inside <see cref="PlacementVolume"/> or
-    /// (b) <see cref="SettleWatcher"/> for unheld items that come to rest inside it. No trigger callbacks are used:
-    /// containment is a geometric test, and every path goes through <see cref="TryPlace"/>, which only accepts Free
-    /// items that are not already placed. Together with <see cref="ScoreService.TryApplyPlacement"/> (once per id)
-    /// physics jitter can never double-score.
+    /// Placement is triggered by (a) a non-canceled release whose anchor is inside <see cref="PlacementVolume"/> (the funnel
+    /// may extend up to 0.20 m above the rim) or (b) <see cref="SettleWatcher"/> for unheld items that come to rest inside it.
+    /// No trigger callbacks are used: containment is a geometric test, and every path goes through <see cref="TryPlace"/>,
+    /// which only accepts Free items that are not already placed. Together with <see cref="ScoreService.TryApplyPlacement"/>
+    /// (once per id) physics jitter can never double-score.
+    /// </para>
+    /// <para>
+    /// Typed packing: the item takes a free slot whose <see cref="SuitcaseSlot.Kind"/> equals its
+    /// <see cref="ProductPresentation.Packed"/>, then a <see cref="PackedKind.Flat"/> slot, then a <see cref="PackedKind.Top"/>
+    /// slot, then the nearest free slot. Packing columns stack bottom-up as before. The item settles with a 0.30 s
+    /// ease-out-back tween, garments switch to their folded visual half-way, soft goods squash briefly when they land and
+    /// <see cref="ItemLanded"/> reports the landing (foley).
+    /// </para>
+    /// <para>
+    /// Practice items (<see cref="ProductItem.IsPractice"/>) are accepted while <see cref="AcceptPracticePlacements"/> is on;
+    /// they settle visually but never touch <see cref="ScoreService"/> / <see cref="CompletionEvaluator"/> and raise
+    /// <see cref="PracticeItemPlaced"/> / <see cref="PracticeItemRemoved"/> instead of <see cref="ItemPlaced"/> /
+    /// <see cref="ItemRemoved"/>.
     /// </para>
     /// <para>
     /// Grabbing a placed item removes it: the slot is freed, the score reverted (policy
@@ -28,8 +43,17 @@ namespace MultiTravel.Gameplay.Suitcase
     [DisallowMultipleComponent]
     public sealed class SuitcaseController : MonoBehaviour
     {
+        /// <summary>Settle tween duration (seconds, unscaled).</summary>
+        public const float DefaultSettleSeconds = 0.30f;
+
+        /// <summary>Soft-goods squash: starting y-scale.</summary>
+        public const float SquashScale = 0.92f;
+
+        /// <summary>Soft-goods squash duration (seconds, unscaled).</summary>
+        public const float SquashSeconds = 0.15f;
+
         [SerializeField]
-        [Tooltip("Trigger BoxCollider covering the interior plus ~15 cm above the rim.")]
+        [Tooltip("Trigger BoxCollider covering the interior plus up to 0.20 m above the rim.")]
         private BoxCollider placementVolume;
 
         [SerializeField]
@@ -45,9 +69,9 @@ namespace MultiTravel.Gameplay.Suitcase
         private ProductCatalog catalog;
 
         [SerializeField]
-        [Tooltip("Duration of the tween into the slot (unscaled seconds).")]
+        [Tooltip("Duration of the settle tween into the slot (unscaled seconds).")]
         [Min(0f)]
-        private float tweenSeconds = 0.25f;
+        private float tweenSeconds = DefaultSettleSeconds;
 
         private readonly List<ProductItem> placedItems = new List<ProductItem>();
         private readonly Dictionary<ProductItem, SuitcaseSlot> slotByItem = new Dictionary<ProductItem, SuitcaseSlot>();
@@ -59,15 +83,34 @@ namespace MultiTravel.Gameplay.Suitcase
         private CompletionEvaluator completionEvaluator;
         private bool servicesReady;
         private bool warnedNoSlot;
+        private float stackHeight;
 
-        /// <summary>Raised after an item was placed. The change has Delta 0 when the product was already counted.</summary>
+        /// <summary>Raised after a scoring item was placed. The change has Delta 0 when the product was already counted.</summary>
         public event Action<ProductItem, ScoreChange> ItemPlaced;
 
-        /// <summary>Raised after an item was removed. The change has Delta 0 when nothing was reverted.</summary>
+        /// <summary>Raised after a scoring item was removed. The change has Delta 0 when nothing was reverted.</summary>
         public event Action<ProductItem, ScoreChange> ItemRemoved;
 
-        /// <summary>When false (outside Playing) releases and settle checks never place items. Direct <see cref="TryPlace"/> calls are also rejected.</summary>
+        /// <summary>Raised after the practice item was placed (no score, no completion).</summary>
+        public event Action<ProductItem> PracticeItemPlaced;
+
+        /// <summary>Raised after the practice item was removed.</summary>
+        public event Action<ProductItem> PracticeItemRemoved;
+
+        /// <summary>
+        /// Raised when a placed item finishes its settle tween and lands (item, foley kind, isCorrect). Practice items report
+        /// isCorrect = true. Not raised for column compaction moves.
+        /// </summary>
+        public event Action<ProductItem, SoundKind, bool> ItemLanded;
+
+        /// <summary>Raised when <see cref="StackHeight"/> changed (new height in metres).</summary>
+        public event Action<float> StackHeightChanged;
+
+        /// <summary>When false (outside Playing) releases and settle checks never place scoring items. Direct <see cref="TryPlace"/> calls are also rejected.</summary>
         public bool AcceptPlacements { get; set; } = true;
+
+        /// <summary>When true, practice items are placed even while <see cref="AcceptPlacements"/> is false (tutorial).</summary>
+        public bool AcceptPracticePlacements { get; set; }
 
         /// <summary>The placement trigger.</summary>
         public BoxCollider PlacementVolume => placementVolume;
@@ -75,14 +118,23 @@ namespace MultiTravel.Gameplay.Suitcase
         /// <summary>The slots.</summary>
         public IReadOnlyList<SuitcaseSlot> Slots => slots;
 
-        /// <summary>Items currently placed, in placement order.</summary>
+        /// <summary>Items currently placed (scoring and practice), in placement order.</summary>
         public IReadOnlyList<ProductItem> PlacedItems => placedItems;
 
-        /// <summary>Number of placed items.</summary>
+        /// <summary>Number of placed items (scoring and practice).</summary>
         public int PlacedCount => placedItems.Count;
 
         /// <summary>The pool watched by the suitcase.</summary>
         public ItemPool Pool => itemPool;
+
+        /// <summary>Settle tween duration in seconds.</summary>
+        public float SettleSeconds => tweenSeconds;
+
+        /// <summary>
+        /// Height (metres) of the highest packed item top above the lowest slot surface, from the items' resting poses
+        /// (0 when empty). Drives <see cref="StrapLift"/> and the lid press.
+        /// </summary>
+        public float StackHeight => stackHeight;
 
         // ----- setup -----
 
@@ -130,6 +182,14 @@ namespace MultiTravel.Gameplay.Suitcase
                     }
                 }
             }
+
+            RecomputeStackHeight();
+        }
+
+        /// <summary>Test / tuning API: settle tween duration (0 = snap).</summary>
+        public void SetSettleSeconds(float seconds)
+        {
+            tweenSeconds = Mathf.Max(0f, seconds);
         }
 
         /// <summary>Generator / test API: the pool whose items are watched. Subscribes to its items.</summary>
@@ -188,6 +248,17 @@ namespace MultiTravel.Gameplay.Suitcase
             return item != null && slotByItem.ContainsKey(item);
         }
 
+        /// <summary>True when <paramref name="item"/> would currently be accepted by a release / settle (state and gates).</summary>
+        public bool CanAccept(ProductItem item)
+        {
+            if (item == null || item.State != ProductItemState.Free || slotByItem.ContainsKey(item))
+            {
+                return false;
+            }
+
+            return item.IsPractice ? AcceptPracticePlacements || AcceptPlacements : AcceptPlacements;
+        }
+
         /// <summary>Slot of a placed item (null when placed without a free slot).</summary>
         public bool TryGetSlot(ProductItem item, out SuitcaseSlot slot)
         {
@@ -213,21 +284,48 @@ namespace MultiTravel.Gameplay.Suitcase
             }
         }
 
+        /// <summary>True while a settle tween / squash runs for <paramref name="item"/>.</summary>
+        public bool IsSettling(ProductItem item)
+        {
+            return item != null && tweens.ContainsKey(item);
+        }
+
+        /// <summary>
+        /// Slot the item would take now (typed packing: own kind → Flat → Top → nearest), without occupying it.
+        /// </summary>
+        public SuitcaseSlot PreviewSlot(ProductItem item, Vector3 dropPosition)
+        {
+            var kind = item != null ? PresentationRules.EffectivePacked(item.Definition) : PackedKind.Flat;
+            var slot = NearestAvailable(dropPosition, kind, true);
+            if (slot == null && kind != PackedKind.Flat)
+            {
+                slot = NearestAvailable(dropPosition, PackedKind.Flat, true);
+            }
+
+            if (slot == null && kind != PackedKind.Top)
+            {
+                slot = NearestAvailable(dropPosition, PackedKind.Top, true);
+            }
+
+            return slot ?? NearestAvailable(dropPosition, PackedKind.Flat, false);
+        }
+
         // ----- commands -----
 
         /// <summary>
-        /// Places a Free item: takes the free slot nearest to the item, freezes it, tweens it in, applies the score once
-        /// and notifies the completion evaluator. Returns false (and changes nothing) for any other state, an item that is
-        /// already placed, missing services, or while <see cref="AcceptPlacements"/> is false.
+        /// Places a Free item: takes a free slot (typed packing), freezes it, tweens it in, applies the score once and
+        /// notifies the completion evaluator (scoring items only). Returns false (and changes nothing) for any other state,
+        /// an item that is already placed, missing services, or while placements are closed for the item.
         /// </summary>
         public bool TryPlace(ProductItem item)
         {
-            if (item == null || !AcceptPlacements || item.State != ProductItemState.Free || slotByItem.ContainsKey(item))
+            if (!CanAccept(item))
             {
                 return false;
             }
 
-            if (!EnsureServices())
+            bool practice = item.IsPractice;
+            if (!practice && !EnsureServices())
             {
                 return false;
             }
@@ -244,7 +342,7 @@ namespace MultiTravel.Gameplay.Suitcase
                 return false;
             }
 
-            var slot = TakeNearestFreeSlot(item.AnchorPosition);
+            var slot = PreviewSlot(item, item.AnchorPosition);
             if (slot != null)
             {
                 slot.Occupy(item);
@@ -258,6 +356,14 @@ namespace MultiTravel.Gameplay.Suitcase
             slotByItem.Add(item, slot);
             placedItems.Add(item);
             Watch(item);
+            RecomputeStackHeight();
+
+            if (practice)
+            {
+                StartSettle(item, slot);
+                PracticeItemPlaced?.Invoke(item);
+                return true;
+            }
 
             int delta = catalog.ScoreFor(definition);
             ScoreChange change;
@@ -271,20 +377,15 @@ namespace MultiTravel.Gameplay.Suitcase
             }
 
             completionEvaluator.NotifyPlaced(definition.Id);
-
-            if (slot != null)
-            {
-                StartTween(item, slot);
-            }
-
+            StartSettle(item, slot);
             ItemPlaced?.Invoke(item, change);
             return true;
         }
 
         /// <summary>
-        /// Removes a placed item: frees its slot, reverts the score (when the policy is on) and notifies the evaluator.
-        /// A Placed item becomes Free (dynamic again); a Held item (removal through grab) stays Held. Returns false when the
-        /// item is not in the suitcase.
+        /// Removes a placed item: frees its slot, reverts the score (when the policy is on) and notifies the evaluator
+        /// (scoring items only). A Placed item becomes Free (dynamic again); a Held item (removal through grab) stays Held.
+        /// Returns false when the item is not in the suitcase.
         /// </summary>
         public bool Remove(ProductItem item)
         {
@@ -300,6 +401,18 @@ namespace MultiTravel.Gameplay.Suitcase
             {
                 slot.Release();
                 CompactColumn(slot);
+            }
+
+            RecomputeStackHeight();
+            if (item.IsPractice)
+            {
+                if (item.State == ProductItemState.Placed)
+                {
+                    item.ExitPlacedToFree();
+                }
+
+                PracticeItemRemoved?.Invoke(item);
+                return true;
             }
 
             string id = item.ProductId;
@@ -329,7 +442,7 @@ namespace MultiTravel.Gameplay.Suitcase
 
         /// <summary>
         /// Empties the suitcase without touching the score (the session reset clears the score). Stops all tweens,
-        /// frees all slots, notifies the evaluator and makes still-placed items Free again.
+        /// frees all slots, notifies the evaluator (scoring items) and makes still-placed items Free again.
         /// </summary>
         public void Clear()
         {
@@ -339,7 +452,7 @@ namespace MultiTravel.Gameplay.Suitcase
             {
                 var item = scratch[i];
                 StopTween(item);
-                if (completionEvaluator != null && item != null && !string.IsNullOrEmpty(item.ProductId))
+                if (completionEvaluator != null && item != null && !item.IsPractice && !string.IsNullOrEmpty(item.ProductId))
                 {
                     completionEvaluator.NotifyRemoved(item.ProductId);
                 }
@@ -367,6 +480,7 @@ namespace MultiTravel.Gameplay.Suitcase
 
             scratch.Clear();
             warnedNoSlot = false;
+            RecomputeStackHeight();
         }
 
         // ----- Unity -----
@@ -412,8 +526,15 @@ namespace MultiTravel.Gameplay.Suitcase
             for (int i = 0; i < scratch.Count; i++)
             {
                 var item = scratch[i];
-                if (item != null && slotByItem.TryGetValue(item, out var slot) && slot != null)
+                if (item == null)
                 {
+                    continue;
+                }
+
+                item.ResetScale();
+                if (slotByItem.TryGetValue(item, out var slot) && slot != null && item.State == ProductItemState.Placed)
+                {
+                    item.SetVariant(ItemVariant.Folded);
                     var pose = slot.PoseFor(item);
                     item.transform.SetPositionAndRotation(pose.position, pose.rotation);
                 }
@@ -516,7 +637,7 @@ namespace MultiTravel.Gameplay.Suitcase
 
         private void OnItemReleased(ProductItem item, Transform interactor, bool canceled)
         {
-            if (canceled || !AcceptPlacements || item.State != ProductItemState.Free)
+            if (canceled || !CanAccept(item))
             {
                 return;
             }
@@ -538,7 +659,10 @@ namespace MultiTravel.Gameplay.Suitcase
                 if (slot != null)
                 {
                     slot.Release();
+                    CompactColumn(slot);
                 }
+
+                RecomputeStackHeight();
             }
         }
 
@@ -557,20 +681,20 @@ namespace MultiTravel.Gameplay.Suitcase
                 source.Release();
                 target.Occupy(moving);
                 slotByItem[moving] = target;
-                StartTween(moving, target);
+                StartTween(moving, target, false);
                 target = source;
                 source = source.Above;
             }
         }
 
-        private SuitcaseSlot TakeNearestFreeSlot(Vector3 position)
+        private SuitcaseSlot NearestAvailable(Vector3 position, PackedKind kind, bool matchKind)
         {
             SuitcaseSlot best = null;
             float bestDistance = float.MaxValue;
             for (int i = 0; i < slots.Count; i++)
             {
                 var slot = slots[i];
-                if (slot == null || !slot.IsAvailable)
+                if (slot == null || !slot.IsAvailable || (matchKind && slot.Kind != kind))
                 {
                     continue;
                 }
@@ -589,6 +713,7 @@ namespace MultiTravel.Gameplay.Suitcase
                 {
                     distance = (slot.transform.position - position).sqrMagnitude;
                 }
+
                 if (distance < bestDistance)
                 {
                     bestDistance = distance;
@@ -599,17 +724,36 @@ namespace MultiTravel.Gameplay.Suitcase
             return best;
         }
 
-        private void StartTween(ProductItem item, SuitcaseSlot slot)
+        private void StartSettle(ProductItem item, SuitcaseSlot slot)
         {
-            StopTween(item);
-            var target = slot.PoseFor(item);
-            if (tweenSeconds <= 0f || !isActiveAndEnabled)
+            if (slot != null)
             {
-                item.transform.SetPositionAndRotation(target.position, target.rotation);
+                StartTween(item, slot, true);
                 return;
             }
 
-            tweens[item] = StartCoroutine(TweenRoutine(item, target));
+            // No slot: the item stays where it rests (folded) and lands immediately.
+            item.SetVariant(ItemVariant.Folded);
+            RaiseLanded(item);
+        }
+
+        private void StartTween(ProductItem item, SuitcaseSlot slot, bool landing)
+        {
+            StopTween(item);
+            if (tweenSeconds <= 0f || !isActiveAndEnabled)
+            {
+                item.SetVariant(ItemVariant.Folded);
+                var target = slot.PoseFor(item);
+                item.transform.SetPositionAndRotation(target.position, target.rotation);
+                if (landing)
+                {
+                    RaiseLanded(item);
+                }
+
+                return;
+            }
+
+            tweens[item] = StartCoroutine(TweenRoutine(item, slot, landing));
         }
 
         private void StopTween(ProductItem item)
@@ -622,14 +766,33 @@ namespace MultiTravel.Gameplay.Suitcase
                 }
 
                 tweens.Remove(item);
+                item.ResetScale();
             }
         }
 
-        private IEnumerator TweenRoutine(ProductItem item, Pose target)
+        private void RaiseLanded(ProductItem item)
+        {
+            bool correct = item.IsPractice || (item.Definition != null && item.Definition.IsCorrect);
+            ItemLanded?.Invoke(item, ProductSoundKinds.For(item.Definition), correct);
+        }
+
+        /// <summary>Ease-out-back (overshoots slightly, then settles at 1).</summary>
+        public static float EaseOutBack(float k)
+        {
+            const float c1 = 1.70158f;
+            const float c3 = c1 + 1f;
+            float x = k - 1f;
+            return 1f + c3 * x * x * x + c1 * x * x;
+        }
+
+        private IEnumerator TweenRoutine(ProductItem item, SuitcaseSlot slot, bool landing)
         {
             var itemTransform = item.transform;
             var startPosition = itemTransform.position;
             var startRotation = itemTransform.rotation;
+            // The packed (folded) bounds define the resting pose, so the target does not jump when the visual swaps.
+            var target = slot.PoseFor(item);
+            bool swapped = false;
             float t = 0f;
             while (t < tweenSeconds)
             {
@@ -641,19 +804,106 @@ namespace MultiTravel.Gameplay.Suitcase
 
                 t += Time.unscaledDeltaTime;
                 float k = Mathf.Clamp01(t / tweenSeconds);
-                k = k * k * (3f - 2f * k);
+                float eased = EaseOutBack(k);
                 itemTransform.SetPositionAndRotation(
-                    Vector3.Lerp(startPosition, target.position, k),
-                    Quaternion.Slerp(startRotation, target.rotation, k));
+                    Vector3.LerpUnclamped(startPosition, target.position, eased),
+                    Quaternion.SlerpUnclamped(startRotation, target.rotation, eased));
+                if (!swapped && k >= 0.5f)
+                {
+                    swapped = true;
+                    item.SetVariant(ItemVariant.Folded);
+                }
+
                 yield return null;
             }
 
-            if (item != null && item.State == ProductItemState.Placed)
+            if (item == null || item.State != ProductItemState.Placed)
             {
-                itemTransform.SetPositionAndRotation(target.position, target.rotation);
+                tweens.Remove(item);
+                yield break;
+            }
+
+            item.SetVariant(ItemVariant.Folded);
+            itemTransform.SetPositionAndRotation(target.position, target.rotation);
+            if (landing)
+            {
+                RaiseLanded(item);
+                if (ProductSoundKinds.IsSoft(item.Definition))
+                {
+                    yield return SquashRoutine(item, target);
+                }
             }
 
             tweens.Remove(item);
+        }
+
+        private IEnumerator SquashRoutine(ProductItem item, Pose target)
+        {
+            var itemTransform = item.transform;
+            var baseScale = item.BaseLocalScale;
+            var parent = itemTransform.parent;
+            float worldScaleY = baseScale.y * (parent != null ? parent.lossyScale.y : 1f);
+            float bottom = item.PackedBounds.min.y * worldScaleY;
+            var up = target.rotation * Vector3.up;
+            float t = 0f;
+            while (t < SquashSeconds)
+            {
+                if (item == null || item.State != ProductItemState.Placed)
+                {
+                    if (item != null)
+                    {
+                        item.ResetScale();
+                    }
+
+                    yield break;
+                }
+
+                float k = Mathf.Clamp01(t / SquashSeconds);
+                float s = Mathf.Lerp(SquashScale, 1f, 1f - (1f - k) * (1f - k));
+                itemTransform.localScale = new Vector3(baseScale.x, baseScale.y * s, baseScale.z);
+                // Keep the bottom on the slot surface while the height changes.
+                itemTransform.position = target.position + up * (bottom * (1f - s));
+                t += Time.unscaledDeltaTime;
+                yield return null;
+            }
+
+            item.ResetScale();
+            itemTransform.SetPositionAndRotation(target.position, target.rotation);
+        }
+
+        private void RecomputeStackHeight()
+        {
+            float floor = float.MaxValue;
+            float top = float.MinValue;
+            bool any = false;
+            for (int i = 0; i < slots.Count; i++)
+            {
+                var slot = slots[i];
+                if (slot == null)
+                {
+                    continue;
+                }
+
+                if (slot.Below == null)
+                {
+                    floor = Mathf.Min(floor, slot.transform.position.y);
+                }
+
+                if (slot.IsOccupied)
+                {
+                    any = true;
+                    top = Mathf.Max(top, slot.TopWorldY);
+                }
+            }
+
+            float height = any && floor < float.MaxValue ? Mathf.Max(0f, top - floor) : 0f;
+            if (Mathf.Abs(height - stackHeight) < 1e-4f)
+            {
+                return;
+            }
+
+            stackHeight = height;
+            StackHeightChanged?.Invoke(stackHeight);
         }
     }
 }

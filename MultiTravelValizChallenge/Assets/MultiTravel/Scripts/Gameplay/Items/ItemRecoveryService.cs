@@ -1,13 +1,20 @@
 using System;
 using MultiTravel.Gameplay.Common;
+using MultiTravel.Gameplay.Suitcase;
 using UnityEngine;
 
 namespace MultiTravel.Gameplay.Items
 {
     /// <summary>
-    /// Keeps every item reachable (ARCHITECTURE.md §2.8). Every <see cref="tickSeconds"/> it checks the Free items and
-    /// returns an item to its spawn slot when it fell below <c>floorY - belowFloorMargin</c>, left <see cref="PlayBounds"/>,
-    /// or has been resting on the floor for at least <see cref="floorRestSeconds"/>. Nothing is destroyed.
+    /// Keeps every item reachable (ARCHITECTURE.md §2.8, OVERHAUL_PLAN §5). Every <see cref="tickSeconds"/> it checks the
+    /// Free items and returns an item to its home slot (short shrink / grow) when
+    /// <list type="bullet">
+    /// <item>its anchor fell below <c>floorY - belowFloorMargin</c> or left <see cref="PlayBounds"/> (immediately), or</item>
+    /// <item>it has been resting for <see cref="RestSeconds"/> anywhere that is not its home slot and not inside the
+    /// suitcase placement volume (floor, furniture tops, other zones).</item>
+    /// </list>
+    /// Docked items (resting at home) are only checked against the floor / play bounds; items resting inside the suitcase
+    /// placement volume are never returned. Nothing is destroyed.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class ItemRecoveryService : MonoBehaviour
@@ -15,6 +22,10 @@ namespace MultiTravel.Gameplay.Items
         [SerializeField]
         [Tooltip("Pool whose items are watched.")]
         private ItemPool itemPool;
+
+        [SerializeField]
+        [Tooltip("Suitcase whose placement volume counts as a valid resting place. Found in the scene when empty.")]
+        private SuitcaseController suitcase;
 
         [SerializeField]
         [Tooltip("World Y of the room floor.")]
@@ -26,28 +37,23 @@ namespace MultiTravel.Gameplay.Items
         private float belowFloorMargin = 0.2f;
 
         [SerializeField]
-        [Tooltip("World-space play area. Items whose anchor leaves it are recovered.")]
+        [Tooltip("World-space play area. Items whose anchor leaves it are recovered immediately.")]
         private Bounds playBounds = new Bounds(new Vector3(0f, 1.5f, 0f), new Vector3(10f, 5f, 10f));
 
         [SerializeField]
-        [Tooltip("Physics layers of the floor. When set, 'on the floor' is a short downward raycast against these layers; " +
-                 "when empty, an item counts as on the floor when its lowest point is within floorContactTolerance of floorY.")]
-        private LayerMask floorLayers;
-
-        [SerializeField]
-        [Tooltip("Height tolerance / raycast slack used for the on-floor test (metres).")]
-        [Min(0.001f)]
-        private float floorContactTolerance = 0.05f;
-
-        [SerializeField]
-        [Tooltip("Seconds an item may rest on the floor before it is returned to its spawn slot.")]
+        [Tooltip("Seconds an item may rest away from its home slot (and outside the suitcase) before it is returned.")]
         [Min(0f)]
-        private float floorRestSeconds = 3f;
+        private float restSeconds = 1.2f;
+
+        [SerializeField]
+        [Tooltip("An item closer than this to its home pose counts as at home (metres).")]
+        [Min(0f)]
+        private float homeTolerance = 0.05f;
 
         [SerializeField]
         [Tooltip("Seconds between checks.")]
         [Min(0.05f)]
-        private float tickSeconds = 0.5f;
+        private float tickSeconds = 0.2f;
 
         [SerializeField]
         [Tooltip("Speed below which an item counts as resting (m/s).")]
@@ -63,8 +69,9 @@ namespace MultiTravel.Gameplay.Items
         [Tooltip("Animate the return (shrink / grow) instead of teleporting.")]
         private bool animateReturn = true;
 
-        private float[] floorRestTimers = new float[0];
+        private float[] restTimers = new float[0];
         private float nextTickTime;
+        private bool suitcaseSearched;
 
         /// <summary>Raised after an item was sent back to its spawn slot.</summary>
         public event Action<ProductItem> ItemRecovered;
@@ -75,10 +82,20 @@ namespace MultiTravel.Gameplay.Items
         /// <summary>World Y of the floor.</summary>
         public float FloorY => floorY;
 
+        /// <summary>Seconds an item may rest away from home before it is returned.</summary>
+        public float RestSeconds => restSeconds;
+
         /// <summary>Generator / test API.</summary>
         public void SetPool(ItemPool pool)
         {
             itemPool = pool;
+        }
+
+        /// <summary>Generator / test API: suitcase whose placement volume is a valid resting place.</summary>
+        public void SetSuitcase(SuitcaseController target)
+        {
+            suitcase = target;
+            suitcaseSearched = true;
         }
 
         /// <summary>Generator / test API: floor height and play area.</summary>
@@ -88,10 +105,10 @@ namespace MultiTravel.Gameplay.Items
             playBounds = bounds;
         }
 
-        /// <summary>Generator API: floor layers for the on-floor raycast (empty = height test).</summary>
-        public void SetFloorLayers(LayerMask layers)
+        /// <summary>Test / tuning API: seconds of rest away from home before the return.</summary>
+        public void SetRestSeconds(float seconds)
         {
-            floorLayers = layers;
+            restSeconds = Mathf.Max(0f, seconds);
         }
 
         /// <summary>Runs one check immediately (also used by tests). Returns the number of recovered items.</summary>
@@ -102,10 +119,11 @@ namespace MultiTravel.Gameplay.Items
                 return 0;
             }
 
+            ResolveSuitcase();
             var items = itemPool.AllItems;
-            if (floorRestTimers.Length < items.Count)
+            if (restTimers.Length < items.Count)
             {
-                Array.Resize(ref floorRestTimers, items.Count);
+                Array.Resize(ref restTimers, items.Count);
             }
 
             int recovered = 0;
@@ -114,13 +132,13 @@ namespace MultiTravel.Gameplay.Items
                 var item = items[i];
                 if (item == null || item.State != ProductItemState.Free || item.IsReturning)
                 {
-                    floorRestTimers[i] = 0f;
+                    restTimers[i] = 0f;
                     continue;
                 }
 
                 if (NeedsRecovery(item, i, elapsedSinceLastTick))
                 {
-                    floorRestTimers[i] = 0f;
+                    restTimers[i] = 0f;
                     if (item.ReturnToSpawn(!animateReturn))
                     {
                         recovered++;
@@ -145,57 +163,34 @@ namespace MultiTravel.Gameplay.Items
                 return true;
             }
 
-            if (floorRestSeconds <= 0f)
+            if (item.IsDocked)
             {
+                restTimers[index] = 0f;
                 return false;
             }
 
-            if (IsOnFloor(item) && item.IsAtRest(restLinearSpeed, restAngularSpeed))
+            bool resting = item.IsAtRest(restLinearSpeed, restAngularSpeed);
+            bool atHome = item.DistanceFromHome() <= homeTolerance;
+            bool inSuitcase = suitcase != null && suitcase.IsInsideVolume(item);
+            if (!resting || atHome || inSuitcase)
             {
-                floorRestTimers[index] += elapsed;
-                return floorRestTimers[index] >= floorRestSeconds;
+                restTimers[index] = 0f;
+                return false;
             }
 
-            floorRestTimers[index] = 0f;
-            return false;
+            restTimers[index] += elapsed;
+            return restTimers[index] >= restSeconds - 1e-4f;
         }
 
-        private bool IsOnFloor(ProductItem item)
+        private void ResolveSuitcase()
         {
-            var transformOfItem = item.transform;
-            var bounds = item.LocalBounds;
-            var bottomLocal = new Vector3(bounds.center.x, bounds.min.y, bounds.center.z);
-
-            if (floorLayers.value != 0)
+            if (suitcase != null || suitcaseSearched)
             {
-                var origin = transformOfItem.TransformPoint(bounds.center);
-                float distance = Vector3.Distance(origin, transformOfItem.TransformPoint(bottomLocal)) + floorContactTolerance;
-                return Physics.Raycast(origin, Vector3.down, distance, floorLayers, QueryTriggerInteraction.Ignore);
+                return;
             }
 
-            float lowest = LowestWorldY(transformOfItem, bounds);
-            return lowest <= floorY + floorContactTolerance;
-        }
-
-        private static float LowestWorldY(Transform itemTransform, Bounds localBounds)
-        {
-            var min = localBounds.min;
-            var max = localBounds.max;
-            float lowest = float.MaxValue;
-            for (int corner = 0; corner < 8; corner++)
-            {
-                var local = new Vector3(
-                    (corner & 1) == 0 ? min.x : max.x,
-                    (corner & 2) == 0 ? min.y : max.y,
-                    (corner & 4) == 0 ? min.z : max.z);
-                float y = itemTransform.TransformPoint(local).y;
-                if (y < lowest)
-                {
-                    lowest = y;
-                }
-            }
-
-            return lowest;
+            suitcaseSearched = true;
+            suitcase = FindAnyObjectByType<SuitcaseController>();
         }
 
         private void Start()

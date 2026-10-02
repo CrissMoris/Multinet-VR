@@ -27,6 +27,10 @@ namespace MultiTravel.Gameplay.Director
     /// <item>Every other state: interaction locked, placements rejected.</item>
     /// <item><see cref="SessionController.SessionResetRequested"/>: full reset (suitcase cleared, every item pooled,
     /// coroutines stopped, feedback cleared).</item>
+    /// <item>Practice hand-off (tutorial, OVERHAUL_PLAN §5): during <c>Instructions</c> the tutorial calls
+    /// <see cref="BeginPractice"/>; the non-catalog practice item is activated at the practice spawn point, whitelisted by
+    /// <see cref="InteractionLock.AllowPractice"/> and accepted by the suitcase without scoring. Leaving Instructions (Loading,
+    /// abandon, reset) calls <see cref="EndPractice"/>: the practice item is taken out of the suitcase and returned to the pool.</item>
     /// </list>
     /// State work is deferred out of the <see cref="SessionController.StateChanged"/> callback so other listeners always
     /// see transitions in order. The director can be enabled at any time after bootstrap: it re-syncs to the current state.
@@ -56,6 +60,15 @@ namespace MultiTravel.Gameplay.Director
         [Tooltip("Optional: countdown ticks and reset of floating labels.")]
         private PlacementFeedback feedback;
 
+        [Header("Practice (tutorial)")]
+        [SerializeField]
+        [Tooltip("Non-catalog practice item definition (Assets/MultiTravel/Data/Practice/practice-tag.asset).")]
+        private ProductDefinition practiceDefinition;
+
+        [SerializeField]
+        [Tooltip("Where the practice item hangs during the tutorial (e.g. the suitcase handle). Falls back to a point above the suitcase.")]
+        private Transform practiceSpawnPoint;
+
         [Header("Timing")]
         [SerializeField]
         [Tooltip("Interval of the completion poll while Playing (seconds).")]
@@ -83,6 +96,7 @@ namespace MultiTravel.Gameplay.Director
         private Coroutine countdownRoutine;
         private SessionState appliedState = (SessionState)(-1);
         private SuitcaseController subscribedSuitcase;
+        private ProductItem practiceItem;
 
         /// <summary>Raised every countdown second with the remaining seconds (n..1), then 0 when play starts.</summary>
         public event Action<int> CountdownTick;
@@ -92,6 +106,18 @@ namespace MultiTravel.Gameplay.Director
 
         /// <summary>Raised after a full gameplay reset.</summary>
         public event Action GameplayReset;
+
+        /// <summary>Raised when the practice item became grabbable (tutorial start).</summary>
+        public event Action<ProductItem> PracticeStarted;
+
+        /// <summary>Raised when the practice item settled in the suitcase (tutorial success; never scores).</summary>
+        public event Action<ProductItem> PracticePlaced;
+
+        /// <summary>Raised when the practice item was taken out of the suitcase again during the tutorial.</summary>
+        public event Action<ProductItem> PracticeRemoved;
+
+        /// <summary>Raised when the practice item was withdrawn (Loading, abandon, reset).</summary>
+        public event Action<ProductItem> PracticeEnded;
 
         /// <summary>Remaining countdown seconds while in Countdown (0 otherwise).</summary>
         public int CountdownRemaining { get; private set; }
@@ -110,6 +136,27 @@ namespace MultiTravel.Gameplay.Director
 
         /// <summary>The catalog in use.</summary>
         public ProductCatalog Catalog => catalog;
+
+        /// <summary>The item pool.</summary>
+        public ItemPool Pool => itemPool;
+
+        /// <summary>The suitcase.</summary>
+        public SuitcaseController Suitcase => suitcase;
+
+        /// <summary>The interaction lock.</summary>
+        public InteractionLock Lock => interactionLock;
+
+        /// <summary>The spawn layout.</summary>
+        public SpawnSlotLayout SpawnLayout => spawnLayout;
+
+        /// <summary>The practice item instance (null when no practice definition / prefab is configured).</summary>
+        public ProductItem PracticeItem => practiceItem;
+
+        /// <summary>True between <see cref="BeginPractice"/> and <see cref="EndPractice"/>.</summary>
+        public bool IsPracticeActive { get; private set; }
+
+        /// <summary>True while the practice item rests in the suitcase.</summary>
+        public bool IsPracticePlaced => practiceItem != null && suitcase != null && suitcase.Contains(practiceItem);
 
         // ----- setup -----
 
@@ -155,6 +202,125 @@ namespace MultiTravel.Gameplay.Director
             feedback = placementFeedback;
         }
 
+        /// <summary>Generator API: practice item definition and (optional) spawn point. Call before <c>Start</c>.</summary>
+        public void ConfigurePractice(ProductDefinition definition, Transform spawnPoint)
+        {
+            practiceDefinition = definition;
+            practiceSpawnPoint = spawnPoint;
+        }
+
+        /// <summary>
+        /// Creates the practice item instance (once; normally done in <c>Start</c>). Returns it, or null when no practice
+        /// definition / prefab is configured.
+        /// </summary>
+        public ProductItem EnsurePracticeItem()
+        {
+            if (practiceItem == null && practiceDefinition != null && itemPool != null)
+            {
+                practiceItem = itemPool.EnsurePracticeItem(practiceDefinition);
+            }
+
+            return practiceItem;
+        }
+
+        /// <summary>
+        /// Tutorial hand-off: activates the practice item at the practice spawn point, keeps it grabbable while everything
+        /// else is locked and lets the suitcase accept it (no score). Only valid in <c>Instructions</c>. Returns false when
+        /// there is no practice item or the state does not allow it.
+        /// </summary>
+        public bool BeginPractice()
+        {
+            if (!bound || session.State != SessionState.Instructions)
+            {
+                return false;
+            }
+
+            var item = EnsurePracticeItem();
+            if (item == null || suitcase == null || interactionLock == null)
+            {
+                Debug.LogWarning(ServiceResolver.LogPrefix + "GameplayDirector: no practice item configured; the tutorial runs without it.", this);
+                return false;
+            }
+
+            if (suitcase.Contains(item))
+            {
+                suitcase.Remove(item);
+            }
+
+            item.SetHomeSlot(null);
+            item.SetSpawnPose(PracticePose(item));
+            if (item.State == ProductItemState.Pooled)
+            {
+                itemPool.ActivateItem(item);
+            }
+            else
+            {
+                item.ReturnToSpawn(true);
+            }
+
+            suitcase.AcceptPracticePlacements = true;
+            interactionLock.AllowPractice(item);
+            IsPracticeActive = true;
+            PracticeStarted?.Invoke(item);
+            return true;
+        }
+
+        /// <summary>Withdraws the practice item: out of the suitcase, lock whitelist cleared, back to the pool. Idempotent.</summary>
+        public void EndPractice()
+        {
+            if (suitcase != null)
+            {
+                suitcase.AcceptPracticePlacements = false;
+            }
+
+            if (practiceItem == null)
+            {
+                IsPracticeActive = false;
+                return;
+            }
+
+            bool wasActive = IsPracticeActive || practiceItem.State != ProductItemState.Pooled;
+            IsPracticeActive = false;
+            if (suitcase != null && suitcase.Contains(practiceItem))
+            {
+                suitcase.Remove(practiceItem);
+            }
+
+            if (interactionLock != null && interactionLock.PracticeItem == practiceItem)
+            {
+                interactionLock.ClearPractice();
+            }
+
+            if (itemPool != null)
+            {
+                itemPool.DeactivateItem(practiceItem);
+            }
+            else
+            {
+                practiceItem.ReturnToPool();
+            }
+
+            if (wasActive)
+            {
+                PracticeEnded?.Invoke(practiceItem);
+            }
+        }
+
+        private Pose PracticePose(ProductItem item)
+        {
+            if (practiceSpawnPoint != null)
+            {
+                return ItemPlacementMath.PoseHanging(practiceSpawnPoint.position, practiceSpawnPoint.rotation, item);
+            }
+
+            // Fallback: hanging 0.35 m above the suitcase, 0.25 m towards the player origin.
+            var basePosition = suitcase.transform.position;
+            var toPlayer = new Vector3(-basePosition.x, 0f, -basePosition.z);
+            toPlayer = toPlayer.sqrMagnitude > 1e-4f ? toPlayer.normalized : Vector3.back;
+            var hook = basePosition + Vector3.up * 0.35f + toPlayer * 0.25f;
+            return ItemPlacementMath.PoseHanging(hook, Quaternion.LookRotation(-toPlayer, Vector3.up), item);
+        }
+
         /// <summary>Asks for a completion check on the next frame (placement, manual confirm).</summary>
         public void RequestCompletionCheck()
         {
@@ -166,6 +332,7 @@ namespace MultiTravel.Gameplay.Director
         private void Start()
         {
             ValidateSceneReferences();
+            EnsurePracticeItem();
             TryBind(false);
         }
 
@@ -332,6 +499,8 @@ namespace MultiTravel.Gameplay.Director
 
             UnsubscribeSuitcase();
             suitcase.ItemPlaced += OnItemPlaced;
+            suitcase.PracticeItemPlaced += OnPracticeItemPlaced;
+            suitcase.PracticeItemRemoved += OnPracticeItemRemoved;
             subscribedSuitcase = suitcase;
         }
 
@@ -343,6 +512,8 @@ namespace MultiTravel.Gameplay.Director
             }
 
             subscribedSuitcase.ItemPlaced -= OnItemPlaced;
+            subscribedSuitcase.PracticeItemPlaced -= OnPracticeItemPlaced;
+            subscribedSuitcase.PracticeItemRemoved -= OnPracticeItemRemoved;
             subscribedSuitcase = null;
         }
 
@@ -351,6 +522,11 @@ namespace MultiTravel.Gameplay.Director
         private void OnStateChanged(SessionState previous, SessionState next)
         {
             // Only cheap, synchronous safety work here (lock before anything else can react); the rest runs in Update.
+            if (next != SessionState.Instructions)
+            {
+                EndPractice();
+            }
+
             if (next != SessionState.Playing)
             {
                 SetPlayable(false);
@@ -370,6 +546,11 @@ namespace MultiTravel.Gameplay.Director
             }
 
             appliedState = state;
+            if (state != SessionState.Instructions && (IsPracticeActive || (practiceItem != null && practiceItem.State != ProductItemState.Pooled)))
+            {
+                EndPractice();
+            }
+
             if (state != SessionState.Loading)
             {
                 StopRoutine(ref loadingRoutine);
@@ -576,6 +757,7 @@ namespace MultiTravel.Gameplay.Director
             completionCheckRequested = false;
             pollTimer = 0f;
 
+            EndPractice();
             if (suitcase != null)
             {
                 suitcase.AcceptPlacements = false;
@@ -604,6 +786,22 @@ namespace MultiTravel.Gameplay.Director
         private void OnItemPlaced(ProductItem item, ScoreChange change)
         {
             completionCheckRequested = true;
+        }
+
+        private void OnPracticeItemPlaced(ProductItem item)
+        {
+            if (item == practiceItem && IsPracticeActive)
+            {
+                PracticePlaced?.Invoke(item);
+            }
+        }
+
+        private void OnPracticeItemRemoved(ProductItem item)
+        {
+            if (item == practiceItem && IsPracticeActive)
+            {
+                PracticeRemoved?.Invoke(item);
+            }
         }
 
         private void StopRoutine(ref Coroutine routine)

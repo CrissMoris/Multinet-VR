@@ -8,7 +8,7 @@ namespace MultiTravel.Gameplay.Suitcase
     /// Places items that were dropped (or fell) into the suitcase without a release inside the volume
     /// (ARCHITECTURE.md §2.8): every <see cref="tickSeconds"/> each unheld Free item whose anchor is inside the
     /// placement volume and whose Rigidbody is asleep or slower than the thresholds is passed to
-    /// <see cref="SuitcaseController.TryPlace"/>.
+    /// <see cref="SuitcaseController.TryPlace"/> (practice items too while the suitcase accepts practice placements).
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class SettleWatcher : MonoBehaviour
@@ -48,7 +48,7 @@ namespace MultiTravel.Gameplay.Suitcase
         /// <summary>Runs one check now. Returns the number of items placed.</summary>
         public int Tick()
         {
-            if (suitcase == null || !suitcase.AcceptPlacements)
+            if (suitcase == null || (!suitcase.AcceptPlacements && !suitcase.AcceptPracticePlacements))
             {
                 return 0;
             }
@@ -64,7 +64,7 @@ namespace MultiTravel.Gameplay.Suitcase
             for (int i = 0; i < items.Count; i++)
             {
                 var item = items[i];
-                if (item == null || item.State != ProductItemState.Free || item.IsReturning)
+                if (item == null || item.IsReturning || !suitcase.CanAccept(item))
                 {
                     continue;
                 }

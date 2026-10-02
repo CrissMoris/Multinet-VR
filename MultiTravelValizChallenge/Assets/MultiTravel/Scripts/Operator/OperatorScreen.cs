@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading;
 using MultiTravel.Core.Backend;
 using MultiTravel.Core.Completion;
 using MultiTravel.Core.Config;
@@ -20,10 +21,12 @@ using UnityEngine.InputSystem.UI;
 namespace MultiTravel.Operator
 {
     /// <summary>
-    /// PC-monitor operator screen (ARCHITECTURE.md §2.9). Add this single component to a GameObject in the Main scene; it
-    /// builds a Screen Space Overlay canvas with every panel in <c>Awake</c> (no prefabs), resolves services from
-    /// <see cref="AppServices"/> in <c>Start</c>, shows exactly one panel per <see cref="SessionState"/> and refreshes live
-    /// values at 10 Hz. When services are missing it logs an error, shows an on-screen message and keeps retrying.
+    /// PC-monitor operator screen (ARCHITECTURE.md §2.9, OVERHAUL_PLAN.md §5). Add this single component to a GameObject in the
+    /// Main scene; it builds a Screen Space Overlay canvas with every panel in <c>Awake</c> (no prefabs, no asset sprites),
+    /// resolves services from <see cref="AppServices"/> in <c>Start</c>, shows exactly one panel per <see cref="SessionState"/>
+    /// and refreshes live values at 10 Hz. Layout at 1920x1080: 72 px top bar, 300 px stepper, centre content, 400 px status
+    /// rail. The optional <see cref="SpectatorCamera"/> in the scene is found automatically.
+    /// When services are missing it logs an error, shows an on-screen message and keeps retrying.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class OperatorScreen : MonoBehaviour
@@ -38,20 +41,28 @@ namespace MultiTravel.Operator
 
         private readonly OperatorContext context = new OperatorContext();
         private readonly List<OperatorPanel> panels = new List<OperatorPanel>();
+        private readonly SpectatorFeed feed = new SpectatorFeed();
+        private readonly CancellationTokenSource lifetime = new CancellationTokenSource();
 
         private Canvas canvas;
-        private RectTransform contentArea;
-        private StatusBar statusBar;
+        private RectTransform centreArea;
+        private CanvasGroup backdropGroup;
+        private TopBar topBar;
+        private Stepper stepper;
+        private StatusRail rail;
         private LeaderboardPanel leaderboard;
-        private RegistrationPanel registrationPanel;
         private ServiceErrorPanel serviceErrorPanel;
         private OperatorPanel activePanel;
+        private UiToast toast;
+        private ConfirmModal modal;
+        private UiTooltipHost tooltip;
 
         private WaitForSecondsRealtime refreshWait;
         private Coroutine refreshRoutine;
         private SessionController subscribedSession;
         private bool started;
         private bool missingServicesLogged;
+        private bool backdropShown;
         private float nextBindAttemptAt;
         private int loggedRefreshErrors;
 
@@ -66,6 +77,7 @@ namespace MultiTravel.Operator
 
         private void Awake()
         {
+            context.Lifetime = lifetime.Token;
             BuildUi();
         }
 
@@ -73,6 +85,7 @@ namespace MultiTravel.Operator
         {
             started = true;
             EnsureEventSystem();
+            OperatorUiStyle.CheckFont(canvas.scaleFactor);
             TryBind();
             StartRefreshLoop();
         }
@@ -102,15 +115,32 @@ namespace MultiTravel.Operator
                 subscribedSession = null;
             }
 
-            statusBar?.Dispose();
+            lifetime.Cancel();
+            rail?.Dispose();
             leaderboard?.Dispose();
+            for (int i = 0; i < panels.Count; i++)
+            {
+                panels[i].Dispose();
+            }
+
+            feed.SetWanted(false);
+            UiTooltipHost.Release(tooltip);
+            UiTween.Clear();
+            lifetime.Dispose();
         }
 
         private void Update()
         {
-            if (registrationPanel != null && registrationPanel.IsVisible)
+            UiTween.Tick(Time.unscaledTime);
+            toast?.Tick(Time.unscaledTime);
+            if (modal != null)
             {
-                registrationPanel.Tick();
+                modal.Tick();
+            }
+
+            if (activePanel != null && activePanel.IsVisible && (modal == null || !modal.IsOpen))
+            {
+                activePanel.Tick();
             }
         }
 
@@ -124,12 +154,50 @@ namespace MultiTravel.Operator
             var background = UiFactory.CreateImage("Background", canvasRect, OperatorUiStyle.Background, false);
             UiFactory.Stretch(background.rectTransform);
 
-            contentArea = UiFactory.CreateRect("Content", canvasRect);
-            UiFactory.Stretch(contentArea, 0f, StatusBar.TotalHeight, 0f, 0f);
+            BuildBackdrop(canvasRect);
 
-            registrationPanel = new RegistrationPanel(context);
+            var body = UiFactory.CreateRect("Body", canvasRect);
+            UiFactory.Stretch(body, 0f, TopBar.Height, 0f, 0f);
+
+            var stepperHost = UiFactory.CreateRect("StepperHost", body);
+            UiFactory.AnchorLeft(stepperHost, OperatorUiStyle.StepperWidth);
+            var railHost = UiFactory.CreateRect("RailHost", body);
+            UiFactory.AnchorRight(railHost, OperatorUiStyle.RailWidth);
+            centreArea = UiFactory.CreateRect("Content", body);
+            UiFactory.Stretch(centreArea, OperatorUiStyle.StepperWidth + 12f, 24f, OperatorUiStyle.RailWidth + 12f, 24f);
+
+            // Overlays first so panels can use them while building.
+            context.Feed = feed;
+
+            stepper = new Stepper(context);
+            stepper.Build(stepperHost);
+
+            rail = new StatusRail(context);
+            rail.Build(railHost);
+
+            BuildPanels(centreArea);
+
+            leaderboard = new LeaderboardPanel(context);
+            leaderboard.Build(centreArea);
+
+            topBar = new TopBar(context, ToggleLeaderboard);
+            topBar.Build(canvasRect);
+            topBar.SetLeaderboardOpen(false);
+
+            tooltip = UiTooltipHost.Create(canvasRect);
+            toast = UiToast.Create(canvasRect);
+            modal = ConfirmModal.Create(canvasRect);
+            context.Toast = toast;
+            context.Modal = modal;
+            stepper.SetState(SessionState.Welcome);
+        }
+
+        private void BuildPanels(RectTransform area)
+        {
+            // Panels only touch Context.Modal / Context.Toast after Build (inside event handlers), so the overlays may be
+            // created after the panels; the context properties are assigned in BuildUi.
             panels.Add(new WelcomePanel(context));
-            panels.Add(registrationPanel);
+            panels.Add(new RegistrationPanel(context));
             panels.Add(new GenderPanel(context));
             panels.Add(new InstructionsPanel(context));
             panels.Add(new LoadingPanel(context));
@@ -138,18 +206,33 @@ namespace MultiTravel.Operator
             panels.Add(new FatalPanel(context));
             for (int i = 0; i < panels.Count; i++)
             {
-                panels[i].Build(contentArea);
+                panels[i].Build(area);
             }
 
             serviceErrorPanel = new ServiceErrorPanel(context);
-            serviceErrorPanel.Build(contentArea);
+            serviceErrorPanel.Build(area);
+        }
 
-            leaderboard = new LeaderboardPanel(context);
-            leaderboard.Build(contentArea);
+        private void BuildBackdrop(RectTransform canvasRect)
+        {
+            var root = UiFactory.CreateRect("Backdrop", canvasRect);
+            UiFactory.Stretch(root);
+            backdropGroup = root.gameObject.AddComponent<CanvasGroup>();
+            backdropGroup.alpha = 0f;
+            backdropGroup.blocksRaycasts = false;
+            backdropGroup.interactable = false;
 
-            statusBar = new StatusBar(context, ToggleLeaderboard);
-            statusBar.Build(canvasRect);
-            statusBar.SetLeaderboardOpen(false);
+            feed.CreateBackdrop(root, "SpectatorBackdrop");
+
+            var tint = UiFactory.CreateImage("Tint", root, OperatorUiStyle.WithAlpha(OperatorUiStyle.Background, 0.74f), false);
+            UiFactory.Stretch(tint.rectTransform);
+
+            var top = UiFactory.CreateImage("TopGradient", root, OperatorUiStyle.Background, false);
+            top.sprite = UiSprites.Gradient(true);
+            UiFactory.AnchorTop(top.rectTransform, 360f);
+            var bottom = UiFactory.CreateImage("BottomGradient", root, OperatorUiStyle.Background, false);
+            bottom.sprite = UiSprites.Gradient(false);
+            UiFactory.AnchorBottom(bottom.rectTransform, 420f);
         }
 
         private static void EnsureEventSystem()
@@ -244,8 +327,10 @@ namespace MultiTravel.Operator
             session.StateChanged += OnStateChanged;
 
             serviceErrorPanel.Hide();
-            statusBar.OnBound();
+            topBar.OnBound();
+            rail.OnBound();
             ShowPanelFor(session.State);
+            ApplyDecor(session.State);
             return true;
         }
 
@@ -283,6 +368,7 @@ namespace MultiTravel.Operator
             // Never let a UI problem propagate into the session controller's transition.
             try
             {
+                modal.Close();
                 if (next == SessionState.Welcome)
                 {
                     context.AdvanceEpoch();
@@ -293,10 +379,11 @@ namespace MultiTravel.Operator
                 }
 
                 ShowPanelFor(next);
+                ApplyDecor(next);
 
-                if (next == SessionState.Finished && leaderboard.IsOpen)
+                if (next == SessionState.Finished)
                 {
-                    leaderboard.Refresh();
+                    leaderboard.RefreshIfOpen();
                 }
             }
             catch (Exception ex)
@@ -337,6 +424,23 @@ namespace MultiTravel.Operator
             target.Show(state);
         }
 
+        /// <summary>Stepper highlight, spectator backdrop (Welcome / result) and camera activity for a state.</summary>
+        private void ApplyDecor(SessionState state)
+        {
+            stepper.SetState(state);
+
+            bool backdrop = state == SessionState.Welcome || state == SessionState.Completed || state == SessionState.Submitting
+                            || state == SessionState.SubmissionFailed || state == SessionState.Finished;
+            bool video = backdrop || state == SessionState.Loading || state == SessionState.Countdown || state == SessionState.Playing;
+            if (backdrop != backdropShown)
+            {
+                backdropShown = backdrop;
+                UiTween.Fade(backdropGroup, backdrop ? 1f : 0f, UiTween.Slow);
+            }
+
+            feed.SetWanted(video);
+        }
+
         private static void ClearSelection()
         {
             var eventSystem = EventSystem.current;
@@ -349,7 +453,7 @@ namespace MultiTravel.Operator
         private void ToggleLeaderboard()
         {
             bool open = leaderboard.Toggle();
-            statusBar.SetLeaderboardOpen(open);
+            topBar.SetLeaderboardOpen(open);
         }
 
         // ----- 10 Hz refresh -----
@@ -389,7 +493,9 @@ namespace MultiTravel.Operator
 
             try
             {
-                statusBar.Refresh(now);
+                rail.Refresh(now);
+                stepper.Refresh();
+                feed.Refresh();
                 if (activePanel != null && activePanel.IsVisible)
                 {
                     activePanel.Refresh();

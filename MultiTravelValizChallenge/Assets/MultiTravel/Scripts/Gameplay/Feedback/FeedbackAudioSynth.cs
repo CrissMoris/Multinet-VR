@@ -26,7 +26,7 @@ namespace MultiTravel.Gameplay.Feedback
             return samples;
         }
 
-        /// <summary>Low, slightly detuned square-ish buzz (negative placement).</summary>
+        /// <summary>Low, slightly detuned square-ish buzz (legacy negative sound; <see cref="WrongThud"/> is used in the game).</summary>
         public static float[] NegativeBuzz(int sampleRate = DefaultSampleRate, float amplitude = 0.45f)
         {
             float duration = 0.38f;
@@ -41,6 +41,54 @@ namespace MultiTravel.Gameplay.Feedback
                 float b = SoftSquare(2f * Mathf.PI * 147f * time);
                 float wobble = 0.75f + 0.25f * Mathf.Sin(2f * Mathf.PI * 18f * time);
                 samples[i] = (a + b) * 0.5f * wobble * Envelope(i, count, attack, release);
+            }
+
+            Normalize(samples, amplitude);
+            return samples;
+        }
+
+        /// <summary>
+        /// Soft wrong-item sound: a low dull thud (decaying 85 Hz body with a short low-passed noise knock) followed by a gentle
+        /// falling tone (330 → 196 Hz). Deliberately unharsh (replaces the old buzz in <see cref="PlacementFeedback"/>).
+        /// </summary>
+        public static float[] WrongThud(int sampleRate = DefaultSampleRate, float amplitude = 0.42f)
+        {
+            float duration = 0.46f;
+            var samples = Allocate(sampleRate, duration);
+            int count = samples.Length;
+
+            // Thud: pitch-dropping sine body + low-passed deterministic noise knock.
+            var noise = new System.Random(1234);
+            float lowPassed = 0f;
+            float bodyPhase = 0f;
+            int thudLength = Mathf.Min(count, (int)(0.16f * sampleRate));
+            int attack = Mathf.Max(1, (int)(0.003f * sampleRate));
+            for (int i = 0; i < thudLength; i++)
+            {
+                float time = (float)i / sampleRate;
+                float frequency = Mathf.Lerp(110f, 70f, Mathf.Clamp01(time / 0.12f));
+                bodyPhase += 2f * Mathf.PI * frequency / sampleRate;
+                float body = Mathf.Sin(bodyPhase) * Mathf.Exp(-22f * time);
+                float white = (float)(noise.NextDouble() * 2.0 - 1.0);
+                lowPassed += 0.08f * (white - lowPassed);
+                float knock = lowPassed * Mathf.Exp(-60f * time) * 2.5f;
+                float gain = i < attack ? (float)i / attack : 1f;
+                samples[i] += (body * 0.9f + knock) * gain;
+            }
+
+            // Falling tone: soft sine glide with a slow attack so it reads as "oops", not as an alarm.
+            int toneStart = (int)(0.07f * sampleRate);
+            int toneLength = Mathf.Max(1, count - toneStart);
+            int toneAttack = Mathf.Max(1, (int)(0.03f * sampleRate));
+            int toneRelease = Mathf.Max(1, (int)(0.12f * sampleRate));
+            float tonePhase = 0f;
+            for (int i = 0; i < toneLength; i++)
+            {
+                float k = (float)i / toneLength;
+                float frequency = Mathf.Lerp(330f, 196f, k * k * (3f - 2f * k));
+                tonePhase += 2f * Mathf.PI * frequency / sampleRate;
+                float tone = Mathf.Sin(tonePhase) + 0.18f * Mathf.Sin(2f * tonePhase);
+                samples[toneStart + i] += tone * 0.32f * Envelope(i, toneLength, toneAttack, toneRelease);
             }
 
             Normalize(samples, amplitude);

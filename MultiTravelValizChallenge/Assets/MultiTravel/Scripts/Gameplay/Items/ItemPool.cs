@@ -31,6 +31,7 @@ namespace MultiTravel.Gameplay.Items
         private readonly Dictionary<ProductDefinition, ProductItem> byDefinition = new Dictionary<ProductDefinition, ProductItem>();
         private readonly Dictionary<string, ProductItem> byId = new Dictionary<string, ProductItem>(StringComparer.Ordinal);
         private bool created;
+        private ProductItem practiceItem;
 
         /// <summary>Raised once after the catalog instances were created.</summary>
         public event Action<ItemPool> ItemsCreated;
@@ -46,6 +47,9 @@ namespace MultiTravel.Gameplay.Items
 
         /// <summary>True after <see cref="EnsureCreated"/> ran.</summary>
         public bool IsCreated => created;
+
+        /// <summary>The tutorial practice item created by <see cref="EnsurePracticeItem"/> (null when none).</summary>
+        public ProductItem PracticeItem => practiceItem;
 
         /// <summary>The catalog used to create instances.</summary>
         public ProductCatalog Catalog => catalog;
@@ -226,6 +230,62 @@ namespace MultiTravel.Gameplay.Items
             return true;
         }
 
+        /// <summary>
+        /// Creates (once) the non-catalog practice item for <paramref name="definition"/> (<c>Data/Practice/practice-tag</c>),
+        /// flags it <see cref="ProductItem.IsPractice"/> and registers it like every other instance (pooled, disabled).
+        /// Returns the instance, or null when the definition has no prefab. Call at scene start, never during a session.
+        /// </summary>
+        public ProductItem EnsurePracticeItem(ProductDefinition definition)
+        {
+            if (practiceItem != null)
+            {
+                return practiceItem;
+            }
+
+            if (definition == null)
+            {
+                return null;
+            }
+
+            EnsureCreated();
+            var existing = Find(definition);
+            if (existing != null)
+            {
+                existing.SetPractice(true);
+                practiceItem = existing;
+                return existing;
+            }
+
+            bool rootWasActive = ItemsRoot.gameObject.activeSelf;
+            itemsRoot.gameObject.SetActive(false);
+            try
+            {
+                practiceItem = CreateInstance(definition, -1);
+            }
+            finally
+            {
+                itemsRoot.gameObject.SetActive(rootWasActive);
+            }
+
+            return practiceItem;
+        }
+
+        /// <summary>Returns one instance to the pool and removes it from <see cref="ActiveItems"/>.</summary>
+        public void DeactivateItem(ProductItem item)
+        {
+            if (item == null)
+            {
+                return;
+            }
+
+            if (item.State != ProductItemState.Pooled)
+            {
+                item.ReturnToPool();
+            }
+
+            activeItems.Remove(item);
+        }
+
         /// <summary>Returns every instance to the pool (released, kinematic, disabled).</summary>
         public void DeactivateAll()
         {
@@ -265,12 +325,12 @@ namespace MultiTravel.Gameplay.Items
             itemsRoot = root.transform;
         }
 
-        private void CreateInstance(ProductDefinition definition, int catalogIndex)
+        private ProductItem CreateInstance(ProductDefinition definition, int catalogIndex)
         {
             if (definition == null)
             {
                 Debug.LogError(ServiceResolver.LogPrefix + "ItemPool: catalog entry " + catalogIndex + " is null; skipped.", this);
-                return;
+                return null;
             }
 
             if (definition.VisualPrefab == null)
@@ -279,13 +339,13 @@ namespace MultiTravel.Gameplay.Items
                     ServiceResolver.LogPrefix + "ItemPool: product '" + definition.Id + "' has no VisualPrefab; it will not appear in the room. " +
                     "Run MultiTravel/Generate/Content.",
                     definition);
-                return;
+                return null;
             }
 
             if (byDefinition.ContainsKey(definition) || (!string.IsNullOrEmpty(definition.Id) && byId.ContainsKey(definition.Id)))
             {
                 Debug.LogError(ServiceResolver.LogPrefix + "ItemPool: duplicate product id '" + definition.Id + "' in the catalog; second entry skipped.", definition);
-                return;
+                return null;
             }
 
             var instance = Instantiate(definition.VisualPrefab, itemsRoot, false);
@@ -302,7 +362,8 @@ namespace MultiTravel.Gameplay.Items
 
             instance.SetActive(false);
             item.Setup(definition);
-            Register(item);
+            item.SetPractice(catalogIndex < 0);
+            return Register(item) ? item : null;
         }
     }
 }

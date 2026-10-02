@@ -33,14 +33,19 @@ namespace MultiTravel.Operator.Panels
 
         protected override void OnBuild(RectTransform root)
         {
-            var card = UiFactory.CreateCard(root, "Card", 1000f, 48, 20f);
+            var card = UiFactory.CreateCard(root, "Card", 920f, 48, 20f);
+            var badgeRow = UiFactory.CreateRow(card, "BadgeRow", 0f, TextAnchor.MiddleCenter, false);
+            CreateBadge(badgeRow, UiIcon.Server, OperatorUiStyle.Danger, 96f);
             var heading = CreateHeading(card, "Uygulama Servisleri Bulunamadı");
-            heading.color = OperatorUiStyle.Danger;
+            heading.color = OperatorUiStyle.DangerText;
             CreateBody(card, "Message",
                 "Operatör ekranı oyun servislerine bağlanamadı. Uygulamayı Bootstrap sahnesinden başlatın; " +
                 "sorun devam ederse teknik ekibe haber verin. Servisler hazır olduğunda ekran kendiliğinden açılır.");
-            detailLabel = UiFactory.CreateLabel(card, "Detail", string.Empty, OperatorUiStyle.FontSmall,
+            detailLabel = UiFactory.CreateLabel(card, "Detail", string.Empty, OperatorUiStyle.FontLabel,
                 OperatorUiStyle.TextMuted, FontStyles.Normal, TextAlignmentOptions.Center);
+            var pillRow = UiFactory.CreateRow(card, "StatusRow", 0f, TextAnchor.MiddleCenter, false);
+            var pill = UiPill.Create(pillRow, "Retrying", 32f, OperatorUiStyle.FontLabel);
+            pill.Set("Yeniden bağlanılıyor…", OperatorUiStyle.Warning, false);
         }
     }
 }

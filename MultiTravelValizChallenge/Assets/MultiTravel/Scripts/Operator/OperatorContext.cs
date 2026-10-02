@@ -1,12 +1,15 @@
 using System;
+using System.Threading;
 using MultiTravel.Core.Backend;
 using MultiTravel.Core.Completion;
 using MultiTravel.Core.Config;
 using MultiTravel.Core.Outbox;
 using MultiTravel.Core.Scoring;
+using MultiTravel.Core.Services;
 using MultiTravel.Core.Session;
 using MultiTravel.Core.Timing;
 using MultiTravel.Core.Xr;
+using MultiTravel.Operator.UI;
 using UnityEngine;
 
 namespace MultiTravel.Operator
@@ -42,6 +45,52 @@ namespace MultiTravel.Operator
 
         /// <summary>Optional: null when no XR status service is registered (VR status "Bilinmiyor").</summary>
         public IXrStatusService Xr { get; private set; }
+
+        private IXrRigControl rig;
+        private ITutorialStatus tutorial;
+
+        /// <summary>
+        /// Optional rig control (Yeniden Ortala, Zemin -/+). Resolved lazily from <c>AppServices</c> because the gameplay
+        /// assembly may register it after the operator screen bound; null while absent.
+        /// </summary>
+        public IXrRigControl Rig
+        {
+            get
+            {
+                if (rig == null)
+                {
+                    AppServices.TryGet(out rig);
+                }
+
+                return rig;
+            }
+        }
+
+        /// <summary>Optional tutorial status ("Deneme durumu"); resolved lazily, null while absent.</summary>
+        public ITutorialStatus Tutorial
+        {
+            get
+            {
+                if (tutorial == null)
+                {
+                    AppServices.TryGet(out tutorial);
+                }
+
+                return tutorial;
+            }
+        }
+
+        /// <summary>Confirmation dialog shared by every panel (set by <see cref="OperatorScreen"/>).</summary>
+        public ConfirmModal Modal { get; internal set; }
+
+        /// <summary>Toast notifications (set by <see cref="OperatorScreen"/>).</summary>
+        public UiToast Toast { get; internal set; }
+
+        /// <summary>Video surfaces fed by the spectator camera (set by <see cref="OperatorScreen"/>).</summary>
+        public SpectatorFeed Feed { get; internal set; }
+
+        /// <summary>Cancelled when the operator screen is destroyed; pass it to every asynchronous backend call.</summary>
+        public CancellationToken Lifetime { get; internal set; }
 
         /// <summary>Participant-cycle counter; incremented whenever the session returns to Welcome.</summary>
         public int Epoch { get; private set; }

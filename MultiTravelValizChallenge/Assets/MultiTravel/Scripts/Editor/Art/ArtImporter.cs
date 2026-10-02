@@ -16,6 +16,13 @@ namespace MultiTravel.EditorTools.Art
     /// Imports the production art: Poly Haven (CC0) textures/models and the original Blender models built by
     /// <c>tools/blender/mt_build_assets.py</c>. Builds URP/Lit materials from <c>Art/materials.json</c>, remaps model
     /// materials onto them and (re)builds the product prefabs in place (stable GUIDs). Idempotent.
+    /// <para>
+    /// Product prefabs (OVERHAUL_PLAN §4/§5): model + box collider + anchor + Rigidbody + XRGrabInteractable + ProductItem,
+    /// plus an inverted-hull hover outline (<c>Outline</c> children, material <c>MT_Outline</c>), a <c>Hanging</c> /
+    /// <c>Folded</c> visual pair with <see cref="ItemVisualVariant"/> when <c>&lt;id&gt;-hanging.fbx</c> exists, an invisible
+    /// enlarged <c>GrabCollider</c> for items smaller than 5 cm in any axis and the grip <c>Attach</c> child. The practice
+    /// item (<c>Data/Practice/practice-tag</c>) gets a prefab the same way.
+    /// </para>
     /// </summary>
     public static class ArtImporter
     {
@@ -28,6 +35,19 @@ namespace MultiTravel.EditorTools.Art
         public const string PolyHavenFolder = GeneratedAssetUtil.RootFolder + "/ThirdParty/PolyHaven";
         public const string PolyHavenTexturesFolder = PolyHavenFolder + "/Textures";
         private const string LitShader = "Universal Render Pipeline/Lit";
+        private const string UnlitShader = "Universal Render Pipeline/Unlit";
+
+        /// <summary>Hover outline material (unlit teal #19B394, Cull Front).</summary>
+        public const string OutlineMaterialPath = ArtMaterialsFolder + "/MT_Outline.mat";
+
+        /// <summary>Folder of the generated outline hull meshes.</summary>
+        public const string OutlineMeshesFolder = GeneratedAssetUtil.MeshesFolder + "/Outline";
+
+        /// <summary>Suffix of the hanging display variant model (<c>&lt;id&gt;-hanging.fbx</c>).</summary>
+        public const string HangingSuffix = "-hanging";
+
+        /// <summary>Outline colour (#19B394).</summary>
+        public static readonly Color OutlineColor = new Color32(0x19, 0xB3, 0x94, 0xFF);
 
         /// <summary>Product id → Poly Haven model folder (CC0) for products not modelled in Blender.</summary>
         public static readonly IReadOnlyDictionary<string, string> PolyHavenProducts = new Dictionary<string, string>
@@ -369,7 +389,8 @@ namespace MultiTravel.EditorTools.Art
                 }
 
                 var name = Path.GetFileNameWithoutExtension(path);
-                ApplyModelSettings(importer);
+                // Product meshes stay CPU-readable: the importer copies them into the hover outline hulls.
+                ApplyModelSettings(importer, path.StartsWith(ProductModelsFolder + "/", StringComparison.Ordinal));
                 if (manifest.TryGetValue(name, out var keys))
                 {
                     foreach (var key in keys)
@@ -387,7 +408,7 @@ namespace MultiTravel.EditorTools.Art
             }
         }
 
-        private static void ApplyModelSettings(ModelImporter importer)
+        private static void ApplyModelSettings(ModelImporter importer, bool readable = false)
         {
             importer.globalScale = 1f;
             importer.useFileScale = true;
@@ -399,7 +420,7 @@ namespace MultiTravel.EditorTools.Art
             importer.importAnimation = false;
             importer.importNormals = ModelImporterNormals.Import;
             importer.importTangents = ModelImporterTangents.CalculateMikk;
-            importer.isReadable = false;
+            importer.isReadable = readable;
             importer.meshCompression = ModelImporterMeshCompression.Off;
             importer.addCollider = false;
             importer.materialImportMode = ModelImporterMaterialImportMode.ImportViaMaterialDescription;
@@ -419,7 +440,7 @@ namespace MultiTravel.EditorTools.Art
                     continue;
                 }
 
-                ApplyModelSettings(importer);
+                ApplyModelSettings(importer, true);
                 importer.SaveAndReimport();
                 // Embedded materials disappear from the sub-assets once remapped, so also read the existing remap table.
                 var materialNames = AssetDatabase.LoadAllAssetsAtPath(modelPath).OfType<Material>().Select(m => m.name)
@@ -493,6 +514,32 @@ namespace MultiTravel.EditorTools.Art
             return $"{ProductModelsFolder}/{productId}.fbx";
         }
 
+        /// <summary>Path of the hanging display variant model of <paramref name="productId"/> (may not exist).</summary>
+        public static string HangingModelPathFor(string productId)
+        {
+            return $"{ProductModelsFolder}/{productId}{HangingSuffix}.fbx";
+        }
+
+        /// <summary>The hover outline material (created / updated in place).</summary>
+        public static Material EnsureOutlineMaterial()
+        {
+            var shader = Shader.Find(UnlitShader) ?? throw new InvalidOperationException("URP Unlit shader not found.");
+            GeneratedAssetUtil.EnsureFolder(ArtMaterialsFolder);
+            return GeneratedAssetUtil.UpsertMaterial(OutlineMaterialPath, shader, m =>
+            {
+                m.SetColor("_BaseColor", OutlineColor);
+                if (m.HasProperty("_Cull"))
+                {
+                    m.SetFloat("_Cull", (float)CullMode.Front);
+                }
+
+                m.SetFloat("_Surface", 0f);
+                m.SetOverrideTag("RenderType", "Opaque");
+                m.renderQueue = (int)RenderQueue.Geometry + 10;
+                m.enableInstancing = true;
+            });
+        }
+
         private static void BuildProductPrefabs(GeneratorReport report)
         {
             var catalog = ProductDataGenerator.LoadCatalog();
@@ -503,89 +550,184 @@ namespace MultiTravel.EditorTools.Art
             }
 
             GeneratedAssetUtil.EnsureFolder(GeneratedAssetUtil.PrefabsFolder);
+            GeneratedAssetUtil.EnsureFolder(OutlineMeshesFolder);
+            var outline = EnsureOutlineMaterial();
             foreach (var product in catalog.Products)
             {
-                if (product == null)
+                if (product != null)
                 {
-                    continue;
-                }
-
-                var modelPath = ModelPathFor(product.Id);
-                var model = AssetDatabase.LoadAssetAtPath<GameObject>(modelPath);
-                if (model == null)
-                {
-                    report.AddError($"{product.Id}: production model missing at {modelPath}.");
-                    continue;
-                }
-
-                var prefabPath = $"{GeneratedAssetUtil.PrefabsFolder}/{product.Id}.prefab";
-                var root = new GameObject(product.Id);
-                try
-                {
-                    var visual = (GameObject)PrefabUtility.InstantiatePrefab(model, root.transform);
-                    visual.name = "Model";
-                    visual.transform.localPosition = Vector3.zero;
-                    // Keep the importer's root rotation/scale (Poly Haven FBX roots carry the Z-up conversion); add the pose fix on top.
-                    if (ModelRotation.TryGetValue(product.Id, out var euler))
-                    {
-                        visual.transform.localRotation = Quaternion.Euler(euler) * visual.transform.localRotation;
-                    }
-                    if (product.Id == "football")
-                    {
-                        KeepRoundestRenderer(root);
-                    }
-
-                    var bounds = RendererBounds(root);
-                    if (ModelMaxSize.TryGetValue(product.Id, out var maxSize))
-                    {
-                        float largest = Mathf.Max(bounds.size.x, bounds.size.y, bounds.size.z);
-                        if (largest > 0.0001f)
-                        {
-                            visual.transform.localScale *= maxSize / largest;
-                            bounds = RendererBounds(root);
-                        }
-                    }
-
-                    // Rest the model on the root origin (bottom centre) so spawn slots and suitcase slots line up.
-                    visual.transform.localPosition -= new Vector3(bounds.center.x, bounds.min.y, bounds.center.z);
-                    bounds = RendererBounds(root);
-                    foreach (var r in root.GetComponentsInChildren<MeshRenderer>())
-                    {
-                        r.shadowCastingMode = ShadowCastingMode.On;
-                        r.receiveShadows = true;
-                        if (product.Id == "sunglasses")
-                        {
-                            r.sharedMaterials = r.sharedMaterials.Select(TintSunglassesLens).ToArray();
-                        }
-                    }
-
-                    var box = root.AddComponent<BoxCollider>();
-                    box.center = bounds.center;
-                    box.size = Vector3.Max(bounds.size, Vector3.one * 0.02f);
-                    var anchor = new GameObject("Anchor").transform;
-                    anchor.SetParent(root.transform, false);
-                    anchor.localPosition = bounds.center;
-                    var item = root.AddComponent<ProductItem>();
-                    item.Setup(product);
-                    item.SetAnchorPoint(anchor);
-                    var prefab = PrefabUtility.SaveAsPrefabAsset(root, prefabPath);
-                    if (product.VisualPrefab != prefab)
-                    {
-                        product.VisualPrefab = prefab;
-                        EditorUtility.SetDirty(product);
-                    }
-
-                    report.Updated.Add($"{prefabPath} ← {modelPath} ({bounds.size.x:0.00}×{bounds.size.y:0.00}×{bounds.size.z:0.00} m)");
-                }
-                catch (Exception ex)
-                {
-                    report.AddError($"{product.Id}: {ex.Message}");
-                }
-                finally
-                {
-                    UnityEngine.Object.DestroyImmediate(root);
+                    BuildProductPrefab(product, outline, report, false);
                 }
             }
+
+            var practice = ProductDataGenerator.LoadPracticeDefinition();
+            if (practice != null)
+            {
+                BuildProductPrefab(practice, outline, report, true);
+            }
+            else
+            {
+                report.Warnings.Add($"Practice item definition missing at {ProductDataGenerator.PracticePath} (run MultiTravel/Generate/Product Data).");
+            }
+        }
+
+        private static void BuildProductPrefab(ProductDefinition product, Material outline, GeneratorReport report, bool optional)
+        {
+            var modelPath = ModelPathFor(product.Id);
+            var model = AssetDatabase.LoadAssetAtPath<GameObject>(modelPath);
+            if (model == null)
+            {
+                if (optional)
+                {
+                    report.Warnings.Add($"{product.Id}: model missing at {modelPath}; the tutorial runs without the practice item.");
+                }
+                else
+                {
+                    report.AddError($"{product.Id}: production model missing at {modelPath}.");
+                }
+
+                return;
+            }
+
+            var hangingPath = HangingModelPathFor(product.Id);
+            var hangingModel = AssetDatabase.LoadAssetAtPath<GameObject>(hangingPath);
+            bool wantsVariant = product.Presentation != null && product.Presentation.HasHangingVariant;
+            if (wantsVariant && hangingModel == null)
+            {
+                report.Warnings.Add($"{product.Id}: HasHangingVariant is set but {hangingPath} is missing; the prefab has no hanging visual.");
+            }
+
+            var prefabPath = $"{GeneratedAssetUtil.PrefabsFolder}/{product.Id}.prefab";
+            var root = new GameObject(product.Id);
+            try
+            {
+                Transform foldedRoot;
+                Transform hangingRoot = null;
+                if (hangingModel != null)
+                {
+                    foldedRoot = new GameObject(ItemVisualVariant.FoldedChildName).transform;
+                    foldedRoot.SetParent(root.transform, false);
+                    hangingRoot = new GameObject(ItemVisualVariant.HangingChildName).transform;
+                    hangingRoot.SetParent(root.transform, false);
+                }
+                else
+                {
+                    foldedRoot = root.transform;
+                }
+
+                // Packed / default visual: rests on the root origin (bottom centre) so spawn and suitcase slots line up.
+                var visual = InstantiateModel(product.Id, model, foldedRoot, "Model");
+                var bounds = ItemVisualVariant.ComputeVisualBounds(root.transform, foldedRoot);
+                if (ModelMaxSize.TryGetValue(product.Id, out var maxSize))
+                {
+                    float largest = Mathf.Max(bounds.size.x, bounds.size.y, bounds.size.z);
+                    if (largest > 0.0001f)
+                    {
+                        visual.transform.localScale *= maxSize / largest;
+                        bounds = ItemVisualVariant.ComputeVisualBounds(root.transform, foldedRoot);
+                    }
+                }
+
+                visual.transform.localPosition -= new Vector3(bounds.center.x, bounds.min.y, bounds.center.z);
+                var foldedBounds = ItemVisualVariant.ComputeVisualBounds(root.transform, foldedRoot);
+
+                // Hanging display visual: the prefab pivot is the hook top (OVERHAUL_PLAN §5 Hanger grip).
+                var hangingBounds = foldedBounds;
+                if (hangingRoot != null)
+                {
+                    var hanging = InstantiateModel(product.Id, hangingModel, hangingRoot, "Model");
+                    var hb = ItemVisualVariant.ComputeVisualBounds(root.transform, hangingRoot);
+                    if (Mathf.Abs(hb.max.y) > 0.02f)
+                    {
+                        // The FBX pivot is not at the hook: put the top centre of the visual on the pivot.
+                        hanging.transform.localPosition -= new Vector3(hb.center.x, hb.max.y, hb.center.z);
+                    }
+
+                    hangingBounds = ItemVisualVariant.ComputeVisualBounds(root.transform, hangingRoot);
+                }
+
+                foreach (var r in root.GetComponentsInChildren<MeshRenderer>(true))
+                {
+                    r.shadowCastingMode = ShadowCastingMode.On;
+                    r.receiveShadows = true;
+                    if (product.Id == "sunglasses")
+                    {
+                        r.sharedMaterials = r.sharedMaterials.Select(TintSunglassesLens).ToArray();
+                    }
+                }
+
+                var outlineWarnings = new List<string>();
+                ProductVisuals.AddOutlineHulls(root, OutlineMeshesFolder, product.Id, outline, outlineWarnings);
+                report.Warnings.AddRange(outlineWarnings);
+
+                var box = root.AddComponent<BoxCollider>();
+                var displayBounds = hangingRoot != null ? hangingBounds : foldedBounds;
+                box.center = displayBounds.center;
+                box.size = Vector3.Max(displayBounds.size, Vector3.one * 0.02f);
+                var anchor = new GameObject(ProductItem.AnchorChildName).transform;
+                anchor.SetParent(root.transform, false);
+                anchor.localPosition = displayBounds.center;
+
+                if (hangingRoot != null)
+                {
+                    var variant = root.AddComponent<ItemVisualVariant>();
+                    variant.Configure(hangingRoot, foldedRoot, box, ColliderBounds(hangingBounds), ColliderBounds(foldedBounds));
+                    variant.SetAnchor(anchor, hangingBounds.center, foldedBounds.center);
+                }
+                else
+                {
+                    ProductVisuals.EnsureGrabCollider(root, foldedBounds);
+                }
+
+                var grip = product.Presentation != null ? product.Presentation.Grip : GripPreset.Dynamic;
+                var attach = ProductItem.BuildGripAttach(root.transform, grip, hangingRoot != null);
+                var item = root.AddComponent<ProductItem>();
+                item.SetGripAttach(attach);
+                item.Setup(product);
+                item.SetAnchorPoint(anchor);
+                var prefab = PrefabUtility.SaveAsPrefabAsset(root, prefabPath);
+                if (product.VisualPrefab != prefab)
+                {
+                    product.VisualPrefab = prefab;
+                    EditorUtility.SetDirty(product);
+                }
+
+                var size = displayBounds.size;
+                report.Updated.Add($"{prefabPath} ← {modelPath}{(hangingRoot != null ? " + " + hangingPath : string.Empty)} " +
+                                   $"({size.x:0.00}×{size.y:0.00}×{size.z:0.00} m)");
+            }
+            catch (Exception ex)
+            {
+                report.AddError($"{product.Id}: {ex.Message}");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(root);
+            }
+        }
+
+        private static GameObject InstantiateModel(string productId, GameObject model, Transform parent, string name)
+        {
+            var visual = (GameObject)PrefabUtility.InstantiatePrefab(model, parent);
+            visual.name = name;
+            visual.transform.localPosition = Vector3.zero;
+            // Keep the importer's root rotation/scale (Poly Haven FBX roots carry the Z-up conversion); add the pose fix on top.
+            if (ModelRotation.TryGetValue(productId, out var euler))
+            {
+                visual.transform.localRotation = Quaternion.Euler(euler) * visual.transform.localRotation;
+            }
+
+            if (productId == "football")
+            {
+                KeepRoundestRenderer(visual);
+            }
+
+            return visual;
+        }
+
+        private static Bounds ColliderBounds(Bounds visualBounds)
+        {
+            return new Bounds(visualBounds.center, Vector3.Max(visualBounds.size, Vector3.one * 0.02f));
         }
 
         /// <summary>The Poly Haven "football" asset holds an intact and a deflated ball; keep the intact (roundest) one.</summary>

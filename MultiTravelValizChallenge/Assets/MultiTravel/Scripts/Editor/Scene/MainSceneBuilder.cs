@@ -1,12 +1,16 @@
+using System;
 using System.Collections.Generic;
+using MultiTravel.Core.Products;
 using MultiTravel.EditorTools.Art;
 using MultiTravel.EditorTools.Data;
 using MultiTravel.EditorTools.Validation;
+using MultiTravel.Gameplay.Audio;
 using MultiTravel.Gameplay.Director;
 using MultiTravel.Gameplay.Feedback;
 using MultiTravel.Gameplay.Items;
+using MultiTravel.Gameplay.Presentation;
 using MultiTravel.Gameplay.Suitcase;
-using MultiTravel.Gameplay.UI;
+using MultiTravel.Gameplay.Tutorial;
 using MultiTravel.Gameplay.Xr;
 using MultiTravel.Operator;
 using Unity.XR.CoreUtils;
@@ -14,33 +18,49 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 using UnityEngine.XR.Interaction.Toolkit;
+using UnityEngine.XR.Interaction.Toolkit.Inputs;
+using Object = UnityEngine.Object;
 
 namespace MultiTravel.EditorTools.SceneBuild
 {
     /// <summary>
-    /// Builds Main.unity from the production art: a hotel room with a U-shaped dressing-room wardrobe (12 bays x 3
-    /// reachable shelves = 36 spawn slots) around the participant, the open suitcase on a luggage bench in front, and all
-    /// gameplay systems wired. Saving over the existing scene path keeps its GUID (build settings stay valid).
-    /// Layout (Unity): participant at the origin facing +Z; floor at y = 0.
+    /// Builds Main.unity (v2, docs/OVERHAUL_PLAN.md): a branded stage with a curved backdrop, a U-shaped open wardrobe whose
+    /// zones match the item types, two console tables, the open suitcase on a luggage rack in front of the participant, the
+    /// diegetic stopwatch / scoreboard / result card, mood lighting and all gameplay systems.
+    /// <para>
+    /// Environment models are exported by tools/blender in world space (participant at the origin facing +Z). Marker empties
+    /// inside the FBX drive the wiring: <c>SLOT.&lt;zone&gt;.nn</c> spawn slots, <c>PACK.&lt;kind&gt;.nn</c> suitcase packing
+    /// anchors, <c>PIVOT.*</c> animation pivots, <c>UI.*</c> text anchors, <c>VOL.placement</c>, <c>LIGHT.*</c> and
+    /// <c>EMISSIVE.*</c>. Saving over the existing scene path keeps its GUID.
+    /// </para>
     /// </summary>
     public static class MainSceneBuilder
     {
-        public const float BayRadius = 1.05f;
-        public static readonly float[] ShelfTops = { 0.68f, 1.08f, 1.48f };
-        public static readonly float[] BayAngles = { -165f, -139f, -113f, -87f, -61f, -35f, 35f, 61f, 87f, 113f, 139f, 165f };
-        public static readonly Vector3 BenchPosition = new Vector3(0f, 0f, 0.56f);
-        public const float BenchTop = 0.42f;
+        /// <summary>Static environment models, all positioned in world space by the art pipeline.</summary>
+        public static readonly string[] EnvironmentModels =
+        {
+            "stage-floor", "stage-backdrop", "floor-mat", "wardrobe-carcass", "wardrobe-hanging-module",
+            "wardrobe-folded-module", "wardrobe-door-left", "wardrobe-door-right", "console-table-business",
+            "console-table-leisure", "luggage-rack"
+        };
 
-        // Suitcase interior (metres, suitcase-root local): see tools/blender/mt_environment.py suitcase_open().
-        private const float WheelHeight = 0.055f;
-        private const float ShellWall = 0.006f;
-        private const float BaseHeight = 0.14f;
-        private static readonly Vector2 InteriorSize = new Vector2(0.67f, 0.43f);
-        private const float InteriorFloorY = WheelHeight + ShellWall + 0.006f;
+        public const string SuitcaseModel = "suitcase-open";
+        public const string StopwatchModel = "stopwatch";
+        public const string ScoreboardModel = "scoreboard";
+
+        /// <summary>Layers stacked above each flat / top packing anchor (3 cm each).</summary>
+        public const int FlatLayers = 7;
+        public const float LayerStep = 0.03f;
+
+        /// <summary>A Blender cube empty with display size 1 spans ±1 unit, so its full size is 2 × scale.</summary>
+        public const float VolumeEmptyUnitSize = 2f;
 
         private const string EnvironmentFolder = ArtImporter.EnvironmentModelsFolder;
         private const string RigPath = "Assets/VRTemplateAssets/Prefabs/Setup/Complete XR Origin Set Up Hands Variant.prefab";
+        private const string VolumeProfilePath = GeneratedAssetUtil.RootFolder + "/Scenes/MainVolumeProfile.asset";
+        private const string LightingSettingsPath = GeneratedAssetUtil.RootFolder + "/Scenes/MainLighting.lighting";
 
         [MenuItem("MultiTravel/Generate/Rebuild Main Scene", priority = 140)]
         public static void RebuildMenu()
@@ -48,17 +68,43 @@ namespace MultiTravel.EditorTools.SceneBuild
             Build();
         }
 
+        [MenuItem("MultiTravel/Generate/Bake Main Lighting", priority = 141)]
+        public static void BakeMenu()
+        {
+            BakeLighting();
+        }
+
         public static void Build()
         {
             var catalog = ProductDataGenerator.LoadCatalog();
+            if (catalog == null)
+            {
+                throw new InvalidOperationException("Product catalog missing. Run MultiTravel/Generate/Product Data first.");
+            }
+
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
-            ConfigureLighting();
 
+            // NewScene unloads unreferenced assets; load the definitions afterwards so they are not destroyed stubs.
+            catalog = ProductDataGenerator.LoadCatalog();
+            var practice = ProductDataGenerator.LoadPracticeDefinition();
+            ConfigureEnvironmentLighting();
+
+            // ---------------------------------------------------------------- static set
             var environment = new GameObject("Environment").transform;
-            BuildRoom(environment);
-            var bays = BuildWardrobe(environment, out var spawnSlots);
-            BuildFurniture(environment);
+            var placed = new Dictionary<string, GameObject>();
+            foreach (var name in EnvironmentModels)
+            {
+                placed[name] = InstantiateModel(name, environment);
+            }
 
+            // Animated displays live outside the static set (static batching would freeze the stopwatch needle).
+            var displays = new GameObject("Diegetic displays").transform;
+            var stopwatch = InstantiateModel(StopwatchModel, displays);
+            var scoreboard = InstantiateModel(ScoreboardModel, displays);
+            AddDecor(environment);
+            AddStaticColliders(environment);
+
+            // ---------------------------------------------------------------- systems
             var systems = new GameObject("Gameplay systems");
             var pool = systems.AddComponent<ItemPool>();
             pool.SetCatalog(catalog);
@@ -66,40 +112,259 @@ namespace MultiTravel.EditorTools.SceneBuild
             interactionLock.SetPool(pool);
             var recovery = systems.AddComponent<ItemRecoveryService>();
             recovery.SetPool(pool);
-            recovery.Configure(0f, new Bounds(new Vector3(0.15f, 1.4f, 0f), new Vector3(6.6f, 2.8f, 5.4f)));
+            recovery.Configure(0f, new Bounds(new Vector3(0f, 1.3f, 0.4f), new Vector3(4.6f, 2.8f, 4.4f)));
+
+            var spawnSlots = CreateSpawnSlots(environment);
             var layout = systems.AddComponent<SpawnSlotLayout>();
             layout.SetSlots(spawnSlots);
+            ValidateZoneCapacity(catalog, layout);
 
-            var suitcase = BuildSuitcase(environment, pool);
+            var suitcase = BuildSuitcase(pool, out var lid, out var practiceSpawn);
+            recovery.SetSuitcase(suitcase);
             systems.AddComponent<SettleWatcher>().Configure(suitcase, pool);
             var feedback = systems.AddComponent<PlacementFeedback>();
             feedback.SetSuitcase(suitcase);
             systems.AddComponent<ProductNameTags>().SetPool(pool);
+
             var director = systems.AddComponent<GameplayDirector>();
             director.Configure(catalog, pool, layout, suitcase, interactionLock, feedback);
-            EventSceneGenerator.AddConfirmButton(director);
-            BuildConfirmStand(director);
+            if (practice != null)
+            {
+                director.ConfigurePractice(practice, practiceSpawn);
+            }
+            else
+            {
+                Debug.LogWarning("[MultiTravel] Practice item definition missing; the in-VR tutorial will be skipped.");
+            }
 
-            var panel = new GameObject("VR status").AddComponent<VrPanelUI>();
-            panel.transform.position = new Vector3(0f, 2.05f, 2.72f);
-            panel.Configure(director, catalog);
+            EventSceneGenerator.AddConfirmButton(director);
+            PlaceConfirmButton(director, suitcase.transform);
+
+            // ---------------------------------------------------------------- presentation
+            var presentation = new GameObject("Presentation");
+            var audio = presentation.AddComponent<AudioDirector>();
+            audio.Configure(director, suitcase, lid);
+            SetSerialized(audio, "playCountdownBeeps", false); // PlacementFeedback already voices the countdown.
+
+            var stopwatchDisplay = stopwatch.AddComponent<StopwatchDisplay>();
+            stopwatchDisplay.Configure(FindRequired(stopwatch.transform, "PIVOT.needle"), FindRequired(stopwatch.transform, "UI.stopwatch_face"), director, audio);
+            var scoreboardDisplay = scoreboard.AddComponent<ScoreboardDisplay>();
+            scoreboardDisplay.Configure(FindRequired(scoreboard.transform, "UI.scoreboard"), new Vector2(1.0f, 0.45f));
+
+            var resultGo = new GameObject("Result card");
+            var resultAnchor = FindMarker(environment, "UI.result") ?? FindMarker(displays, "UI.result");
+            if (resultAnchor != null)
+            {
+                FaceTextAnchor(resultAnchor);
+                resultGo.transform.SetPositionAndRotation(resultAnchor.position, resultAnchor.rotation);
+            }
+            else
+            {
+                // Above the closed lid, 1.1 m from the eyes, slightly below eye level, facing the participant.
+                resultGo.transform.SetPositionAndRotation(new Vector3(0f, 1.32f, 0.95f), Quaternion.identity);
+            }
+
+            resultGo.AddComponent<ResultCard>().Configure(lid, new Vector2(0.9f, 0.55f));
+
+            var mood = presentation.AddComponent<MoodLighting>();
+            mood.Configure(BuildLightGroups(environment, suitcase.transform));
+            presentation.AddComponent<AttractMode>().Configure(mood, scoreboardDisplay);
+            presentation.AddComponent<TutorialController>().Configure(director, suitcase, audio);
+            presentation.AddComponent<ScreenFade>().Configure(null);
+
+            // ---------------------------------------------------------------- operator, rig
             new GameObject("Operator screen").AddComponent<OperatorScreen>();
+            var spectator = new GameObject("Spectator camera");
+            spectator.transform.position = new Vector3(-1.25f, 1.85f, -1.55f);
+            spectator.transform.LookAt(new Vector3(0f, 1.1f, 0.45f));
+            spectator.AddComponent<SpectatorCamera>();
+
             new GameObject("XR Interaction Manager").AddComponent<XRInteractionManager>();
             var rig = (GameObject)PrefabUtility.InstantiatePrefab(AssetDatabase.LoadAssetAtPath<GameObject>(RigPath));
             rig.name = "Quest hands and controllers";
             rig.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
-            rig.AddComponent<XrRigController>().SetOrigin(rig.GetComponentInChildren<XROrigin>());
+            var rigController = rig.AddComponent<XrRigController>();
+            rigController.SetOrigin(rig.GetComponentInChildren<XROrigin>());
+            rigController.SetRecenterTarget(placed["floor-mat"].transform);
+            var modality = rig.GetComponentInChildren<XRInputModalityManager>(true);
+            presentation.AddComponent<TrackingLossGuard>().Configure(pool, modality);
+            rig.AddComponent<HandPresenceStyler>().Configure(modality, null);
 
+            AddLightProbes(environment);
+            AddReflectionProbe();
+            AddPostProcessing();
             MarkStatic(environment.gameObject);
+
             EditorSceneManager.SaveScene(scene, ProjectValidator.MainScenePath);
-            Debug.Log($"[MultiTravel] Main scene rebuilt: {bays} wardrobe bays, {spawnSlots.Count} spawn slots.");
+            Debug.Log($"[MultiTravel] Main scene rebuilt: {spawnSlots.Count} spawn slots in {CountZones(spawnSlots)} zones, {suitcase.GetComponentsInChildren<SuitcaseSlot>().Length} suitcase slots.");
         }
 
-        /// <summary>
-        /// Puts the manual-confirm poke button on a slim oak stand right of the suitcase. Stand and button share one visual
-        /// root, so both disappear when the completion mode does not allow a manual confirmation.
-        /// </summary>
-        private static void BuildConfirmStand(GameplayDirector director)
+        // ------------------------------------------------------------------------------------------------ slots
+
+        private static List<SpawnSlot> CreateSpawnSlots(Transform environment)
+        {
+            var slots = new List<SpawnSlot>();
+            foreach (var marker in FindMarkers(environment, "SLOT."))
+            {
+                var parts = marker.name.Split('.');
+                if (parts.Length < 3 || !TryParseZone(parts[1], out var zone))
+                {
+                    Debug.LogWarning($"[MultiTravel] Spawn slot marker '{marker.name}' has an unknown zone; skipped.");
+                    continue;
+                }
+
+                var slot = marker.gameObject.AddComponent<SpawnSlot>();
+                slot.SetZone(zone);
+                slot.SetHeightOffset(zone == DisplayZone.Hanging ? 0f : 0.004f);
+                slots.Add(slot);
+            }
+
+            if (slots.Count == 0)
+            {
+                throw new InvalidOperationException("No SLOT.* markers found in the environment models. Re-export the art (tools/blender/mt_build_assets.py).");
+            }
+
+            return slots;
+        }
+
+        public static bool TryParseZone(string token, out DisplayZone zone)
+        {
+            foreach (DisplayZone value in Enum.GetValues(typeof(DisplayZone)))
+            {
+                if (string.Equals(value.ToString(), token, StringComparison.OrdinalIgnoreCase))
+                {
+                    zone = value;
+                    return value != DisplayZone.Any;
+                }
+            }
+
+            zone = DisplayZone.Any;
+            return false;
+        }
+
+        private static void ValidateZoneCapacity(ProductCatalog catalog, SpawnSlotLayout layout)
+        {
+            var errors = new List<string>();
+            if (!ZoneCapacityValidator.Validate(catalog.Products, layout.CountSlotsPerZone(), errors))
+            {
+                throw new InvalidOperationException("Zone capacity check failed:\n" + string.Join("\n", errors));
+            }
+        }
+
+        private static int CountZones(List<SpawnSlot> slots)
+        {
+            var zones = new HashSet<DisplayZone>();
+            foreach (var s in slots)
+            {
+                zones.Add(s.Zone);
+            }
+
+            return zones.Count;
+        }
+
+        // ------------------------------------------------------------------------------------------------ suitcase
+
+        private static SuitcaseController BuildSuitcase(ItemPool pool, out SuitcaseLid lid, out Transform practiceSpawn)
+        {
+            var root = new GameObject("Open suitcase");
+            var model = InstantiateModel(SuitcaseModel, root.transform);
+            model.name = "Suitcase model";
+
+            var lidPivot = FindRequired(model.transform, "PIVOT.lid");
+            foreach (var mf in model.GetComponentsInChildren<MeshFilter>(true))
+            {
+                if (IsMarker(mf.transform) || mf.sharedMesh == null)
+                {
+                    continue;
+                }
+
+                mf.gameObject.AddComponent<MeshCollider>().sharedMesh = mf.sharedMesh;
+            }
+
+            // Moving colliders (lid) belong to a kinematic body so the physics engine treats them as dynamic geometry.
+            var lidBody = lidPivot.gameObject.AddComponent<Rigidbody>();
+            lidBody.isKinematic = true;
+            lidBody.useGravity = false;
+
+            var volumeMarker = FindRequired(model.transform, "VOL.placement");
+            var volume = volumeMarker.gameObject.AddComponent<BoxCollider>();
+            volume.isTrigger = true;
+            volume.size = Vector3.one * VolumeEmptyUnitSize;
+            volume.center = Vector3.zero;
+
+            var slots = new List<SuitcaseSlot>();
+            foreach (var marker in FindMarkers(model.transform, "PACK."))
+            {
+                var parts = marker.name.Split('.');
+                if (parts.Length < 3 || !TryParsePacked(parts[1], out var kind))
+                {
+                    Debug.LogWarning($"[MultiTravel] Packing marker '{marker.name}' has an unknown kind; skipped.");
+                    continue;
+                }
+
+                bool stacked = kind == PackedKind.Flat || kind == PackedKind.Top;
+                int layers = stacked ? FlatLayers : 1;
+                SuitcaseSlot below = null;
+                for (int layer = 0; layer < layers; layer++)
+                {
+                    var slotGo = layer == 0 ? marker.gameObject : new GameObject($"{marker.name}.L{layer}");
+                    if (layer > 0)
+                    {
+                        slotGo.transform.SetParent(marker.parent, false);
+                        slotGo.transform.localPosition = marker.localPosition + marker.parent.InverseTransformVector(Vector3.up * (layer * LayerStep));
+                        slotGo.transform.localRotation = marker.localRotation;
+                    }
+
+                    var slot = slotGo.AddComponent<SuitcaseSlot>();
+                    slot.SetKind(kind);
+                    slot.SetBelow(below);
+                    slots.Add(slot);
+                    below = slot;
+                }
+            }
+
+            if (slots.Count == 0)
+            {
+                throw new InvalidOperationException("No PACK.* markers found in the suitcase model.");
+            }
+
+            var suitcase = root.AddComponent<SuitcaseController>();
+            suitcase.Configure(volume, slots);
+            suitcase.SetPool(pool);
+
+            lid = root.AddComponent<SuitcaseLid>();
+            lid.Configure(lidPivot, suitcase);
+            var straps = StrapLift.FindDeep(model.transform, "Straps");
+            if (straps != null)
+            {
+                root.AddComponent<StrapLift>().Configure(suitcase, straps, 0.05f, 0.06f);
+            }
+
+            // Practice tag hovers above the front edge of the suitcase, at chest height and within easy reach.
+            var spawn = new GameObject("Practice item spawn").transform;
+            spawn.SetParent(root.transform, false);
+            var vb = volume.bounds;
+            spawn.position = new Vector3(vb.center.x, vb.max.y + 0.22f, vb.min.z - 0.05f);
+            practiceSpawn = spawn;
+            return suitcase;
+        }
+
+        public static bool TryParsePacked(string token, out PackedKind kind)
+        {
+            foreach (PackedKind value in Enum.GetValues(typeof(PackedKind)))
+            {
+                if (string.Equals(value.ToString(), token, StringComparison.OrdinalIgnoreCase))
+                {
+                    kind = value;
+                    return true;
+                }
+            }
+
+            kind = PackedKind.Flat;
+            return false;
+        }
+
+        private static void PlaceConfirmButton(GameplayDirector director, Transform suitcaseRoot)
         {
             var root = GameObject.Find("Manual confirmation");
             if (root == null)
@@ -107,256 +372,233 @@ namespace MultiTravel.EditorTools.SceneBuild
                 return;
             }
 
-            root.transform.position = new Vector3(0.66f, 0.93f, 0.36f);
-            var face = root.transform.Find("Button face");
-            var assembly = new GameObject("Button assembly");
-            assembly.transform.SetParent(root.transform, false);
-            face.SetParent(assembly.transform, true);
-            var oak = ArtImporter.GetMaterial("oak_veneer");
-            var column = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            column.name = "Stand column";
-            Object.DestroyImmediate(column.GetComponent<BoxCollider>());
-            column.transform.SetParent(assembly.transform, false);
-            column.transform.position = new Vector3(0.66f, 0.45f, 0.36f);
-            column.transform.localScale = new Vector3(0.14f, 0.9f, 0.14f);
-            column.GetComponent<MeshRenderer>().sharedMaterial = oak;
-            var plate = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            plate.name = "Stand top";
-            Object.DestroyImmediate(plate.GetComponent<BoxCollider>());
-            plate.transform.SetParent(assembly.transform, false);
-            plate.transform.position = new Vector3(0.66f, 0.9f, 0.36f);
-            plate.transform.localScale = new Vector3(0.27f, 0.025f, 0.18f);
-            plate.GetComponent<MeshRenderer>().sharedMaterial = oak;
-            var button = root.GetComponent<ManualConfirmButton>();
-            var label = root.GetComponentInChildren<TMPro.TMP_Text>(true);
-            button.Configure(director, assembly, label, face.GetComponent<Renderer>(), root.GetComponent<BoxCollider>());
+            // Hidden unless the completion mode allows a manual confirmation; sits on the rack's right edge.
+            var bounds = ArtImporter.RendererBounds(suitcaseRoot.gameObject);
+            root.transform.position = new Vector3(bounds.max.x + 0.16f, bounds.min.y + 0.58f, bounds.min.z + 0.08f);
         }
 
         // ------------------------------------------------------------------------------------------------ lighting
 
-        private static void ConfigureLighting()
+        private static void ConfigureEnvironmentLighting()
         {
+            RenderSettings.skybox = null;
             RenderSettings.ambientMode = AmbientMode.Trilight;
-            RenderSettings.ambientSkyColor = new Color(0.86f, 0.88f, 0.92f);
-            RenderSettings.ambientEquatorColor = new Color(0.74f, 0.71f, 0.67f);
-            RenderSettings.ambientGroundColor = new Color(0.45f, 0.41f, 0.37f);
+            RenderSettings.ambientSkyColor = new Color(0.42f, 0.47f, 0.58f);
+            RenderSettings.ambientEquatorColor = new Color(0.36f, 0.36f, 0.40f);
+            RenderSettings.ambientGroundColor = new Color(0.20f, 0.19f, 0.19f);
             RenderSettings.ambientIntensity = 1f;
             RenderSettings.fog = false;
-            RenderSettings.skybox = null;
             RenderSettings.defaultReflectionMode = DefaultReflectionMode.Custom;
 
-            var sun = new GameObject("Window daylight").AddComponent<Light>();
-            sun.type = LightType.Directional;
-            sun.intensity = 1.6f;
-            sun.color = new Color(1f, 0.96f, 0.9f);
-            sun.shadows = LightShadows.Soft;
-            sun.shadowStrength = 0.65f;
-            sun.transform.rotation = Quaternion.Euler(42f, 72f, 0f); // from the window on the left wall
-
-            var lights = new GameObject("Ceiling downlights").transform;
-            foreach (var p in new[] { new Vector3(-1.6f, 2.8f, -1.6f), new Vector3(0f, 2.8f, 0.4f), new Vector3(1.8f, 2.8f, 2.0f), new Vector3(-1.6f, 2.8f, 2.0f), new Vector3(1.8f, 2.8f, -1.6f) })
+            var settings = AssetDatabase.LoadAssetAtPath<LightingSettings>(LightingSettingsPath);
+            if (settings == null)
             {
-                var l = new GameObject("Downlight").AddComponent<Light>();
-                l.transform.SetParent(lights, false);
-                l.transform.position = p;
-                l.type = LightType.Point;
-                l.range = 5.5f;
-                l.intensity = 3.2f;
-                l.color = new Color(1f, 0.9f, 0.78f);
-                l.shadows = LightShadows.None;
+                settings = new LightingSettings { name = "MainLighting" };
+                GeneratedAssetUtil.EnsureFolder(GeneratedAssetUtil.RootFolder + "/Scenes");
+                AssetDatabase.CreateAsset(settings, LightingSettingsPath);
             }
 
-            // Inside the wardrobe ring: shelf LEDs read better with a soft warm fill at shelf height.
-            var fill = new GameObject("Wardrobe fill").AddComponent<Light>();
-            fill.transform.position = new Vector3(0f, 1.9f, 0.1f);
+            settings.bakedGI = true;
+            settings.realtimeGI = false;
+            settings.mixedBakeMode = MixedLightingMode.Shadowmask;
+            settings.lightmapper = LightingSettings.Lightmapper.ProgressiveGPU;
+            settings.lightmapResolution = 20f;
+            settings.lightmapMaxSize = 2048;
+            settings.lightmapPadding = 4;
+            settings.ao = true;
+            settings.aoMaxDistance = 0.8f;
+            settings.directionalityMode = LightmapsMode.NonDirectional;
+            settings.maxBounces = 2;
+            EditorUtility.SetDirty(settings);
+            Lightmapping.lightingSettings = settings;
+        }
+
+        private static List<LightGroup> BuildLightGroups(Transform environment, Transform suitcaseRoot)
+        {
+            var general = new LightGroup { Name = "Stage", Role = LightGroupRole.General };
+            var suitcaseKey = new LightGroup { Name = "Suitcase key", Role = LightGroupRole.SuitcaseKey };
+            var wardrobe = new LightGroup { Name = "Wardrobe spots", Role = LightGroupRole.WardrobeSpots };
+            var suitcaseSpot = new LightGroup { Name = "Suitcase spot", Role = LightGroupRole.SuitcaseSpot };
+            var led = new LightGroup { Name = "LED strips", Role = LightGroupRole.Led };
+
+            // Key: one realtime soft-shadow directional light for crisp contact shadows on items and hands.
+            var key = new GameObject("Stage key").AddComponent<Light>();
+            key.type = LightType.Directional;
+            key.lightmapBakeType = LightmapBakeType.Mixed;
+            key.intensity = 1.15f;
+            key.color = new Color(1f, 0.96f, 0.92f);
+            key.shadows = LightShadows.Soft;
+            key.shadowStrength = 0.75f;
+            key.transform.rotation = Quaternion.Euler(52f, 28f, 0f);
+            general.Lights.Add(key);
+
+            var hints = FindMarkers(environment, "LIGHT.");
+            foreach (var hint in hints)
+            {
+                string n = hint.name.ToLowerInvariant();
+                var light = hint.gameObject.AddComponent<Light>();
+                light.type = n.Contains("spot") ? LightType.Spot : LightType.Point;
+                light.color = new Color(1f, 0.92f, 0.82f);
+                light.range = 4f;
+                light.spotAngle = 55f;
+                light.innerSpotAngle = 30f;
+                light.intensity = 2.2f;
+                light.shadows = LightShadows.None;
+                light.lightmapBakeType = LightmapBakeType.Baked;
+                if (n.Contains("suitcase"))
+                {
+                    light.lightmapBakeType = LightmapBakeType.Mixed;
+                    light.shadows = LightShadows.Soft;
+                    light.intensity = 3f;
+                    suitcaseSpot.Lights.Add(light);
+                }
+                else if (n.Contains("wardrobe") || n.Contains("hanging") || n.Contains("folded") || n.Contains("door"))
+                {
+                    light.lightmapBakeType = LightmapBakeType.Mixed;
+                    wardrobe.Lights.Add(light);
+                }
+                else
+                {
+                    general.Lights.Add(light);
+                }
+            }
+
+            if (suitcaseSpot.Lights.Count == 0)
+            {
+                var spot = new GameObject("Suitcase spot").AddComponent<Light>();
+                spot.type = LightType.Spot;
+                spot.lightmapBakeType = LightmapBakeType.Mixed;
+                var target = ArtImporter.RendererBounds(suitcaseRoot.gameObject).center;
+                spot.transform.position = target + new Vector3(0f, 1.6f, -0.35f);
+                spot.transform.LookAt(target);
+                spot.spotAngle = 55f;
+                spot.innerSpotAngle = 28f;
+                spot.range = 4f;
+                spot.intensity = 3f;
+                spot.color = new Color(1f, 0.93f, 0.84f);
+                spot.shadows = LightShadows.Soft;
+                suitcaseSpot.Lights.Add(spot);
+            }
+
+            // The suitcase key is the warm fill used by the tutorial preset.
+            var fill = new GameObject("Suitcase key").AddComponent<Light>();
             fill.type = LightType.Point;
-            fill.range = 3.2f;
-            fill.intensity = 2.4f;
-            fill.color = new Color(1f, 0.93f, 0.84f);
+            fill.lightmapBakeType = LightmapBakeType.Realtime;
+            fill.transform.position = new Vector3(0f, 1.55f, 0.1f);
+            fill.range = 2.2f;
+            fill.intensity = 1.1f;
+            fill.color = new Color(1f, 0.9f, 0.78f);
             fill.shadows = LightShadows.None;
+            suitcaseKey.Lights.Add(fill);
 
-            var probe = new GameObject("Room reflection").AddComponent<ReflectionProbe>();
-            probe.transform.position = new Vector3(0.15f, 1.45f, 0f);
-            probe.size = new Vector3(6.9f, 2.9f, 5.7f);
+            foreach (var r in environment.GetComponentsInChildren<Renderer>(true))
+            {
+                if (r.name.StartsWith("EMISSIVE.", StringComparison.Ordinal))
+                {
+                    led.Emissives.Add(r);
+                }
+            }
+
+            return new List<LightGroup> { general, suitcaseKey, wardrobe, suitcaseSpot, led };
+        }
+
+        private static void AddLightProbes(Transform environment)
+        {
+            var go = new GameObject("Light probes");
+            var group = go.AddComponent<LightProbeGroup>();
+            var positions = new List<Vector3>();
+            for (float x = -1.2f; x <= 1.21f; x += 0.4f)
+            {
+                for (float y = 0.5f; y <= 2.01f; y += 0.5f)
+                {
+                    for (float z = -0.6f; z <= 1.61f; z += 0.4f)
+                    {
+                        positions.Add(new Vector3(x, y, z));
+                    }
+                }
+            }
+
+            group.probePositions = positions.ToArray();
+        }
+
+        private static void AddReflectionProbe()
+        {
+            var probe = new GameObject("Stage reflection").AddComponent<ReflectionProbe>();
+            probe.transform.position = new Vector3(0f, 1.3f, 0.35f);
+            probe.size = new Vector3(4.2f, 2.8f, 4.0f);
             probe.boxProjection = true;
-            probe.mode = ReflectionProbeMode.Realtime;
-            probe.refreshMode = ReflectionProbeRefreshMode.OnAwake;
-            probe.timeSlicingMode = ReflectionProbeTimeSlicingMode.AllFacesAtOnce;
+            probe.mode = ReflectionProbeMode.Baked;
             probe.resolution = 256;
+            probe.hdr = true;
         }
 
-        // ------------------------------------------------------------------------------------------------ room
-
-        private static void BuildRoom(Transform parent)
+        private static void AddPostProcessing()
         {
-            var shell = InstantiateModel("room-shell", parent, Vector3.zero, Quaternion.identity);
-            // Physics: floor and walls (items can never leave the room).
-            AddBoxCollider(shell, new Vector3(0.15f, -0.05f, -0.05f), new Vector3(7.2f, 0.1f, 6.0f));
-            AddBoxCollider(shell, new Vector3(0.15f, 1.45f, 2.86f), new Vector3(7.2f, 2.9f, 0.12f));
-            AddBoxCollider(shell, new Vector3(0.15f, 1.45f, -2.96f), new Vector3(7.2f, 2.9f, 0.12f));
-            AddBoxCollider(shell, new Vector3(3.66f, 1.45f, -0.05f), new Vector3(0.12f, 2.9f, 6.0f));
-            AddBoxCollider(shell, new Vector3(-3.36f, 1.45f, -0.05f), new Vector3(0.12f, 2.9f, 6.0f));
-            AddBoxCollider(shell, new Vector3(0.15f, 2.95f, -0.05f), new Vector3(7.2f, 0.1f, 6.0f));
-            var rug = InstantiateModel("rug", parent, new Vector3(0f, 0f, 0.1f), Quaternion.identity);
-            rug.name = "Rug";
-            var curtains = InstantiateModel("curtains", parent, new Vector3(-3.22f, 0f, 0.2f), Quaternion.Euler(0f, 90f, 0f));
-            curtains.name = "Curtains";
-        }
-
-        // ------------------------------------------------------------------------------------------------ wardrobe
-
-        private static int BuildWardrobe(Transform parent, out List<SpawnSlot> spawnSlots)
-        {
-            spawnSlots = new List<SpawnSlot>();
-            var root = new GameObject("Dressing-room wardrobe").transform;
-            root.SetParent(parent, false);
-            foreach (var angle in BayAngles)
+            var profile = AssetDatabase.LoadAssetAtPath<VolumeProfile>(VolumeProfilePath);
+            if (profile == null)
             {
-                float rad = angle * Mathf.Deg2Rad;
-                var position = new Vector3(Mathf.Sin(rad) * BayRadius, 0f, Mathf.Cos(rad) * BayRadius);
-                var bay = InstantiateModel("wardrobe-bay", root, position, Quaternion.Euler(0f, angle, 0f));
-                bay.name = $"Wardrobe bay {angle:+0;-0}";
-                // shelves, sides, back and drawer cabinet as colliders (items rest on shelves, cannot fall through)
-                foreach (var top in ShelfTops)
-                {
-                    AddBoxCollider(bay, new Vector3(0f, top - 0.0125f, 0.005f), new Vector3(0.414f, 0.025f, 0.36f));
-                }
-
-                AddBoxCollider(bay, new Vector3(0f, 0.33f, 0f), new Vector3(0.43f, 0.66f, 0.38f));
-                AddBoxCollider(bay, new Vector3(0f, 1.05f, 0.186f), new Vector3(0.43f, 1.95f, 0.012f));
-                foreach (var side in new[] { -1f, 1f })
-                {
-                    AddBoxCollider(bay, new Vector3(side * 0.216f, 1.05f, 0f), new Vector3(0.018f, 1.95f, 0.38f));
-                }
-
-                for (int tier = 0; tier < ShelfTops.Length; tier++)
-                {
-                    var slotGo = new GameObject($"Product position {tier + 1}");
-                    slotGo.transform.SetParent(bay.transform, false);
-                    slotGo.transform.localPosition = new Vector3(0f, ShelfTops[tier], 0.005f);
-                    var slot = slotGo.AddComponent<SpawnSlot>();
-                    slot.SetHeightOffset(0.004f);
-                    spawnSlots.Add(slot);
-                }
+                profile = ScriptableObject.CreateInstance<VolumeProfile>();
+                AssetDatabase.CreateAsset(profile, VolumeProfilePath);
             }
 
-            return BayAngles.Length;
-        }
-
-        // ------------------------------------------------------------------------------------------------ suitcase
-
-        private static SuitcaseController BuildSuitcase(Transform parent, ItemPool pool)
-        {
-            var bench = InstantiateModel("luggage-bench", parent, BenchPosition, Quaternion.identity);
-            bench.name = "Luggage bench";
-            AddBoxCollider(bench, new Vector3(0f, BenchTop / 2f, 0f), new Vector3(0.86f, BenchTop, 0.56f));
-
-            var suitcaseRoot = new GameObject("Open suitcase");
-            suitcaseRoot.transform.SetParent(parent, false);
-            suitcaseRoot.transform.position = BenchPosition + new Vector3(0f, BenchTop, 0f);
-            var model = InstantiateModel("suitcase-open", suitcaseRoot.transform, suitcaseRoot.transform.position, Quaternion.identity);
-            model.name = "Suitcase model";
-            // Shell colliders: interior floor, four walls (items dropped in rest inside), and the open lid.
-            var cRoot = suitcaseRoot;
-            AddBoxCollider(cRoot, new Vector3(0f, (WheelHeight + InteriorFloorY) / 2f, 0f), new Vector3(0.70f, InteriorFloorY - WheelHeight + 0.02f, 0.46f));
-            float wallH = BaseHeight;
-            float wallY = WheelHeight + BaseHeight / 2f;
-            AddBoxCollider(cRoot, new Vector3(0f, wallY, -0.227f), new Vector3(0.70f, wallH, 0.012f));
-            AddBoxCollider(cRoot, new Vector3(0f, wallY, 0.227f), new Vector3(0.70f, wallH, 0.012f));
-            AddBoxCollider(cRoot, new Vector3(-0.347f, wallY, 0f), new Vector3(0.012f, wallH, 0.46f));
-            AddBoxCollider(cRoot, new Vector3(0.347f, wallY, 0f), new Vector3(0.012f, wallH, 0.46f));
-            var lid = new GameObject("Lid collider");
-            lid.transform.SetParent(cRoot.transform, false);
-            lid.transform.localPosition = new Vector3(0f, WheelHeight + BaseHeight, 0.23f);
-            lid.transform.localRotation = Quaternion.Euler(-10f, 0f, 0f);
-            var lidBox = lid.AddComponent<BoxCollider>();
-            lidBox.center = new Vector3(0f, 0.23f, 0.06f);
-            lidBox.size = new Vector3(0.70f, 0.46f, 0.11f);
-
-            var volumeGo = new GameObject("Placement volume");
-            volumeGo.transform.SetParent(cRoot.transform, false);
-            float rim = WheelHeight + BaseHeight;
-            float top = rim + 0.15f;
-            volumeGo.transform.localPosition = new Vector3(0f, (InteriorFloorY + top) / 2f, 0f);
-            var volume = volumeGo.AddComponent<BoxCollider>();
-            volume.isTrigger = true;
-            volume.size = new Vector3(InteriorSize.x, top - InteriorFloorY, InteriorSize.y);
-
-            // 2 x 2 packing columns, 9 layers each (36 slots); items lie flat, long side across the suitcase.
-            var slots = new List<SuitcaseSlot>();
-            var columns = new[] { new Vector2(-0.165f, -0.105f), new Vector2(0.165f, -0.105f), new Vector2(-0.165f, 0.105f), new Vector2(0.165f, 0.105f) };
-            int column = 0;
-            foreach (var c in columns)
+            if (!profile.TryGet(out Tonemapping tonemapping))
             {
-                SuitcaseSlot below = null;
-                for (int layer = 0; layer < 9; layer++)
-                {
-                    var slotGo = new GameObject($"Packed slot c{column}-l{layer}");
-                    slotGo.transform.SetParent(cRoot.transform, false);
-                    slotGo.transform.localPosition = new Vector3(c.x, InteriorFloorY + layer * 0.03f, c.y);
-                    slotGo.transform.localRotation = Quaternion.Euler(0f, 90f, 0f);
-                    var slot = slotGo.AddComponent<SuitcaseSlot>();
-                    slot.SetBelow(below);
-                    slots.Add(slot);
-                    below = slot;
-                }
-
-                column++;
+                tonemapping = profile.Add<Tonemapping>(true);
+                AssetDatabase.AddObjectToAsset(tonemapping, profile);
             }
 
-            var suitcase = cRoot.AddComponent<SuitcaseController>();
-            suitcase.Configure(volume, slots);
-            suitcase.SetPool(pool);
-            return suitcase;
-        }
+            tonemapping.mode.overrideState = true;
+            tonemapping.mode.value = TonemappingMode.Neutral;
 
-        // ------------------------------------------------------------------------------------------------ furniture
-
-        private static void BuildFurniture(Transform parent)
-        {
-            var bed = InstantiateModel("bed", parent, new Vector3(2.45f, 0f, 1.25f), Quaternion.Euler(0f, 90f, 0f));
-            bed.name = "Bed";
-            AddBoxCollider(bed, new Vector3(0f, 0.33f, 0f), new Vector3(1.66f, 0.66f, 2.04f));
-            foreach (var z in new[] { 0.0f, 2.5f })
+            if (!profile.TryGet(out Bloom bloom))
             {
-                var stand = InstantiateModel("nightstand", parent, new Vector3(3.3f, 0f, z), Quaternion.Euler(0f, -90f, 0f));
-                stand.name = "Nightstand";
-                AddBoxCollider(stand, new Vector3(0f, 0.275f, 0f), new Vector3(0.5f, 0.55f, 0.4f));
-                InstantiateModel("table-lamp", parent, new Vector3(3.3f, 0.55f, z), Quaternion.identity).name = "Table lamp";
-                var lampLight = new GameObject("Lamp light").AddComponent<Light>();
-                lampLight.transform.SetParent(parent, false);
-                lampLight.transform.position = new Vector3(3.3f, 0.95f, z);
-                lampLight.type = LightType.Point;
-                lampLight.range = 2.2f;
-                lampLight.intensity = 0.9f;
-                lampLight.color = new Color(1f, 0.82f, 0.6f);
-                lampLight.shadows = LightShadows.None;
+                bloom = profile.Add<Bloom>(true);
+                AssetDatabase.AddObjectToAsset(bloom, profile);
             }
 
-            var mirror = InstantiateModel("floor-mirror", parent, new Vector3(-2.2f, 0f, -2.75f), Quaternion.Euler(0f, 180f, 0f));
-            mirror.name = "Floor mirror";
-            var rack = InstantiateModel("hanger-rail-decor", parent, new Vector3(-2.75f, 0f, 2.05f), Quaternion.Euler(0f, 90f, 0f));
-            rack.name = "Clothes rack";
+            bloom.threshold.overrideState = true;
+            bloom.threshold.value = 1.1f;
+            bloom.intensity.overrideState = true;
+            bloom.intensity.value = 0.35f;
+            bloom.highQualityFiltering.overrideState = true;
+            bloom.highQualityFiltering.value = false;
+            EditorUtility.SetDirty(profile);
+            AssetDatabase.SaveAssets();
 
-            // Poly Haven CC0 furniture already in the project (see ASSET_MANIFEST.md).
-            ImportFurniture("mid_century_lounge_chair", parent, new Vector3(-2.6f, 0f, -1.9f), 0.85f, 35f);
-            ImportFurniture("modern_coffee_table_01", parent, new Vector3(-1.75f, 0f, -2.1f), 0.8f, 0f);
-            ImportFurniture("calathea_orbifolia_01", parent, new Vector3(-2.95f, 0f, 1.55f), 0.55f, 0f);
-            ImportFurniture("drawer_cabinet", parent, new Vector3(2.9f, 0f, -2.45f), 1.0f, 180f);
-            ImportFurniture("ceramic_vase_01", parent, new Vector3(2.75f, 0.0f, -2.45f), 0.2f, 0f, stackOnTopOf: "drawer_cabinet");
-            ImportFurniture("hanging_picture_frame_01", parent, new Vector3(2.0f, 1.6f, 2.77f), 0.9f, 180f, wall: true);
-            ImportFurniture("wall_clock", parent, new Vector3(-1.6f, 2.2f, 2.77f), 0.35f, 180f, wall: true);
+            var volume = new GameObject("Post processing").AddComponent<Volume>();
+            volume.isGlobal = true;
+            volume.priority = 1f;
+            volume.sharedProfile = profile;
         }
 
-        private static readonly Dictionary<string, GameObject> placedFurniture = new Dictionary<string, GameObject>();
+        /// <summary>Bakes lightmaps, light probes and the reflection probe of the open Main scene (synchronous).</summary>
+        public static bool BakeLighting()
+        {
+            var scene = EditorSceneManager.OpenScene(ProjectValidator.MainScenePath, OpenSceneMode.Single);
+            bool ok = Lightmapping.Bake();
+            EditorSceneManager.SaveScene(scene);
+            Debug.Log($"[MultiTravel] Lighting bake {(ok ? "completed" : "FAILED")}.");
+            return ok;
+        }
 
-        private static void ImportFurniture(string id, Transform parent, Vector3 position, float width, float yaw, bool hang = false, bool wall = false, string stackOnTopOf = null)
+        // ------------------------------------------------------------------------------------------------ decor
+
+        private static void AddDecor(Transform environment)
+        {
+            // CC0 Poly Haven dressing outside the reach zone (ASSET_MANIFEST.md): plants frame the stage, a vase and
+            // stationery dress the business table edge without taking item slots.
+            ImportFurniture("calathea_orbifolia_01", environment, new Vector3(-1.55f, 0f, 1.05f), 0.6f, 20f);
+            ImportFurniture("calathea_orbifolia_01", environment, new Vector3(1.55f, 0f, 1.05f), 0.6f, -20f);
+            ImportFurniture("modern_ceiling_lamp_01", environment, new Vector3(0f, 2.75f, 0.45f), 0.55f, 0f, hang: true);
+        }
+
+        private static void ImportFurniture(string id, Transform parent, Vector3 position, float width, float yaw, bool hang = false)
         {
             var folder = $"{ArtImporter.PolyHavenFolder}/{id}";
             var guids = AssetDatabase.FindAssets("t:Model", new[] { folder });
             if (guids.Length == 0)
             {
-                Debug.LogWarning($"[MultiTravel] Furniture '{id}' not found under {folder}; skipped.");
+                Debug.LogWarning($"[MultiTravel] Decor '{id}' not found under {folder}; skipped.");
                 return;
             }
 
@@ -364,38 +606,16 @@ namespace MultiTravel.EditorTools.SceneBuild
             var go = (GameObject)PrefabUtility.InstantiatePrefab(model, parent);
             go.name = id;
             go.transform.localRotation = Quaternion.Euler(0f, yaw, 0f) * go.transform.localRotation;
-            var b = WorldBounds(go);
+            var b = ArtImporter.RendererBounds(go);
             float horizontal = Mathf.Max(b.size.x, b.size.z);
             go.transform.localScale *= width / Mathf.Max(0.001f, horizontal);
-            var wb = WorldBounds(go);
+            var wb = ArtImporter.RendererBounds(go);
             float y = hang ? position.y - wb.size.y : position.y;
-            if (!string.IsNullOrEmpty(stackOnTopOf) && placedFurniture.TryGetValue(stackOnTopOf, out var under) && under != null)
-            {
-                y = WorldBounds(under).max.y;
-            }
-
-            var target = new Vector3(position.x, y, position.z);
-            go.transform.position += target - new Vector3(wb.center.x, wb.min.y, wall ? wb.max.z : wb.center.z);
-            if (wall)
-            {
-                go.transform.position += new Vector3(0f, 0f, 0f);
-            }
-
-            RemapPolyHavenMaterials(go, folder, id);
-            if (!hang && !wall)
-            {
-                // World-aligned collider next to the model (Poly Haven roots carry a -90 X / 100x import transform).
-                var fb = WorldBounds(go);
-                var colGo = new GameObject(id + " collider");
-                colGo.transform.SetParent(parent, false);
-                colGo.transform.position = fb.center;
-                colGo.AddComponent<BoxCollider>().size = fb.size;
-            }
-
-            placedFurniture[id] = go;
+            go.transform.position += new Vector3(position.x, y, position.z) - new Vector3(wb.center.x, wb.min.y, wb.center.z);
+            RemapPolyHavenMaterials(go, id);
         }
 
-        private static void RemapPolyHavenMaterials(GameObject go, string folder, string id)
+        private static void RemapPolyHavenMaterials(GameObject go, string id)
         {
             foreach (var r in go.GetComponentsInChildren<Renderer>())
             {
@@ -404,7 +624,8 @@ namespace MultiTravel.EditorTools.SceneBuild
                 {
                     string original = mats[i] != null ? mats[i].name : id;
                     string safe = original.Replace('/', '_').Replace('\\', '_');
-                    var existing = AssetDatabase.LoadAssetAtPath<Material>($"{GeneratedAssetUtil.MaterialsFolder}/PH_{id}_{safe}.mat");
+                    var existing = AssetDatabase.LoadAssetAtPath<Material>($"{ArtImporter.ArtMaterialsFolder}/PH_{id}_{safe}.mat")
+                                   ?? AssetDatabase.LoadAssetAtPath<Material>($"{GeneratedAssetUtil.MaterialsFolder}/PH_{id}_{safe}.mat");
                     if (existing != null)
                     {
                         mats[i] = existing;
@@ -417,7 +638,7 @@ namespace MultiTravel.EditorTools.SceneBuild
 
         // ------------------------------------------------------------------------------------------------ helpers
 
-        public static GameObject InstantiateModel(string name, Transform parent, Vector3 position, Quaternion rotation)
+        public static GameObject InstantiateModel(string name, Transform parent)
         {
             var path = $"{EnvironmentFolder}/{name}.fbx";
             var model = AssetDatabase.LoadAssetAtPath<GameObject>(path);
@@ -427,39 +648,115 @@ namespace MultiTravel.EditorTools.SceneBuild
             }
 
             var go = (GameObject)PrefabUtility.InstantiatePrefab(model, parent);
-            go.transform.position = position;
-            go.transform.rotation = rotation * go.transform.rotation;
-            foreach (var r in go.GetComponentsInChildren<MeshRenderer>())
+            go.name = name;
+            foreach (var r in go.GetComponentsInChildren<MeshRenderer>(true))
             {
-                r.shadowCastingMode = ShadowCastingMode.On;
+                bool emissive = r.name.StartsWith("EMISSIVE.", StringComparison.Ordinal);
+                r.shadowCastingMode = emissive ? ShadowCastingMode.Off : ShadowCastingMode.On;
+                if (r.name.StartsWith("UI.", StringComparison.Ordinal))
+                {
+                    r.enabled = false; // text anchors only
+                }
             }
 
             return go;
         }
 
-        private static BoxCollider AddBoxCollider(GameObject go, Vector3 center, Vector3 size)
+        /// <summary>Static mesh colliders for the set (items rest on shelves, tables and the floor and cannot pass walls).</summary>
+        private static void AddStaticColliders(Transform environment)
         {
-            // Centre/size are in unscaled metres relative to the object's pivot (a counter-scaled holder absorbs any scale).
-            var holder = new GameObject("Collider");
-            holder.transform.SetParent(go.transform, false);
-            var s = go.transform.lossyScale;
-            holder.transform.localScale = new Vector3(1f / s.x, 1f / s.y, 1f / s.z);
-            var box = holder.AddComponent<BoxCollider>();
-            box.center = center;
-            box.size = size;
-            return box;
+            foreach (var mf in environment.GetComponentsInChildren<MeshFilter>(true))
+            {
+                if (mf.sharedMesh == null || IsMarker(mf.transform) || mf.name.StartsWith("EMISSIVE.", StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                if (mf.GetComponent<Collider>() == null)
+                {
+                    mf.gameObject.AddComponent<MeshCollider>().sharedMesh = mf.sharedMesh;
+                }
+            }
         }
 
-        private static Bounds WorldBounds(GameObject go)
+        private static bool IsMarker(Transform t)
         {
-            var renderers = go.GetComponentsInChildren<Renderer>();
-            var b = renderers.Length > 0 ? renderers[0].bounds : new Bounds(go.transform.position, Vector3.zero);
-            foreach (var r in renderers)
+            string n = t.name;
+            return n.StartsWith("SLOT.", StringComparison.Ordinal) || n.StartsWith("PACK.", StringComparison.Ordinal)
+                || n.StartsWith("VOL.", StringComparison.Ordinal) || n.StartsWith("UI.", StringComparison.Ordinal)
+                || n.StartsWith("HOOK.", StringComparison.Ordinal) || n.StartsWith("LIGHT.", StringComparison.Ordinal)
+                || n.StartsWith("PIVOT.", StringComparison.Ordinal);
+        }
+
+        public static List<Transform> FindMarkers(Transform root, string prefix)
+        {
+            var result = new List<Transform>();
+            foreach (var t in root.GetComponentsInChildren<Transform>(true))
             {
-                b.Encapsulate(r.bounds);
+                if (t.name.StartsWith(prefix, StringComparison.Ordinal))
+                {
+                    result.Add(t);
+                }
             }
 
-            return b;
+            result.Sort((a, b) => string.CompareOrdinal(a.name, b.name));
+            return result;
+        }
+
+        public static Transform FindMarker(Transform root, string name)
+        {
+            foreach (var t in root.GetComponentsInChildren<Transform>(true))
+            {
+                if (t.name == name)
+                {
+                    return t;
+                }
+            }
+
+            return null;
+        }
+
+        private static Transform FindRequired(Transform root, string name)
+        {
+            var t = FindMarker(root, name);
+            if (t == null)
+            {
+                throw new InvalidOperationException($"Marker '{name}' not found under '{root.name}'. Re-export the art.");
+            }
+
+            if (name.StartsWith("UI.", StringComparison.Ordinal))
+            {
+                FaceTextAnchor(t);
+            }
+
+            return t;
+        }
+
+        /// <summary>
+        /// World-space text reads correctly when the anchor's +Z points away from the viewer. FBX empties import with
+        /// +Z toward the participant (the face normal), so such anchors are turned around.
+        /// </summary>
+        private static void FaceTextAnchor(Transform anchor)
+        {
+            var toEye = new Vector3(0f, 1.7f, 0f) - anchor.position;
+            if (Vector3.Dot(anchor.forward, toEye) > 0f)
+            {
+                anchor.Rotate(0f, 180f, 0f, Space.Self);
+            }
+        }
+
+        private static void SetSerialized(Object target, string field, bool value)
+        {
+            var so = new SerializedObject(target);
+            var prop = so.FindProperty(field);
+            if (prop == null)
+            {
+                Debug.LogWarning($"[MultiTravel] Field '{field}' not found on {target.GetType().Name}.");
+                return;
+            }
+
+            prop.boolValue = value;
+            so.ApplyModifiedPropertiesWithoutUndo();
         }
 
         private static void MarkStatic(GameObject root)
@@ -467,7 +764,8 @@ namespace MultiTravel.EditorTools.SceneBuild
             foreach (var t in root.GetComponentsInChildren<Transform>(true))
             {
                 GameObjectUtility.SetStaticEditorFlags(t.gameObject,
-                    StaticEditorFlags.BatchingStatic | StaticEditorFlags.OccluderStatic | StaticEditorFlags.OccludeeStatic | StaticEditorFlags.ReflectionProbeStatic);
+                    StaticEditorFlags.ContributeGI | StaticEditorFlags.BatchingStatic | StaticEditorFlags.OccluderStatic
+                    | StaticEditorFlags.OccludeeStatic | StaticEditorFlags.ReflectionProbeStatic);
             }
         }
     }

@@ -11,6 +11,9 @@ namespace MultiTravel.Core.Products
         Document,
         Toiletry,
         Leisure,
-        Other
+        Other,
+
+        /// <summary>Watches, earrings, necklaces, cufflinks. Appended last to keep serialized values stable.</summary>
+        Jewellery
     }
 }

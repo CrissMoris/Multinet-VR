@@ -130,7 +130,7 @@ namespace MultiTravel.Tests.PlayMode
             Assert.IsTrue(scene.Suitcase.TryPlace(item));
             Assert.AreEqual(-5, scene.Score.Score);
 
-            yield return new WaitForSecondsRealtime(0.3f); // tween finished
+            yield return new WaitForSecondsRealtime(0.45f); // settle tween (0.30 s) finished
 
             Assert.IsFalse(scene.Suitcase.TryPlace(item));
             Assert.AreEqual(-5, scene.Score.Score);

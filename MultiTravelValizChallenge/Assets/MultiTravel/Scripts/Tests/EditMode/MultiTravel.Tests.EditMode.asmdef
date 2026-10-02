@@ -3,6 +3,8 @@
     "rootNamespace": "MultiTravel.Tests.EditMode",
     "references": [
         "MultiTravel.Core",
+        "MultiTravel.Gameplay",
+        "MultiTravel.Editor",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],

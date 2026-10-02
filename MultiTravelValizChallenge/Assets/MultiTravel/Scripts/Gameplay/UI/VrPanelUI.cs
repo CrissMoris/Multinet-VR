@@ -1,3 +1,4 @@
+using System;
 using System.Text;
 using MultiTravel.Core.Completion;
 using MultiTravel.Core.Config;
@@ -23,7 +24,14 @@ namespace MultiTravel.Gameplay.UI
     /// The canvas is 1600 × 1000 units at scale 0.001 (1.6 m × 1.0 m); text heights are chosen for reading at ~2 m.
     /// Values refresh at <see cref="refreshHz"/> and strings are rebuilt only when the value changed.
     /// </para>
+    /// <para>
+    /// RETIRED (OVERHAUL_PLAN v2 §5): the diegetic <c>StopwatchDisplay</c>, <c>ScoreboardDisplay</c>, <c>ResultCard</c>
+    /// and <c>TutorialController</c> replace this flat panel. The class is kept only so older scenes and tests compile;
+    /// the scene builder no longer adds it.
+    /// </para>
     /// </summary>
+    [Obsolete("Retired in v2: use StopwatchDisplay, ScoreboardDisplay, ResultCard and TutorialController (Gameplay/Presentation, Gameplay/Tutorial).")]
+    [AddComponentMenu("")]
     [DisallowMultipleComponent]
     public sealed class VrPanelUI : MonoBehaviour
     {

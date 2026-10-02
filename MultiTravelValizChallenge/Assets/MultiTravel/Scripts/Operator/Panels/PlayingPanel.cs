@@ -7,21 +7,22 @@ using UnityEngine;
 namespace MultiTravel.Operator.Panels
 {
     /// <summary>
-    /// Live game view: score, timer (mm:ss.f), required-item progress, correct / incorrect counts.
-    /// "Zorla Bitir" → <see cref="SessionController.CompleteGame"/>(OperatorForced) and "Oturumu İptal Et" →
-    /// <see cref="SessionController.AbandonSession"/>, both behind an inline confirmation. Refresh is allocation-free.
+    /// Live game view: huge tabular timer, rolling score tile, required-item progress ring, the spectator video, participant
+    /// chip and correct / incorrect counters. "Zorla Bitir" → <see cref="SessionController.CompleteGame"/>(OperatorForced) and
+    /// "İptal" → <see cref="SessionController.AbandonSession"/>, both behind a confirmation dialog. Refresh is allocation-free.
     /// </summary>
     public sealed class PlayingPanel : OperatorPanel
     {
-        private readonly ElapsedTextBuffer timerText = new ElapsedTextBuffer();
+        private readonly ElapsedTextBuffer timerText = new ElapsedTextBuffer(true);
 
-        private TextMeshProUGUI participantLabel;
-        private TextMeshProUGUI scoreValue;
         private TextMeshProUGUI timerValue;
-        private TextMeshProUGUI progressValue;
-        private TextMeshProUGUI countsLabel;
         private TextMeshProUGUI timeLimitLabel;
-        private ConfirmPrompt confirmPrompt;
+        private TextMeshProUGUI participantLabel;
+        private TextMeshProUGUI participantSet;
+        private UiStatTile scoreTile;
+        private UiProgressRing ring;
+        private UiPill correctPill;
+        private UiPill incorrectPill;
 
         private int lastScore;
         private int lastPlaced;
@@ -40,36 +41,82 @@ namespace MultiTravel.Operator.Panels
 
         protected override void OnBuild(RectTransform root)
         {
-            var card = UiFactory.CreateCard(root, "Card", 1200f, 44, 20f);
-            CreateHeading(card, "Oyun Devam Ediyor");
-            participantLabel = UiFactory.CreateLabel(card, "Participant", string.Empty, OperatorUiStyle.FontBody,
-                OperatorUiStyle.TextSecondary, FontStyles.Bold, TextAlignmentOptions.Center);
+            var column = UiFactory.CreateRect("Column", root);
+            UiFactory.Stretch(column);
+            UiFactory.AddVerticalLayout(column.gameObject, 16f, new RectOffset(0, 0, 0, 0), TextAnchor.UpperLeft, true, true, true, false);
+
+            // ----- top row: timer | score | progress -----
+            var top = UiFactory.CreateRow(column, "TopRow", 16f, TextAnchor.UpperLeft);
+            UiFactory.SetLayout(top, -1f, 256f, 1f, 0f, -1f, 256f);
+            top.GetComponent<UnityEngine.UI.HorizontalLayoutGroup>().childForceExpandHeight = true;
+
+            var timerCard = UiFactory.CreateSurface(top, "TimerCard", OperatorUiStyle.Card, OperatorUiStyle.RadiusCard, true, true, out _);
+            UiFactory.SetLayout(timerCard, 0f, -1f, 2.3f, 1f);
+            UiFactory.AddVerticalLayout(timerCard.gameObject, 0f, new RectOffset(24, 24, 20, 12), TextAnchor.MiddleCenter, true, true, true, false);
+            var timerCaption = UiFactory.CreateLabel(timerCard, "Caption", "SÜRE", OperatorUiStyle.FontLabel, OperatorUiStyle.TextSecondary, FontStyles.Bold,
+                TextAlignmentOptions.Center);
+            timerCaption.characterSpacing = 6f;
+            timerValue = UiFactory.CreateLabel(timerCard, "Timer", "00:00.0", 128f, OperatorUiStyle.TextPrimary, FontStyles.Bold,
+                TextAlignmentOptions.Center);
+            timerValue.richText = true;
+            UiFactory.MakeSingleLine(timerValue);
+            timeLimitLabel = UiFactory.CreateLabel(timerCard, "TimeLimit", string.Empty, OperatorUiStyle.FontLabel, OperatorUiStyle.TextMuted,
+                FontStyles.Normal, TextAlignmentOptions.Center);
+
+            scoreTile = UiStatTile.Create(top, "ScoreTile", "PUAN", 104f, OperatorUiStyle.Accent, UiStatTile.TabularFormat, UiIcon.Trophy);
+            UiFactory.SetLayout(scoreTile.Root, 0f, -1f, 1.1f, 1f);
+
+            var ringCard = UiFactory.CreateSurface(top, "ProgressCard", OperatorUiStyle.Elevated, OperatorUiStyle.RadiusCard, false, true, out _);
+            UiFactory.SetLayout(ringCard, 0f, -1f, 1f, 1f);
+            UiFactory.AddVerticalLayout(ringCard.gameObject, 6f, new RectOffset(16, 16, 20, 16), TextAnchor.MiddleCenter, true, true, true, false);
+            var ringCaption = UiFactory.CreateLabel(ringCard, "Caption", "GEREKLİ ÜRÜN", OperatorUiStyle.FontLabel, OperatorUiStyle.TextSecondary,
+                FontStyles.Bold, TextAlignmentOptions.Center);
+            ringCaption.characterSpacing = 4f;
+            var ringRow = UiFactory.CreateRow(ringCard, "RingRow", 0f, TextAnchor.MiddleCenter, false);
+            ring = UiProgressRing.Create(ringRow, "Ring", 152, OperatorUiStyle.Success);
+
+            // ----- spectator video -----
+            var frameHost = Context.Feed.CreateFrame(column, "SpectatorFrame", out var overlay);
+            _ = frameHost;
+            var live = UiPill.Create(overlay, "LivePill", 28f, OperatorUiStyle.FontCaption, true, true);
+            live.Set("CANLI", OperatorUiStyle.Danger, false);
+            var liveRect = live.Root;
+            UiFactory.IgnoreLayout(liveRect);
+            liveRect.anchorMin = new Vector2(0f, 1f);
+            liveRect.anchorMax = new Vector2(0f, 1f);
+            liveRect.pivot = new Vector2(0f, 1f);
+            liveRect.anchoredPosition = new Vector2(16f, -16f);
+
+            // ----- bottom bar -----
+            var bar = UiFactory.CreateSurface(column, "Bar", OperatorUiStyle.Card, OperatorUiStyle.RadiusCard, true, true, out _);
+            UiFactory.SetLayout(bar, -1f, 88f, 1f, 0f, -1f, 88f);
+            UiFactory.AddHorizontalLayout(bar.gameObject, 16f, new RectOffset(24, 24, 0, 0), TextAnchor.MiddleLeft, true, true, false, false);
+
+            UiFactory.CreateIcon(bar, "UserIcon", UiIcon.User, 28f, OperatorUiStyle.TextSecondary);
+            var names = UiFactory.CreateColumn(bar, "Names", 0f, TextAnchor.MiddleLeft);
+            UiFactory.SetLayout(names, 0f, -1f, 1f, -1f);
+            participantLabel = UiFactory.CreateLabel(names, "Name", string.Empty, OperatorUiStyle.FontBody, OperatorUiStyle.TextPrimary, FontStyles.Bold);
             UiFactory.MakeSingleLine(participantLabel);
+            participantSet = UiFactory.CreateLabel(names, "Set", string.Empty, OperatorUiStyle.FontLabel, OperatorUiStyle.TextMuted);
+            UiFactory.MakeSingleLine(participantSet);
 
-            var tiles = UiFactory.CreateRow(card, "Tiles", 24f);
-            scoreValue = CreateTile(tiles, "ScoreTile", "Puan", OperatorUiStyle.Primary);
-            timerValue = CreateTile(tiles, "TimerTile", "Süre", OperatorUiStyle.Primary);
-            progressValue = CreateTile(tiles, "ProgressTile", "Gerekli ürün", OperatorUiStyle.Accent);
+            correctPill = UiPill.Create(bar, "CorrectPill", 36f, OperatorUiStyle.FontLabel);
+            correctPill.Set("Doğru 0", OperatorUiStyle.Success, false);
+            incorrectPill = UiPill.Create(bar, "IncorrectPill", 36f, OperatorUiStyle.FontLabel);
+            incorrectPill.Set("Yanlış 0", OperatorUiStyle.TextMuted, false);
 
-            countsLabel = CreateBody(card, "Counts", string.Empty);
-            timeLimitLabel = UiFactory.CreateLabel(card, "TimeLimit", string.Empty, OperatorUiStyle.FontSmall,
-                OperatorUiStyle.TextSecondary, FontStyles.Normal, TextAlignmentOptions.Center);
-
-            confirmPrompt = new ConfirmPrompt(card, "ConfirmPrompt");
-            var buttons = UiFactory.CreateRow(card, "Buttons", 20f, TextAnchor.MiddleRight, false);
-            UiFactory.CreateButton(buttons, "AbandonButton", "Oturumu İptal Et", ButtonStyle.Secondary, OnAbandonRequested,
-                OperatorUiStyle.ButtonHeight, OperatorUiStyle.FontButton, 300f);
-            UiFactory.CreateButton(buttons, "ForceFinishButton", "Zorla Bitir", ButtonStyle.Warning, OnForceFinishRequested,
-                OperatorUiStyle.ButtonHeight, OperatorUiStyle.FontButton, 300f);
+            UiFactory.CreateButton(bar, "AbandonButton", "İptal", ButtonStyle.Ghost, OnAbandonRequested,
+                OperatorUiStyle.ButtonHeight, OperatorUiStyle.FontBody, 160f, UiIcon.Close);
+            UiFactory.CreateButton(bar, "ForceFinishButton", "Zorla Bitir", ButtonStyle.Warning, OnForceFinishRequested,
+                OperatorUiStyle.ButtonHeight, OperatorUiStyle.FontBody, 220f);
         }
 
         protected override void OnShow(SessionState state)
         {
-            confirmPrompt.Close();
+            CloseConfirm();
             var session = Context.Session.Current;
-            participantLabel.text = session != null && session.GenderSelected
-                ? ParticipantText.FullName(session.Input) + " · " + ParticipantText.GenderLabel(session.Gender) + " ürün seti"
-                : ParticipantText.FullName(session?.Input);
+            participantLabel.text = ParticipantText.FullName(session?.Input);
+            participantSet.text = session != null && session.GenderSelected ? ParticipantText.GenderLabel(session.Gender) + " ürün seti" : string.Empty;
 
             int limitSeconds = Context.Config.Gameplay.TimeLimitSeconds;
             timeLimitLabel.text = limitSeconds > 0 ? "Süre sınırı: " + TimeFormat.FormatSeconds(limitSeconds * 1000L) : string.Empty;
@@ -81,11 +128,13 @@ namespace MultiTravel.Operator.Panels
             lastCorrect = -1;
             lastIncorrect = -1;
             timerText.Invalidate();
+            scoreTile.Reset();
+            ring.Invalidate();
         }
 
         protected override void OnHide()
         {
-            confirmPrompt.Close();
+            CloseConfirm();
         }
 
         public override void Refresh()
@@ -93,8 +142,9 @@ namespace MultiTravel.Operator.Panels
             var score = Context.Score;
             if (score.Score != lastScore)
             {
+                bool first = lastScore == int.MinValue;
                 lastScore = score.Score;
-                scoreValue.SetText("{0}", lastScore);
+                scoreTile.SetValue(lastScore, !first);
             }
 
             timerText.Apply(timerValue, Context.Timer.ElapsedMs);
@@ -102,16 +152,18 @@ namespace MultiTravel.Operator.Panels
             var completion = Context.Completion;
             if (completion.RequiredPlacedCount != lastPlaced || completion.RequiredTotal != lastRequired)
             {
+                bool first = lastPlaced < 0;
                 lastPlaced = completion.RequiredPlacedCount;
                 lastRequired = completion.RequiredTotal;
-                progressValue.SetText("{0} / {1}", lastPlaced, lastRequired);
+                ring.SetProgress(lastPlaced, lastRequired, !first);
             }
 
             if (score.PositiveCount != lastCorrect || score.NegativeCount != lastIncorrect)
             {
                 lastCorrect = score.PositiveCount;
                 lastIncorrect = score.NegativeCount;
-                countsLabel.SetText("Doğru ürün: {0}     Yanlış ürün: {1}", lastCorrect, lastIncorrect);
+                correctPill.Set("Doğru " + lastCorrect, OperatorUiStyle.Success);
+                incorrectPill.Set("Yanlış " + lastIncorrect, lastIncorrect > 0 ? OperatorUiStyle.DangerText : OperatorUiStyle.TextMuted);
             }
         }
 
@@ -120,19 +172,18 @@ namespace MultiTravel.Operator.Panels
             if (participantLabel != null)
             {
                 participantLabel.text = string.Empty;
+                participantSet.text = string.Empty;
             }
         }
 
         private void OnForceFinishRequested()
         {
-            confirmPrompt.Ask("Oyun şimdi bitirilsin mi? Mevcut puan ve süre sonuç olarak kaydedilecek.", "Evet, bitir",
-                ButtonStyle.Warning, ForceFinish);
+            Confirm("Oyun şimdi bitirilsin mi?", "Mevcut puan ve süre sonuç olarak kaydedilecek.", "Evet, bitir", ButtonStyle.Warning, ForceFinish);
         }
 
         private void OnAbandonRequested()
         {
-            confirmPrompt.Ask("Oturum iptal edilsin mi? Sonuç liderlik tablosuna gönderilmeyecek.", "Evet, iptal et",
-                ButtonStyle.Danger, Abandon);
+            Confirm("Oturum iptal edilsin mi?", "Sonuç liderlik tablosuna gönderilmeyecek.", "Evet, iptal et", ButtonStyle.Danger, Abandon);
         }
 
         private void ForceFinish()
@@ -143,19 +194,6 @@ namespace MultiTravel.Operator.Panels
         private void Abandon()
         {
             Context.Run(SessionState.Playing, Context.Session.AbandonSession, "AbandonSession");
-        }
-
-        private static TextMeshProUGUI CreateTile(Transform row, string name, string caption, Color valueColor)
-        {
-            var tile = UiFactory.CreateImage(name, row, OperatorUiStyle.RowAlternate);
-            UiFactory.AddVerticalLayout(tile.gameObject, 4f, new RectOffset(20, 20, 18, 18), TextAnchor.MiddleCenter, true, true, true, false);
-            UiFactory.SetLayout(tile, 0f, -1f, 1f, -1f);
-            UiFactory.CreateLabel(tile.rectTransform, "Caption", caption, OperatorUiStyle.FontSmall, OperatorUiStyle.TextSecondary,
-                FontStyles.Bold, TextAlignmentOptions.Center);
-            var value = UiFactory.CreateLabel(tile.rectTransform, "Value", "-", OperatorUiStyle.FontStat, valueColor,
-                FontStyles.Bold, TextAlignmentOptions.Center);
-            UiFactory.MakeSingleLine(value);
-            return value;
         }
     }
 }

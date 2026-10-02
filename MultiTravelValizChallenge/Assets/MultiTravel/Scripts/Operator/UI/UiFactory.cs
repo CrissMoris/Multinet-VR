@@ -1,79 +1,14 @@
 using TMPro;
 using UnityEngine;
-using UnityEngine.Events;
 using UnityEngine.UI;
 
 namespace MultiTravel.Operator.UI
 {
-    /// <summary>Visual variants of <see cref="UiFactory.CreateButton"/>.</summary>
-    public enum ButtonStyle
-    {
-        /// <summary>Deep blue, white text: the main action of a panel.</summary>
-        Primary,
-
-        /// <summary>Teal, white text: positive / confirming action.</summary>
-        Accent,
-
-        /// <summary>Orange, white text: actions that need attention (force finish, retry).</summary>
-        Warning,
-
-        /// <summary>Red, white text: destructive actions (cancel session).</summary>
-        Danger,
-
-        /// <summary>Light grey, blue text: secondary actions.</summary>
-        Secondary
-    }
-
-    /// <summary>Handles of a button built by <see cref="UiFactory.CreateButton"/>.</summary>
-    public sealed class UiButton
-    {
-        public UiButton(Button button, Image background, TextMeshProUGUI label, LayoutElement layout)
-        {
-            Button = button;
-            Background = background;
-            Label = label;
-            Layout = layout;
-        }
-
-        public Button Button { get; }
-
-        public Image Background { get; }
-
-        public TextMeshProUGUI Label { get; }
-
-        public LayoutElement Layout { get; }
-
-        public GameObject GameObject => Button.gameObject;
-
-        public bool Interactable
-        {
-            get => Button.interactable;
-            set => Button.interactable = value;
-        }
-
-        public void SetActive(bool active)
-        {
-            if (Button.gameObject.activeSelf != active)
-            {
-                Button.gameObject.SetActive(active);
-            }
-        }
-
-        public void SetLabel(string text)
-        {
-            Label.text = text ?? string.Empty;
-        }
-
-        public void SetStyle(ButtonStyle style)
-        {
-            UiFactory.ApplyButtonStyle(this, style);
-        }
-    }
-
     /// <summary>
-    /// Builds uGUI / TextMeshPro controls from code (no prefabs, no sprites). All controls use flat
-    /// <see cref="Image"/> graphics, the <see cref="OperatorUiStyle"/> palette and the project font.
-    /// Construction allocates; nothing here is meant to be called per frame.
+    /// Builds uGUI / TextMeshPro building blocks from code (no prefabs, no asset sprites): rounded 9-slice surfaces with soft
+    /// shadows, labels on the project font, icons and layout helpers. Higher-level controls live in their own classes
+    /// (<see cref="UiButton"/>, <see cref="UiPill"/>, <see cref="UiField"/>, <see cref="UiStatTile"/>, <see cref="UiProgressRing"/>,
+    /// <see cref="UiToast"/>, <see cref="ConfirmModal"/>). Construction allocates; nothing here is meant to be called per frame.
     /// </summary>
     public static class UiFactory
     {
@@ -126,7 +61,27 @@ namespace MultiTravel.Operator.UI
             rect.offsetMax = new Vector2(0f, height);
         }
 
-        /// <summary>Centres a rect in its parent with a fixed width (height driven by a ContentSizeFitter or set later).</summary>
+        /// <summary>Anchors a rect to the left edge, full height, fixed width.</summary>
+        public static void AnchorLeft(RectTransform rect, float width)
+        {
+            rect.anchorMin = new Vector2(0f, 0f);
+            rect.anchorMax = new Vector2(0f, 1f);
+            rect.pivot = new Vector2(0f, 0.5f);
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = new Vector2(width, 0f);
+        }
+
+        /// <summary>Anchors a rect to the right edge, full height, fixed width.</summary>
+        public static void AnchorRight(RectTransform rect, float width)
+        {
+            rect.anchorMin = new Vector2(1f, 0f);
+            rect.anchorMax = new Vector2(1f, 1f);
+            rect.pivot = new Vector2(1f, 0.5f);
+            rect.offsetMin = new Vector2(-width, 0f);
+            rect.offsetMax = Vector2.zero;
+        }
+
+        /// <summary>Centres a rect in its parent with a fixed size (height may be driven by a ContentSizeFitter).</summary>
         public static void AnchorCenter(RectTransform rect, float width, float height)
         {
             rect.anchorMin = new Vector2(0.5f, 0.5f);
@@ -136,7 +91,7 @@ namespace MultiTravel.Operator.UI
             rect.sizeDelta = new Vector2(width, height);
         }
 
-        /// <summary>Creates a flat image.</summary>
+        /// <summary>Creates a flat (unsliced) image.</summary>
         public static Image CreateImage(string name, Transform parent, Color color, bool raycastTarget = false)
         {
             var rect = CreateRect(name, parent);
@@ -146,7 +101,61 @@ namespace MultiTravel.Operator.UI
             return image;
         }
 
-        /// <summary>Creates a full-screen Screen Space Overlay canvas (1920x1080 reference, match 0.5) with a GraphicRaycaster.</summary>
+        /// <summary>Creates a 9-slice rounded rectangle with the given corner radius.</summary>
+        public static Image CreateRounded(string name, Transform parent, Color color, int radius, bool raycastTarget = false)
+        {
+            var image = CreateImage(name, parent, color, raycastTarget);
+            ApplyRounded(image, radius);
+            return image;
+        }
+
+        /// <summary>Gives an existing image a rounded 9-slice sprite.</summary>
+        public static void ApplyRounded(Image image, int radius)
+        {
+            image.sprite = UiSprites.Rounded(radius);
+            image.type = Image.Type.Sliced;
+            image.fillCenter = true;
+        }
+
+        /// <summary>Creates a circle image of the given diameter (fixed size in layout groups).</summary>
+        public static Image CreateCircle(string name, Transform parent, float diameter, Color color)
+        {
+            var image = CreateImage(name, parent, color, false);
+            image.sprite = UiSprites.Circle(Mathf.RoundToInt(diameter));
+            image.type = Image.Type.Simple;
+            SetLayout(image, diameter, diameter, 0f, 0f, diameter, diameter);
+            return image;
+        }
+
+        /// <summary>Creates an icon image of a fixed size (preferred = minimum = <paramref name="size"/>).</summary>
+        public static Image CreateIcon(Transform parent, string name, UiIcon icon, float size, Color color)
+        {
+            var image = CreateImage(name, parent, color, false);
+            image.preserveAspect = true;
+            SetIcon(image, icon, size);
+            SetLayout(image, size, size, 0f, 0f, size, size);
+            return image;
+        }
+
+        /// <summary>Swaps the sprite of an icon image (hides the image for <see cref="UiIcon.None"/>).</summary>
+        public static void SetIcon(Image image, UiIcon icon, float size)
+        {
+            image.sprite = UiSprites.Icon(icon, Mathf.RoundToInt(size));
+            image.enabled = icon != UiIcon.None;
+        }
+
+        /// <summary>1 px horizontal rule.</summary>
+        public static Image CreateDivider(Transform parent, string name = "Divider")
+        {
+            var line = CreateImage(name, parent, OperatorUiStyle.WithAlpha(OperatorUiStyle.Border, 0.45f), false);
+            SetLayout(line, -1f, 1f, 1f, 0f, -1f, 1f);
+            return line;
+        }
+
+        /// <summary>
+        /// Full-screen Screen Space Overlay canvas: CanvasScaler ScaleWithScreenSize 1920x1080 with match 0.5, pixel-perfect
+        /// off (pixel snapping makes SDF text jitter and blur), plus a GraphicRaycaster.
+        /// </summary>
         public static Canvas CreateOverlayCanvas(string name, Transform parent, int sortingOrder)
         {
             var rect = CreateRect(name, parent);
@@ -170,7 +179,11 @@ namespace MultiTravel.Operator.UI
 
         // ----- text -----
 
-        /// <summary>Creates a TextMeshPro UGUI label using the project font. Rich text is off (labels may show participant input).</summary>
+        /// <summary>
+        /// Creates a TextMeshPro UGUI label on the project font and the font asset's own material. Sizes below
+        /// <see cref="OperatorUiStyle.MinFontSize"/> are raised; auto-sizing is off (fractional sizes soften SDF text).
+        /// Rich text is off by default (labels may show participant input); numeric labels turn it on for tabular digits.
+        /// </summary>
         public static TextMeshProUGUI CreateLabel(
             Transform parent,
             string name,
@@ -182,14 +195,11 @@ namespace MultiTravel.Operator.UI
         {
             var rect = CreateRect(name, parent);
             var label = rect.gameObject.AddComponent<TextMeshProUGUI>();
-            var font = OperatorUiStyle.Font;
-            if (font != null)
-            {
-                label.font = font;
-            }
-
+            OperatorUiStyle.ApplyFont(label);
             label.richText = false;
-            label.fontSize = fontSize;
+            label.enableAutoSizing = false;
+            label.extraPadding = false;
+            label.fontSize = Mathf.Max(OperatorUiStyle.MinFontSize, fontSize);
             label.color = color;
             label.fontStyle = style;
             label.alignment = alignment;
@@ -207,245 +217,71 @@ namespace MultiTravel.Operator.UI
             label.overflowMode = TextOverflowModes.Ellipsis;
         }
 
-        // ----- buttons -----
-
-        /// <summary>Creates a flat button with colour-tint transitions and a centred bold label.</summary>
-        public static UiButton CreateButton(
-            Transform parent,
-            string name,
-            string text,
-            ButtonStyle style,
-            UnityAction onClick,
-            float preferredHeight = OperatorUiStyle.ButtonHeight,
-            float fontSize = OperatorUiStyle.FontButton,
-            float preferredWidth = -1f)
-        {
-            var rect = CreateRect(name, parent);
-            var background = rect.gameObject.AddComponent<Image>();
-            background.color = Color.white;
-            background.raycastTarget = true;
-
-            var button = rect.gameObject.AddComponent<Button>();
-            button.targetGraphic = background;
-            var navigation = button.navigation;
-            navigation.mode = Navigation.Mode.Automatic;
-            button.navigation = navigation;
-
-            var label = CreateLabel(rect, "Label", text, fontSize, OperatorUiStyle.TextOnDark, FontStyles.Bold, TextAlignmentOptions.Center);
-            Stretch(label.rectTransform, 14f, 4f, 14f, 4f);
-            label.enableAutoSizing = true;
-            label.fontSizeMax = fontSize;
-            label.fontSizeMin = Mathf.Min(fontSize, OperatorUiStyle.FontTiny);
-            label.overflowMode = TextOverflowModes.Ellipsis;
-
-            var layout = rect.gameObject.AddComponent<LayoutElement>();
-            layout.minHeight = preferredHeight;
-            layout.preferredHeight = preferredHeight;
-            if (preferredWidth > 0f)
-            {
-                layout.minWidth = preferredWidth;
-                layout.preferredWidth = preferredWidth;
-            }
-
-            if (onClick != null)
-            {
-                button.onClick.AddListener(onClick);
-            }
-
-            var handle = new UiButton(button, background, label, layout);
-            ApplyButtonStyle(handle, style);
-            return handle;
-        }
-
-        /// <summary>Applies the palette of a <see cref="ButtonStyle"/> (ColorTint transition on a white image).</summary>
-        public static void ApplyButtonStyle(UiButton button, ButtonStyle style)
-        {
-            Color baseColor;
-            Color textColor = OperatorUiStyle.TextOnDark;
-            switch (style)
-            {
-                case ButtonStyle.Accent:
-                    baseColor = OperatorUiStyle.Accent;
-                    break;
-                case ButtonStyle.Warning:
-                    baseColor = OperatorUiStyle.Warning;
-                    break;
-                case ButtonStyle.Danger:
-                    baseColor = OperatorUiStyle.Danger;
-                    break;
-                case ButtonStyle.Secondary:
-                    baseColor = OperatorUiStyle.Neutral;
-                    textColor = OperatorUiStyle.Primary;
-                    break;
-                default:
-                    baseColor = OperatorUiStyle.Primary;
-                    break;
-            }
-
-            button.Button.transition = Selectable.Transition.ColorTint;
-            button.Button.colors = BuildColorBlock(baseColor);
-            button.Label.color = textColor;
-        }
-
-        /// <summary>Colour block with hover / pressed / selected / disabled shades of <paramref name="baseColor"/>.</summary>
-        public static ColorBlock BuildColorBlock(Color baseColor)
-        {
-            var colors = ColorBlock.defaultColorBlock;
-            colors.normalColor = baseColor;
-            colors.highlightedColor = OperatorUiStyle.Lighten(baseColor, 0.15f);
-            colors.pressedColor = OperatorUiStyle.Darken(baseColor, 0.2f);
-            colors.selectedColor = OperatorUiStyle.Lighten(baseColor, 0.08f);
-            colors.disabledColor = OperatorUiStyle.Disabled;
-            colors.colorMultiplier = 1f;
-            colors.fadeDuration = 0.08f;
-            return colors;
-        }
-
-        // ----- input -----
+        // ----- surfaces and containers -----
 
         /// <summary>
-        /// Builds a single-line TMP_InputField from scratch: border image, tinted background, "Text Area" viewport with a
-        /// RectMask2D, placeholder and text children; caret / selection colours configured. The hierarchy is assembled while
-        /// inactive so the input field initialises with every reference already assigned.
+        /// Container (no graphic of its own) with decoration children drawn behind its content: soft shadow, rounded fill and
+        /// a 1 px outline. The decoration ignores layout groups; put a layout group on the returned rect to arrange content.
         /// </summary>
-        public static TMP_InputField CreateInputField(
+        public static RectTransform CreateSurface(
             Transform parent,
             string name,
-            string placeholderText,
-            TMP_InputField.ContentType contentType,
-            int characterLimit,
-            float height = OperatorUiStyle.InputHeight,
-            float fontSize = OperatorUiStyle.FontBody)
+            Color fill,
+            int radius,
+            bool withShadow,
+            bool withOutline,
+            out Image fillImage)
         {
-            var rect = CreateRect(name, parent);
-            rect.gameObject.SetActive(false);
-
-            var border = rect.gameObject.AddComponent<Image>();
-            border.color = OperatorUiStyle.Border;
-            border.raycastTarget = true;
-
-            var layout = rect.gameObject.AddComponent<LayoutElement>();
-            layout.minHeight = height;
-            layout.preferredHeight = height;
-
-            var background = CreateImage("Background", rect, Color.white, true);
-            Stretch(background.rectTransform, 2f, 2f, 2f, 2f);
-
-            var textArea = CreateRect("Text Area", rect);
-            Stretch(textArea, 16f, 6f, 16f, 6f);
-            var mask = textArea.gameObject.AddComponent<RectMask2D>();
-            mask.padding = new Vector4(-8f, -5f, -8f, -5f);
-
-            var placeholder = CreateLabel(textArea, "Placeholder", placeholderText, fontSize, OperatorUiStyle.TextMuted, FontStyles.Italic, TextAlignmentOptions.Left);
-            Stretch(placeholder.rectTransform);
-            placeholder.textWrappingMode = TextWrappingModes.NoWrap;
-            placeholder.extraPadding = true;
-            placeholder.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
-
-            var text = CreateLabel(textArea, "Text", string.Empty, fontSize, OperatorUiStyle.TextPrimary, FontStyles.Normal, TextAlignmentOptions.Left);
-            Stretch(text.rectTransform);
-            text.textWrappingMode = TextWrappingModes.NoWrap;
-            text.extraPadding = true;
-
-            var field = rect.gameObject.AddComponent<TMP_InputField>();
-            field.textViewport = textArea;
-            field.textComponent = text;
-            field.placeholder = placeholder;
-            if (text.font != null)
+            var root = CreateRect(name, parent);
+            if (withShadow)
             {
-                field.fontAsset = text.font;
+                var shadow = CreateImage("Shadow", root, new Color(0f, 0f, 0f, 0.5f), false);
+                shadow.sprite = UiSprites.Shadow();
+                shadow.type = Image.Type.Sliced;
+                IgnoreLayout(shadow);
+                float m = UiSprites.ShadowMargin;
+                var r = shadow.rectTransform;
+                r.anchorMin = Vector2.zero;
+                r.anchorMax = Vector2.one;
+                r.offsetMin = new Vector2(-m, -m - 8f);
+                r.offsetMax = new Vector2(m, m - 8f);
             }
 
-            field.pointSize = fontSize;
-            field.targetGraphic = background;
-            field.transition = Selectable.Transition.ColorTint;
-            var colors = ColorBlock.defaultColorBlock;
-            colors.normalColor = Color.white;
-            colors.highlightedColor = OperatorUiStyle.Lighten(OperatorUiStyle.Primary, 0.94f);
-            colors.pressedColor = OperatorUiStyle.Lighten(OperatorUiStyle.Primary, 0.88f);
-            colors.selectedColor = OperatorUiStyle.Lighten(OperatorUiStyle.Accent, 0.9f);
-            colors.disabledColor = OperatorUiStyle.Neutral;
-            colors.colorMultiplier = 1f;
-            colors.fadeDuration = 0.08f;
-            field.colors = colors;
+            fillImage = CreateRounded("Fill", root, fill, radius, true);
+            IgnoreLayout(fillImage);
+            Stretch(fillImage.rectTransform);
 
-            field.contentType = contentType;
-            field.lineType = TMP_InputField.LineType.SingleLine;
-            field.characterLimit = characterLimit;
-            field.richText = false;
-            field.caretWidth = 2;
-            field.caretBlinkRate = 0.85f;
-            field.customCaretColor = true;
-            field.caretColor = OperatorUiStyle.Primary;
-            field.selectionColor = OperatorUiStyle.WithAlpha(OperatorUiStyle.Accent, 0.35f);
-            field.onFocusSelectAll = false;
-            field.resetOnDeActivation = true;
-            field.SetTextWithoutNotify(string.Empty);
+            if (withOutline)
+            {
+                var outline = CreateImage("Outline", root, OperatorUiStyle.WithAlpha(OperatorUiStyle.Border, 0.6f), false);
+                outline.sprite = UiSprites.Outline(radius);
+                outline.type = Image.Type.Sliced;
+                IgnoreLayout(outline);
+                Stretch(outline.rectTransform);
+            }
 
-            rect.gameObject.SetActive(true);
-            return field;
+            return root;
         }
-
-        // ----- toggle -----
-
-        /// <summary>Builds a toggle row: bordered box with a teal checkmark and a wrapping label (the label is clickable too).</summary>
-        public static Toggle CreateToggle(Transform parent, string name, string labelText, float fontSize, out TextMeshProUGUI label)
-        {
-            var rect = CreateRect(name, parent);
-            rect.gameObject.SetActive(false);
-            AddHorizontalLayout(rect.gameObject, 16f, new RectOffset(0, 0, 0, 0), TextAnchor.UpperLeft, true, true, false, false);
-
-            var box = CreateImage("Background", rect, OperatorUiStyle.Primary, true);
-            SetLayout(box, 40f, 40f, 0f, 0f, 40f, 40f);
-
-            var boxInner = CreateImage("Fill", box.rectTransform, Color.white, true);
-            Stretch(boxInner.rectTransform, 3f, 3f, 3f, 3f);
-
-            var checkmark = CreateImage("Checkmark", box.rectTransform, OperatorUiStyle.Accent, false);
-            Stretch(checkmark.rectTransform, 8f, 8f, 8f, 8f);
-
-            label = CreateLabel(rect, "Label", labelText, fontSize, OperatorUiStyle.TextPrimary, FontStyles.Normal, TextAlignmentOptions.TopLeft);
-            label.raycastTarget = true;
-            SetLayout(label, -1f, -1f, 1f, -1f);
-
-            var toggle = rect.gameObject.AddComponent<Toggle>();
-            toggle.targetGraphic = boxInner;
-            toggle.graphic = checkmark;
-            toggle.toggleTransition = Toggle.ToggleTransition.None;
-            toggle.transition = Selectable.Transition.ColorTint;
-            var colors = ColorBlock.defaultColorBlock;
-            colors.normalColor = Color.white;
-            colors.highlightedColor = OperatorUiStyle.Lighten(OperatorUiStyle.Accent, 0.85f);
-            colors.pressedColor = OperatorUiStyle.Lighten(OperatorUiStyle.Accent, 0.7f);
-            colors.selectedColor = OperatorUiStyle.Lighten(OperatorUiStyle.Accent, 0.9f);
-            colors.disabledColor = OperatorUiStyle.Neutral;
-            colors.colorMultiplier = 1f;
-            colors.fadeDuration = 0.08f;
-            toggle.colors = colors;
-
-            // Toggle.OnEnable / Set call PlayEffect, which (with ToggleTransition.None) sets the checkmark alpha instantly.
-            rect.gameObject.SetActive(true);
-            return toggle;
-        }
-
-        // ----- containers and layout -----
 
         /// <summary>
-        /// White card centred in the parent with a vertical layout and a ContentSizeFitter (height follows content).
+        /// Card centred in the parent with a vertical layout and a ContentSizeFitter (height follows the content). Children
+        /// are added to the returned rect.
         /// </summary>
-        public static RectTransform CreateCard(Transform parent, string name, float width, int padding = 40, float spacing = 18f)
+        public static RectTransform CreateCard(
+            Transform parent,
+            string name,
+            float width,
+            int padding = 32,
+            float spacing = 16f,
+            int radius = OperatorUiStyle.RadiusCard)
         {
-            var card = CreateImage(name, parent, OperatorUiStyle.Card, true);
-            AnchorCenter(card.rectTransform, width, 200f);
-            var shadow = card.gameObject.AddComponent<Shadow>();
-            shadow.effectColor = new Color(0f, 0f, 0f, 0.12f);
-            shadow.effectDistance = new Vector2(0f, -4f);
-
+            var card = CreateSurface(parent, name, OperatorUiStyle.Card, radius, true, true, out _);
+            AnchorCenter(card, width, 200f);
             AddVerticalLayout(card.gameObject, spacing, new RectOffset(padding, padding, padding, padding), TextAnchor.UpperCenter, true, true, true, false);
             var fitter = card.gameObject.AddComponent<ContentSizeFitter>();
             fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
             fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-            return card.rectTransform;
+            return card;
         }
 
         /// <summary>Horizontal row container (no graphic) inside a layout group.</summary>
@@ -472,12 +308,12 @@ namespace MultiTravel.Operator.UI
             return rect;
         }
 
-        /// <summary>Square status dot.</summary>
-        public static Image CreateDot(Transform parent, string name, float size, Color color)
+        /// <summary>Empty element that takes all remaining space in a layout group.</summary>
+        public static RectTransform CreateFlexibleSpace(Transform parent)
         {
-            var dot = CreateImage(name, parent, color, false);
-            SetLayout(dot, size, size, 0f, 0f, size, size);
-            return dot;
+            var rect = CreateRect("Flex", parent);
+            SetLayout(rect, 0f, 0f, 1f, 1f, 0f, 0f);
+            return rect;
         }
 
         public static VerticalLayoutGroup AddVerticalLayout(
@@ -553,6 +389,18 @@ namespace MultiTravel.Operator.UI
             return element;
         }
 
+        /// <summary>Excludes a child from its parent's layout group.</summary>
+        public static void IgnoreLayout(Component target)
+        {
+            var element = target.GetComponent<LayoutElement>();
+            if (element == null)
+            {
+                element = target.gameObject.AddComponent<LayoutElement>();
+            }
+
+            element.ignoreLayout = true;
+        }
+
         /// <summary>Activates / deactivates a GameObject only when the state changes.</summary>
         public static void SetActive(Component target, bool active)
         {
@@ -560,6 +408,23 @@ namespace MultiTravel.Operator.UI
             {
                 target.gameObject.SetActive(active);
             }
+        }
+
+        // ----- button shortcut -----
+
+        /// <summary>Creates a <see cref="UiButton"/> (see <see cref="UiButton.Create"/>).</summary>
+        public static UiButton CreateButton(
+            Transform parent,
+            string name,
+            string text,
+            ButtonStyle style,
+            UnityEngine.Events.UnityAction onClick,
+            float height = OperatorUiStyle.ButtonHeight,
+            float fontSize = OperatorUiStyle.FontBody,
+            float preferredWidth = -1f,
+            UiIcon icon = UiIcon.None)
+        {
+            return UiButton.Create(parent, name, text, style, onClick, height, fontSize, preferredWidth, icon);
         }
     }
 }

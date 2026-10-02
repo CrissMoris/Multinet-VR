@@ -6,8 +6,8 @@ using UnityEngine;
 namespace MultiTravel.Operator.Panels
 {
     /// <summary>
-    /// Overlay for Loading (gameplay prepares the item set) and Countdown (VR countdown). Shows the remaining countdown
-    /// seconds, warns when loading takes unusually long and lets the operator cancel the session.
+    /// Loading (gameplay prepares the item set) and Countdown (VR countdown): spectator view with the remaining countdown
+    /// seconds on top, a warning when loading takes unusually long and the cancel action.
     /// </summary>
     public sealed class LoadingPanel : OperatorPanel
     {
@@ -17,7 +17,7 @@ namespace MultiTravel.Operator.Panels
         private TextMeshProUGUI countdownLabel;
         private TextMeshProUGUI description;
         private TextMeshProUGUI slowWarning;
-        private ConfirmPrompt cancelPrompt;
+        private RectTransform countdownOverlay;
 
         private SessionState shownState;
         private float stateEnteredAt;
@@ -35,23 +35,32 @@ namespace MultiTravel.Operator.Panels
 
         protected override void OnBuild(RectTransform root)
         {
-            var overlay = UiFactory.CreateImage("Overlay", root, OperatorUiStyle.Overlay, true);
-            UiFactory.Stretch(overlay.rectTransform);
+            var column = UiFactory.CreateRect("Column", root);
+            UiFactory.Stretch(column, 40f, 0f, 40f, 0f);
+            UiFactory.AddVerticalLayout(column.gameObject, 16f, new RectOffset(0, 0, 0, 0), TextAnchor.UpperCenter, true, true, true, false);
 
-            var card = UiFactory.CreateCard(root, "Card", 900f, 48, 18f);
-            heading = CreateHeading(card, string.Empty);
-            countdownLabel = UiFactory.CreateLabel(card, "Countdown", string.Empty, OperatorUiStyle.FontHuge,
-                OperatorUiStyle.Warning, FontStyles.Bold, TextAlignmentOptions.Center);
-            description = CreateBody(card, "Description", string.Empty);
-            slowWarning = UiFactory.CreateLabel(card, "SlowWarning",
+            heading = CreateHeading(column, string.Empty);
+
+            var frame = Context.Feed.CreateFrame(column, "SpectatorFrame", out var overlay);
+            countdownOverlay = UiFactory.CreateRect("CountdownOverlay", overlay);
+            UiFactory.Stretch(countdownOverlay);
+            var dim = UiFactory.CreateImage("Dim", countdownOverlay, OperatorUiStyle.WithAlpha(OperatorUiStyle.Background, 0.55f), false);
+            UiFactory.Stretch(dim.rectTransform);
+            countdownLabel = UiFactory.CreateLabel(countdownOverlay, "Countdown", string.Empty, OperatorUiStyle.FontHero, Color.white,
+                FontStyles.Bold, TextAlignmentOptions.Center);
+            countdownLabel.richText = true;
+            UiFactory.Stretch(countdownLabel.rectTransform);
+            _ = frame;
+
+            description = CreateBody(column, "Description", string.Empty);
+            slowWarning = UiFactory.CreateLabel(column, "SlowWarning",
                 "Hazırlık beklenenden uzun sürüyor. VR uygulamasını kontrol edin; gerekirse oturumu iptal edin.",
-                OperatorUiStyle.FontSmall, OperatorUiStyle.Danger, FontStyles.Bold, TextAlignmentOptions.Center);
+                OperatorUiStyle.FontLabel, OperatorUiStyle.DangerText, FontStyles.Bold, TextAlignmentOptions.Center);
             slowWarning.gameObject.SetActive(false);
 
-            cancelPrompt = new ConfirmPrompt(card, "CancelPrompt");
-            var buttons = UiFactory.CreateRow(card, "Buttons", 20f, TextAnchor.MiddleCenter, false);
-            UiFactory.CreateButton(buttons, "CancelButton", "Oturumu İptal Et", ButtonStyle.Secondary, OnCancelRequested,
-                OperatorUiStyle.ButtonHeight, OperatorUiStyle.FontButton, 300f);
+            var buttons = UiFactory.CreateRow(column, "Buttons", 16f, TextAnchor.MiddleCenter, false);
+            UiFactory.CreateButton(buttons, "CancelButton", "Oturumu İptal Et", ButtonStyle.Ghost, OnCancelRequested,
+                OperatorUiStyle.ButtonHeight, OperatorUiStyle.FontBody, 280f);
         }
 
         protected override void OnShow(SessionState state)
@@ -62,7 +71,7 @@ namespace MultiTravel.Operator.Panels
             }
 
             shownState = state;
-            cancelPrompt.Close();
+            CloseConfirm();
             lastRemaining = -1;
             slowWarningShown = false;
             UiFactory.SetActive(slowWarning, false);
@@ -71,19 +80,19 @@ namespace MultiTravel.Operator.Panels
             {
                 heading.text = "Geri Sayım";
                 description.text = "Katılımcı geri sayımı VR'da görüyor. Sayım bitince oyun ve süre başlar.";
-                UiFactory.SetActive(countdownLabel, true);
+                UiFactory.SetActive(countdownOverlay, true);
             }
             else
             {
                 heading.text = "Oyun Hazırlanıyor…";
                 description.text = "Ürünler ve valiz hazırlanıyor, lütfen bekleyin.";
-                UiFactory.SetActive(countdownLabel, false);
+                UiFactory.SetActive(countdownOverlay, false);
             }
         }
 
         protected override void OnHide()
         {
-            cancelPrompt.Close();
+            CloseConfirm();
             shownState = SessionState.Welcome;
         }
 
@@ -96,7 +105,10 @@ namespace MultiTravel.Operator.Panels
                 if (remaining != lastRemaining)
                 {
                     lastRemaining = remaining;
-                    countdownLabel.SetText("{0}", remaining);
+                    countdownLabel.SetText(OperatorUiStyle.TabularOpen + "{0}" + OperatorUiStyle.TabularClose, remaining);
+                    var rect = countdownLabel.rectTransform;
+                    rect.localScale = new Vector3(1.25f, 1.25f, 1f);
+                    UiTween.ScaleTo(rect, 1f, UiTween.Normal);
                 }
             }
             else if (shownState == SessionState.Loading && !slowWarningShown && elapsed >= SlowLoadingWarningSeconds)
@@ -113,7 +125,7 @@ namespace MultiTravel.Operator.Panels
 
         private void OnCancelRequested()
         {
-            cancelPrompt.Ask("Oturum iptal edilsin mi? Bu katılımcı için sonuç kaydedilmeyecek.", "Evet, iptal et", ButtonStyle.Danger, CancelSession);
+            Confirm("Oturum iptal edilsin mi?", "Bu katılımcı için sonuç kaydedilmeyecek.", "Evet, iptal et", ButtonStyle.Danger, CancelSession);
         }
 
         private void CancelSession()

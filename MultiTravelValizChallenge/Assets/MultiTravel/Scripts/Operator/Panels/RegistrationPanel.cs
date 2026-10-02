@@ -4,14 +4,15 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
-using UnityEngine.UI;
 
 namespace MultiTravel.Operator.Panels
 {
     /// <summary>
-    /// Registration form (Ad, Soyad, Telefon, E-posta, optional KVKK consent). "Devam" (or Enter) calls
+    /// Registration form in a two-column 960 px card: Ad, Soyad, Telefon, E-posta (floating labels, live validity check,
+    /// inline errors) and the KVKK consent block when configured. The phone number formats itself as 0XXX XXX XX XX. Enter moves
+    /// to the next field and submits from the last one; Tab / Shift+Tab move the focus. "Devam" calls
     /// <see cref="SessionController.SubmitRegistration"/>; field errors from the <see cref="ValidationResult"/> are shown
-    /// inline in Turkish. Tab / Shift+Tab move the focus between fields. All fields are cleared for every new session.
+    /// inline in Turkish. All fields are cleared for every new session.
     /// </summary>
     public sealed class RegistrationPanel : OperatorPanel
     {
@@ -30,17 +31,14 @@ namespace MultiTravel.Operator.Panels
             ParticipantValidator.FieldEmail
         };
 
-        private readonly TMP_InputField[] fields = new TMP_InputField[FieldCount];
-        private readonly TextMeshProUGUI[] fieldErrors = new TextMeshProUGUI[FieldCount];
+        private readonly UiField[] fields = new UiField[FieldCount];
 
         private RectTransform consentBlock;
-        private Toggle consentToggle;
-        private TextMeshProUGUI consentLabel;
+        private UiToggle consentToggle;
         private TextMeshProUGUI consentError;
         private UiButton continueButton;
-        private ConfirmPrompt cancelPrompt;
         private bool focusPending;
-        private int shownFrame = -1;
+        private int pendingFocus = -1;
 
         public RegistrationPanel(OperatorContext context) : base(context)
         {
@@ -53,35 +51,42 @@ namespace MultiTravel.Operator.Panels
 
         protected override void OnBuild(RectTransform root)
         {
-            var card = UiFactory.CreateCard(root, "Card", OperatorUiStyle.CardWidth, 44, 18f);
-            CreateHeading(card, "Katılımcı Kaydı");
-            CreateBody(card, "Hint", "Bilgileri katılımcıdan alarak doldurun. Tab ile sonraki alana geçebilir, Enter ile devam edebilirsiniz.");
+            var card = UiFactory.CreateCard(root, "Card", 960f, 40, 20f);
 
-            var rowNames = UiFactory.CreateRow(card, "NamesRow", 28f, TextAnchor.UpperLeft);
+            var header = UiFactory.CreateRow(card, "Header", 20f, TextAnchor.MiddleLeft, false);
+            CreateBadge(header, UiIcon.User, OperatorUiStyle.PrimaryBright, 72f);
+            var titles = UiFactory.CreateColumn(header, "Titles", 4f, TextAnchor.MiddleLeft);
+            UiFactory.SetLayout(titles, 0f, -1f, 1f, -1f);
+            var heading = CreateHeading(titles, "Katılımcı Kaydı", TextAlignmentOptions.Left);
+            UiFactory.MakeSingleLine(heading);
+            CreateBody(titles, "Hint", "Bilgileri katılımcıdan alarak doldurun. Enter ile sonraki alana geçin.", TextAlignmentOptions.Left);
+
+            UiFactory.CreateDivider(card);
+
+            var rowNames = UiFactory.CreateRow(card, "NamesRow", 24f, TextAnchor.UpperLeft);
             fields[IndexFirstName] = CreateField(rowNames, IndexFirstName, "Ad", "Örn. Ayşe", TMP_InputField.ContentType.Standard, ParticipantValidator.MaxNameLength);
             fields[IndexLastName] = CreateField(rowNames, IndexLastName, "Soyad", "Örn. Yılmaz", TMP_InputField.ContentType.Standard, ParticipantValidator.MaxNameLength);
 
-            var rowContact = UiFactory.CreateRow(card, "ContactRow", 28f, TextAnchor.UpperLeft);
-            fields[IndexPhone] = CreateField(rowContact, IndexPhone, "Telefon", "05XX XXX XX XX", TMP_InputField.ContentType.Standard, PhoneCharacterLimit);
+            var rowContact = UiFactory.CreateRow(card, "ContactRow", 24f, TextAnchor.UpperLeft);
+            fields[IndexPhone] = CreateField(rowContact, IndexPhone, "Telefon", "0XXX XXX XX XX", TMP_InputField.ContentType.Standard, PhoneCharacterLimit);
             fields[IndexEmail] = CreateField(rowContact, IndexEmail, "E-posta", "ornek@alanadi.com", TMP_InputField.ContentType.EmailAddress, ParticipantValidator.MaxEmailLength);
 
-            var phone = fields[IndexPhone];
+            var phone = fields[IndexPhone].Input;
             phone.keyboardType = TouchScreenKeyboardType.PhonePad;
             phone.onValidateInput = ValidatePhoneCharacter;
 
             consentBlock = UiFactory.CreateColumn(card, "ConsentBlock", 6f);
-            consentToggle = UiFactory.CreateToggle(consentBlock, "ConsentToggle", string.Empty, OperatorUiStyle.FontSmall, out consentLabel);
-            consentToggle.onValueChanged.AddListener(OnConsentChanged);
-            consentError = CreateErrorLabel(consentBlock, "ConsentError");
+            consentToggle = UiToggle.Create(consentBlock, "ConsentToggle", string.Empty, OperatorUiStyle.FontLabel);
+            consentToggle.Changed += OnConsentChanged;
+            consentError = UiFactory.CreateLabel(consentBlock, "ConsentError", string.Empty, OperatorUiStyle.FontCaption, OperatorUiStyle.DangerText);
+            consentError.gameObject.SetActive(false);
 
             UiFactory.CreateSpacer(card, 10f, 4f);
-            cancelPrompt = new ConfirmPrompt(card, "CancelPrompt");
-
-            var buttons = UiFactory.CreateRow(card, "Buttons", 20f, TextAnchor.MiddleRight, false);
-            UiFactory.CreateButton(buttons, "CancelButton", "Vazgeç", ButtonStyle.Secondary, OnCancelRequested,
-                OperatorUiStyle.ButtonHeight, OperatorUiStyle.FontButton, 220f);
+            var buttons = UiFactory.CreateRow(card, "Buttons", 16f, TextAnchor.MiddleRight, false);
+            UiFactory.CreateButton(buttons, "CancelButton", "Vazgeç", ButtonStyle.Ghost, OnCancelRequested,
+                OperatorUiStyle.ButtonHeight, OperatorUiStyle.FontBody, 180f);
             continueButton = UiFactory.CreateButton(buttons, "ContinueButton", "Devam", ButtonStyle.Primary, TrySubmit,
-                OperatorUiStyle.ButtonHeight, OperatorUiStyle.FontButton, 320f);
+                OperatorUiStyle.ButtonHeight, OperatorUiStyle.FontBody, 280f, UiIcon.Play);
         }
 
         protected override void OnShow(SessionState state)
@@ -90,16 +95,16 @@ namespace MultiTravel.Operator.Panels
 
             var privacy = Context.Config.Privacy;
             bool consentRequired = privacy.IsConsentRequired;
-            consentLabel.text = consentRequired ? privacy.ConsentText : string.Empty;
+            consentToggle.Label.text = consentRequired ? privacy.ConsentText : string.Empty;
             UiFactory.SetActive(consentBlock, consentRequired);
             continueButton.Interactable = true;
             focusPending = true;
-            shownFrame = Time.frameCount;
+            pendingFocus = -1;
         }
 
         protected override void OnHide()
         {
-            cancelPrompt.Close();
+            CloseConfirm();
             focusPending = false;
             var eventSystem = EventSystem.current;
             if (eventSystem != null && !eventSystem.alreadySelecting)
@@ -113,61 +118,122 @@ namespace MultiTravel.Operator.Panels
         {
             for (int i = 0; i < FieldCount; i++)
             {
-                if (fields[i] != null)
-                {
-                    fields[i].SetTextWithoutNotify(string.Empty);
-                }
-
-                SetError(fieldErrors[i], null);
+                fields[i]?.Clear();
             }
 
-            if (consentToggle != null)
-            {
-                consentToggle.SetIsOnWithoutNotify(false);
-            }
-
-            SetError(consentError, null);
-            cancelPrompt?.Close();
+            consentToggle?.SetIsOn(false);
+            SetConsentError(null);
+            CloseConfirm();
         }
 
-        /// <summary>Per-frame keyboard handling while visible (Tab / Shift+Tab focus, Enter submits). Allocation-free.</summary>
-        public void Tick()
+        /// <summary>Per-frame keyboard handling while visible (initial focus, Tab / Shift+Tab). Allocation-free.</summary>
+        public override void Tick()
         {
             if (!IsVisible)
             {
                 return;
             }
 
-            if (focusPending)
+            if (focusPending && CanUseShortcuts())
             {
                 focusPending = false;
-                Focus(IndexFirstName);
+                fields[IndexFirstName].Focus();
+            }
+
+            if (pendingFocus >= 0)
+            {
+                // Focus moves requested from onSubmit run one frame later: the input field still finishes its own
+                // Enter handling (and deactivates itself) after the submit callback returns.
+                int index = pendingFocus;
+                pendingFocus = -1;
+                fields[index].Focus();
             }
 
             var keyboard = Keyboard.current;
-            if (keyboard == null || Time.frameCount <= shownFrame)
+            if (keyboard == null || !CanUseShortcuts())
             {
-                // Ignore the key press that opened the panel (e.g. Enter submitting "Başla" in the same frame).
                 return;
             }
 
             if (keyboard.tabKey.wasPressedThisFrame)
             {
-                bool backwards = keyboard.shiftKey.isPressed;
-                MoveFocus(backwards);
+                MoveFocus(keyboard.shiftKey.isPressed);
+            }
+        }
+
+        private UiField CreateField(Transform row, int index, string label, string hint, TMP_InputField.ContentType contentType, int characterLimit)
+        {
+            var field = UiField.Create(row, label + "Field", label, hint, contentType, characterLimit);
+            field.Changed += _ => OnFieldChanged(index);
+            field.Blurred += _ => OnFieldBlurred(index);
+            field.Submitted += _ => OnFieldSubmitted(index);
+            return field;
+        }
+
+        private void OnFieldChanged(int index)
+        {
+            var field = fields[index];
+            if (index == IndexPhone)
+            {
+                string formatted = PhoneFormatter.Format(field.Text);
+                if (formatted != field.Text)
+                {
+                    field.Input.SetTextWithoutNotify(formatted);
+                    field.Input.caretPosition = formatted.Length;
+                }
+            }
+
+            field.SetState(FieldState.None, null);
+            if (field.Text.Length > 0)
+            {
+                var validation = ParticipantValidator.Validate(BuildInput(false), false);
+                if (!validation.TryGetError(FieldKeys[index], out _))
+                {
+                    field.SetState(FieldState.Valid, null);
+                }
+            }
+        }
+
+        private void OnFieldBlurred(int index)
+        {
+            var field = fields[index];
+            if (!IsVisible || field.Text.Length == 0)
+            {
                 return;
             }
 
-            if ((keyboard.enterKey.wasPressedThisFrame || keyboard.numpadEnterKey.wasPressedThisFrame) && !cancelPrompt.IsOpen)
+            var validation = ParticipantValidator.Validate(BuildInput(false), false);
+            if (validation.TryGetError(FieldKeys[index], out var message))
             {
-                if (IsNonInputSelectableSelected())
-                {
-                    // A focused button / toggle receives Enter as a uGUI Submit event; do not submit twice.
-                    return;
-                }
+                field.SetState(FieldState.Error, message);
+            }
+        }
 
+        private void OnFieldSubmitted(int index)
+        {
+            if (index < FieldCount - 1)
+            {
+                pendingFocus = index + 1;
+            }
+            else
+            {
                 TrySubmit();
             }
+        }
+
+        private ParticipantInput BuildInput(bool includeConsent)
+        {
+            var privacy = Context.Config.Privacy;
+            bool consentRequired = includeConsent && privacy.IsConsentRequired;
+            return new ParticipantInput
+            {
+                FirstName = fields[IndexFirstName].Text,
+                LastName = fields[IndexLastName].Text,
+                Phone = fields[IndexPhone].Text,
+                Email = fields[IndexEmail].Text,
+                ConsentAccepted = consentRequired ? consentToggle.IsOn : (bool?)null,
+                ConsentVersion = consentRequired ? privacy.ConsentVersion : null
+            };
         }
 
         private void TrySubmit()
@@ -179,15 +245,7 @@ namespace MultiTravel.Operator.Panels
 
             var privacy = Context.Config.Privacy;
             bool consentRequired = privacy.IsConsentRequired;
-            var input = new ParticipantInput
-            {
-                FirstName = fields[IndexFirstName].text,
-                LastName = fields[IndexLastName].text,
-                Phone = fields[IndexPhone].text,
-                Email = fields[IndexEmail].text,
-                ConsentAccepted = consentRequired ? consentToggle.isOn : (bool?)null,
-                ConsentVersion = consentRequired ? privacy.ConsentVersion : null
-            };
+            var input = BuildInput(true);
 
             ValidationResult validation = null;
             Context.Run(SessionState.Registration, () => validation = Context.Session.SubmitRegistration(input), "SubmitRegistration");
@@ -199,26 +257,34 @@ namespace MultiTravel.Operator.Panels
             int firstInvalid = -1;
             for (int i = 0; i < FieldCount; i++)
             {
-                validation.TryGetError(FieldKeys[i], out var message);
-                SetError(fieldErrors[i], message);
-                if (message != null && firstInvalid < 0)
+                if (validation.TryGetError(FieldKeys[i], out var message))
                 {
-                    firstInvalid = i;
+                    fields[i].SetState(FieldState.Error, message);
+                    if (firstInvalid < 0)
+                    {
+                        firstInvalid = i;
+                    }
+                }
+                else
+                {
+                    fields[i].SetState(fields[i].Text.Length > 0 ? FieldState.Valid : FieldState.None, null);
                 }
             }
 
             validation.TryGetError(ParticipantValidator.FieldConsent, out var consentMessage);
-            SetError(consentError, consentRequired ? consentMessage : null);
+            SetConsentError(consentRequired ? consentMessage : null);
 
             if (firstInvalid >= 0)
             {
-                Focus(firstInvalid);
+                pendingFocus = firstInvalid;
             }
+
+            Context.Toast?.Show("Lütfen işaretli alanları düzeltin", ToastKind.Warning, 2.5f);
         }
 
         private void OnCancelRequested()
         {
-            cancelPrompt.Ask("Kayıt iptal edilsin mi? Girilen bilgiler silinecek.", "Evet, iptal et", ButtonStyle.Danger, CancelRegistration);
+            Confirm("Kayıt iptal edilsin mi?", "Girilen bilgiler silinecek ve karşılama ekranına dönülecek.", "Evet, iptal et", ButtonStyle.Danger, CancelRegistration);
         }
 
         private void CancelRegistration()
@@ -233,8 +299,24 @@ namespace MultiTravel.Operator.Panels
         {
             if (isOn)
             {
-                SetError(consentError, null);
+                SetConsentError(null);
             }
+        }
+
+        private void SetConsentError(string message)
+        {
+            if (consentError == null)
+            {
+                return;
+            }
+
+            bool show = !string.IsNullOrEmpty(message);
+            if (show)
+            {
+                consentError.text = message;
+            }
+
+            UiFactory.SetActive(consentError, show);
         }
 
         private void MoveFocus(bool backwards)
@@ -250,7 +332,7 @@ namespace MultiTravel.Operator.Panels
                 next = backwards ? (current + FieldCount - 1) % FieldCount : (current + 1) % FieldCount;
             }
 
-            Focus(next);
+            fields[next].Focus();
         }
 
         private int FocusedIndex()
@@ -259,71 +341,13 @@ namespace MultiTravel.Operator.Panels
             var selected = eventSystem != null ? eventSystem.currentSelectedGameObject : null;
             for (int i = 0; i < FieldCount; i++)
             {
-                if (fields[i].isFocused || (selected != null && selected == fields[i].gameObject))
+                if (fields[i].IsFocused || fields[i].Input.isFocused || (selected != null && selected == fields[i].Input.gameObject))
                 {
                     return i;
                 }
             }
 
             return -1;
-        }
-
-        private void Focus(int index)
-        {
-            var field = fields[index];
-            var eventSystem = EventSystem.current;
-            if (eventSystem != null)
-            {
-                eventSystem.SetSelectedGameObject(field.gameObject);
-            }
-
-            field.ActivateInputField();
-        }
-
-        private static bool IsNonInputSelectableSelected()
-        {
-            var eventSystem = EventSystem.current;
-            var selected = eventSystem != null ? eventSystem.currentSelectedGameObject : null;
-            if (selected == null)
-            {
-                return false;
-            }
-
-            return selected.GetComponent<TMP_InputField>() == null && selected.GetComponent<Selectable>() != null;
-        }
-
-        private TMP_InputField CreateField(Transform row, int index, string label, string placeholder, TMP_InputField.ContentType contentType, int characterLimit)
-        {
-            var column = UiFactory.CreateColumn(row, label + "Field", 6f);
-            UiFactory.SetLayout(column, 0f, -1f, 1f, -1f);
-            UiFactory.CreateLabel(column, "Label", label, OperatorUiStyle.FontSmall, OperatorUiStyle.TextSecondary, FontStyles.Bold);
-            var field = UiFactory.CreateInputField(column, "Input", placeholder, contentType, characterLimit);
-            fieldErrors[index] = CreateErrorLabel(column, "Error");
-            field.onValueChanged.AddListener(_ => SetError(fieldErrors[index], null));
-            return field;
-        }
-
-        private static TextMeshProUGUI CreateErrorLabel(Transform parent, string name)
-        {
-            var label = UiFactory.CreateLabel(parent, name, string.Empty, OperatorUiStyle.FontSmall, OperatorUiStyle.Danger);
-            label.gameObject.SetActive(false);
-            return label;
-        }
-
-        private static void SetError(TextMeshProUGUI label, string message)
-        {
-            if (label == null)
-            {
-                return;
-            }
-
-            bool show = !string.IsNullOrEmpty(message);
-            if (show)
-            {
-                label.text = message;
-            }
-
-            UiFactory.SetActive(label, show);
         }
 
         /// <summary>Phone input filter: digits, a single leading '+', spaces, dashes and parentheses.</summary>

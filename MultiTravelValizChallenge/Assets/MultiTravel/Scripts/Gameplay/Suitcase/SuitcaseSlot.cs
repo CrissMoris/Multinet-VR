@@ -1,4 +1,5 @@
 using System.Collections;
+using MultiTravel.Core.Products;
 using MultiTravel.Gameplay.Items;
 using UnityEngine;
 
@@ -6,7 +7,9 @@ namespace MultiTravel.Gameplay.Suitcase
 {
     /// <summary>
     /// One placement position inside the suitcase. Tracks its occupant and can pulse an optional marker renderer
-    /// through a <see cref="MaterialPropertyBlock"/> (no material instances are created).
+    /// through a <see cref="MaterialPropertyBlock"/> (no material instances are created). <see cref="Kind"/> tells the
+    /// <see cref="SuitcaseController"/> which items prefer this slot (OVERHAUL_PLAN §5); items rest on it with their packed
+    /// (folded) bounds.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class SuitcaseSlot : MonoBehaviour
@@ -14,6 +17,10 @@ namespace MultiTravel.Gameplay.Suitcase
         private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
         private static readonly int ColorId = Shader.PropertyToID("_Color");
         private static readonly int EmissionColorId = Shader.PropertyToID("_EmissionColor");
+
+        [SerializeField]
+        [Tooltip("Packing kind of this slot (art anchor PACK.<kind>.<nn>). Items of the same PackedKind use it first.")]
+        private PackedKind kind = PackedKind.Flat;
 
         [SerializeField]
         [Tooltip("Optional marker renderer that pulses when an item lands in this slot.")]
@@ -48,6 +55,15 @@ namespace MultiTravel.Gameplay.Suitcase
         private Color restColor = Color.white;
         private int colorPropertyId = -1;
         private bool hasEmission;
+
+        /// <summary>Packing kind of the slot.</summary>
+        public PackedKind Kind => kind;
+
+        /// <summary>Generator / test API: sets the packing kind.</summary>
+        public void SetKind(PackedKind value)
+        {
+            kind = value;
+        }
 
         /// <summary>True while an item occupies the slot.</summary>
         public bool IsOccupied => Occupant != null;
@@ -107,7 +123,9 @@ namespace MultiTravel.Gameplay.Suitcase
                 }
 
                 var basePoint = below.SurfacePoint;
-                float rise = below.heightOffset + Mathf.Min(maxStackStep, ItemPlacementMath.ItemHeight(below.Occupant));
+                var occupant = below.Occupant;
+                float height = occupant != null ? ItemPlacementMath.ItemHeight(occupant, occupant.PackedBounds) : 0f;
+                float rise = below.heightOffset + Mathf.Min(maxStackStep, height);
                 return new Vector3(transform.position.x, basePoint.y, transform.position.z) + transform.up * rise;
             }
         }
@@ -130,15 +148,46 @@ namespace MultiTravel.Gameplay.Suitcase
             colorPropertyId = -1;
         }
 
-        /// <summary>World pose of <paramref name="item"/> resting in this slot.</summary>
+        /// <summary>World pose of <paramref name="item"/> resting in this slot (packed bounds, i.e. the folded visual).</summary>
         public Pose PoseFor(ProductItem item)
         {
-            if (below == null)
-            {
-                return ItemPlacementMath.PoseOnSurface(transform, item, heightOffset);
-            }
+            var bounds = item != null ? item.PackedBounds : default;
+            var surface = below == null ? transform.position : SurfacePoint;
+            return ItemPlacementMath.PoseOnSurface(surface, transform.rotation, item, bounds, heightOffset);
+        }
 
-            return ItemPlacementMath.PoseOnSurface(SurfacePoint, transform.rotation, item, heightOffset);
+        /// <summary>World height of the top of the occupant at its resting pose (slot surface when empty).</summary>
+        public float TopWorldY
+        {
+            get
+            {
+                var surface = below == null ? transform.position : SurfacePoint;
+                if (Occupant == null)
+                {
+                    return surface.y;
+                }
+
+                var pose = PoseFor(Occupant);
+                var bounds = Occupant.PackedBounds;
+                var scale = ItemPlacementMath.WorldScale(Occupant);
+                float top = float.MinValue;
+                var min = bounds.min;
+                var max = bounds.max;
+                for (int corner = 0; corner < 8; corner++)
+                {
+                    var local = new Vector3(
+                        (corner & 1) == 0 ? min.x : max.x,
+                        (corner & 2) == 0 ? min.y : max.y,
+                        (corner & 4) == 0 ? min.z : max.z);
+                    float y = (pose.position + pose.rotation * Vector3.Scale(local, scale)).y;
+                    if (y > top)
+                    {
+                        top = y;
+                    }
+                }
+
+                return top;
+            }
         }
 
         /// <summary>Marks the slot occupied by <paramref name="item"/>.</summary>

@@ -7,15 +7,16 @@ using MultiTravel.Gameplay.Suitcase;
 using MultiTravel.Gameplay.UI;
 using TMPro;
 using UnityEngine;
-using UnityEngine.XR.Interaction.Toolkit.Inputs.Haptics;
 
 namespace MultiTravel.Gameplay.Feedback
 {
     /// <summary>
-    /// Audio, haptic and visual feedback for suitcase placements (ARCHITECTURE.md §2.8):
-    /// procedural clips generated once in <c>Awake</c> (positive chime, negative buzz, tick), a haptic impulse on the
-    /// interactor that released the item, a slot pulse and pooled floating "+10" / "-5" labels that rise and fade.
-    /// Nothing is allocated per frame; label strings are cached per score value.
+    /// Audio, haptic and visual feedback for suitcase placements (ARCHITECTURE.md §2.8, OVERHAUL_PLAN §5):
+    /// procedural clips generated once in <c>Awake</c> (positive chime, soft wrong-item thud with a falling tone, tick),
+    /// haptics from the <see cref="Haptics"/> table on the interactor that released the item (correct: double pulse,
+    /// wrong: one longer pulse), a slot pulse and pooled floating "+10" / "-5" labels that rise and fade. The practice item
+    /// gets the positive chime and haptics but no score label. Per-material landing foley is left to the audio director
+    /// (<see cref="SuitcaseController.ItemLanded"/>). Nothing is allocated per frame; label strings are cached per score value.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class PlacementFeedback : MonoBehaviour
@@ -47,22 +48,6 @@ namespace MultiTravel.Gameplay.Feedback
         private int audioVoices = 4;
 
         [Header("Haptics")]
-        [SerializeField]
-        [Range(0f, 1f)]
-        private float positiveAmplitude = 0.45f;
-
-        [SerializeField]
-        [Min(0f)]
-        private float positiveDuration = 0.08f;
-
-        [SerializeField]
-        [Range(0f, 1f)]
-        private float negativeAmplitude = 0.85f;
-
-        [SerializeField]
-        [Min(0f)]
-        private float negativeDuration = 0.22f;
-
         [SerializeField]
         [Tooltip("Haptics are only sent when the placement happened within this many seconds of the release.")]
         [Min(0f)]
@@ -97,11 +82,13 @@ namespace MultiTravel.Gameplay.Feedback
         private Camera viewCamera;
         private float nextCameraLookup;
         private SuitcaseController subscribedSuitcase;
+        private Transform pendingPulseTarget;
+        private float pendingPulseTime = -1f;
 
         /// <summary>Generated positive clip.</summary>
         public AudioClip ChimeClip => chimeClip;
 
-        /// <summary>Generated negative clip.</summary>
+        /// <summary>Generated wrong-item clip (low dull thud + falling tone).</summary>
         public AudioClip BuzzClip => buzzClip;
 
         /// <summary>Generated tick clip.</summary>
@@ -177,6 +164,8 @@ namespace MultiTravel.Gameplay.Feedback
             }
 
             activeLabelCount = 0;
+            pendingPulseTarget = null;
+            pendingPulseTime = -1f;
             for (int i = 0; i < voices.Length; i++)
             {
                 if (voices[i] != null)
@@ -188,35 +177,30 @@ namespace MultiTravel.Gameplay.Feedback
 
         /// <summary>
         /// Sends a haptic impulse to the controller owning <paramref name="interactor"/> (hands have no haptics; no-op).
-        /// Uses <see cref="HapticImpulsePlayer"/> and falls back to an <see cref="IXRHapticImpulseProvider"/> in the parents.
+        /// Same as <see cref="Haptics.Send(Transform, float, float)"/>.
         /// </summary>
         public static bool SendHaptic(Transform interactor, float amplitude, float duration)
         {
-            if (interactor == null || amplitude <= 0f || duration <= 0f)
+            return Haptics.Send(interactor, amplitude, duration);
+        }
+
+        /// <summary>Plays the correct-placement double pulse (0.5 / 30 ms, then 0.3 / 60 ms) on <paramref name="interactor"/>.</summary>
+        public void PlayCorrectHaptics(Transform interactor)
+        {
+            if (interactor == null)
             {
-                return false;
+                return;
             }
 
-            var player = interactor.GetComponentInParent<HapticImpulsePlayer>(true);
-            if (player != null && player.SendHapticImpulse(amplitude, duration))
-            {
-                return true;
-            }
+            Haptics.Send(interactor, Haptics.CorrectFirst);
+            pendingPulseTarget = interactor;
+            pendingPulseTime = Time.unscaledTime + Haptics.CorrectSecondDelay;
+        }
 
-            var provider = interactor.GetComponentInParent<IXRHapticImpulseProvider>(true);
-            if (provider == null)
-            {
-                return false;
-            }
-
-            var group = provider.GetChannelGroup();
-            if (group == null || group.channelCount == 0)
-            {
-                return false;
-            }
-
-            var channel = group.GetChannel();
-            return channel != null && channel.SendHapticImpulse(amplitude, duration, 0f);
+        /// <summary>Plays the wrong-placement pulse (0.6 / 90 ms) on <paramref name="interactor"/>.</summary>
+        public void PlayWrongHaptics(Transform interactor)
+        {
+            Haptics.Send(interactor, Haptics.Wrong);
         }
 
         // ----- Unity -----
@@ -224,7 +208,7 @@ namespace MultiTravel.Gameplay.Feedback
         private void Awake()
         {
             chimeClip = FeedbackAudioSynth.CreateClip("MT_PositiveChime", FeedbackAudioSynth.PositiveChime());
-            buzzClip = FeedbackAudioSynth.CreateClip("MT_NegativeBuzz", FeedbackAudioSynth.NegativeBuzz());
+            buzzClip = FeedbackAudioSynth.CreateClip("MT_WrongThud", FeedbackAudioSynth.WrongThud());
             tickClip = FeedbackAudioSynth.CreateClip("MT_Tick", FeedbackAudioSynth.Tick());
 
             voices = new AudioSource[Mathf.Max(1, audioVoices)];
@@ -292,6 +276,13 @@ namespace MultiTravel.Gameplay.Feedback
 
         private void Update()
         {
+            if (pendingPulseTime >= 0f && Time.unscaledTime >= pendingPulseTime)
+            {
+                Haptics.Send(pendingPulseTarget, Haptics.CorrectSecond);
+                pendingPulseTarget = null;
+                pendingPulseTime = -1f;
+            }
+
             if (activeLabelCount == 0)
             {
                 return;
@@ -335,6 +326,8 @@ namespace MultiTravel.Gameplay.Feedback
             Unsubscribe();
             suitcase.ItemPlaced += OnItemPlaced;
             suitcase.ItemRemoved += OnItemRemoved;
+            suitcase.PracticeItemPlaced += OnPracticePlaced;
+            suitcase.PracticeItemRemoved += OnPracticeRemoved;
             subscribedSuitcase = suitcase;
         }
 
@@ -347,6 +340,8 @@ namespace MultiTravel.Gameplay.Feedback
 
             subscribedSuitcase.ItemPlaced -= OnItemPlaced;
             subscribedSuitcase.ItemRemoved -= OnItemRemoved;
+            subscribedSuitcase.PracticeItemPlaced -= OnPracticePlaced;
+            subscribedSuitcase.PracticeItemRemoved -= OnPracticeRemoved;
             subscribedSuitcase = null;
         }
 
@@ -371,11 +366,11 @@ namespace MultiTravel.Gameplay.Feedback
             {
                 if (positive)
                 {
-                    SendHaptic(item.LastInteractor, positiveAmplitude, positiveDuration);
+                    PlayCorrectHaptics(item.LastInteractor);
                 }
                 else
                 {
-                    SendHaptic(item.LastInteractor, negativeAmplitude, negativeDuration);
+                    PlayWrongHaptics(item.LastInteractor);
                 }
             }
 
@@ -385,6 +380,25 @@ namespace MultiTravel.Gameplay.Feedback
             }
 
             ShowScoreLabel(change.Delta, position + Vector3.up * labelHeightOffset);
+        }
+
+        private void OnPracticePlaced(ProductItem item)
+        {
+            Play(chimeClip, item.AnchorPosition, 0.8f);
+            if (item.LastInteractor != null && Time.unscaledTime - item.LastReleaseTime <= hapticReleaseWindow)
+            {
+                PlayCorrectHaptics(item.LastInteractor);
+            }
+
+            if (suitcase != null && suitcase.TryGetSlot(item, out var slot))
+            {
+                slot.Pulse(VrUiStyle.Teal);
+            }
+        }
+
+        private void OnPracticeRemoved(ProductItem item)
+        {
+            Play(tickClip, item.AnchorPosition, 0.6f);
         }
 
         private void OnItemRemoved(ProductItem item, ScoreChange change)

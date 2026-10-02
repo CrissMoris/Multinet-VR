@@ -19,9 +19,9 @@ namespace MultiTravel.EditorTools.Fonts
         public const string FontAssetPath = GeneratedAssetUtil.ResourcesFolder + "/MultiTravelFont.asset";
         public const string ResourceName = "MultiTravelFont";
 
-        public const int SamplingPointSize = 90;
-        public const int AtlasPadding = 9;
-        public const int AtlasSize = 1024;
+        public const int SamplingPointSize = 128;
+        public const int AtlasPadding = 14;
+        public const int AtlasSize = 2048;
 
         /// <summary>Characters pre-added to the atlas (Turkish alphabet, digits, punctuation, plus q/w/x for names and e-mails).</summary>
         public const string PrebakedCharacters =

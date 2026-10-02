@@ -47,6 +47,9 @@ namespace MultiTravel.Core.Products
 
         public ProductInteractionSettings Interaction = new ProductInteractionSettings();
 
+        [Tooltip("Display zone, packing and grip presentation (visual only; never affects scoring).")]
+        public ProductPresentation Presentation = new ProductPresentation();
+
         /// <summary>True when <see cref="IsRequiredForCompletion"/> was set explicitly and no longer follows <see cref="IsCorrect"/>.</summary>
         public bool RequiredExplicitlySet => requiredExplicitlySet;
 
@@ -94,6 +97,11 @@ namespace MultiTravel.Core.Products
         private void OnValidate()
         {
             SyncRequiredDefault();
+            if (Presentation == null)
+            {
+                Presentation = new ProductPresentation();
+            }
+
             if (Interaction == null)
             {
                 Interaction = new ProductInteractionSettings();
