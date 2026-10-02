@@ -3,6 +3,17 @@ using UnityEngine;
 
 namespace MultiTravel.Gameplay.Items
 {
+    /// <summary>Footprint class of a display slot / of an item resting on it (at display scale).</summary>
+    public enum SlotSize
+    {
+        /// <summary>Up to <see cref="SpawnSlot.SmallMax"/> m wide: pens, jewellery, cards, phones.</summary>
+        Small = 0,
+        /// <summary>Up to <see cref="SpawnSlot.MediumMax"/> m wide: shoes, notebooks, glasses, t-shirts.</summary>
+        Medium = 1,
+        /// <summary>Wider items (up to about 0.26 m): laptop, bags, towel, hat.</summary>
+        Wide = 2
+    }
+
     /// <summary>
     /// A display position in the dressing room (hook, shelf, rack tier, tray, table …). The transform's position / rotation is
     /// the item's home pose (+Z = item forward, +Y = up). <see cref="Zone"/> decides which items may use the slot
@@ -27,6 +38,48 @@ namespace MultiTravel.Gameplay.Items
         [Tooltip("Extra height above the slot transform so the item does not intersect the surface it spawns on.")]
         [Min(0f)]
         private float heightOffset = 0.02f;
+
+        /// <summary>Widest item (m, at display scale) that counts as <see cref="SlotSize.Small"/>.</summary>
+        public const float SmallMax = 0.15f;
+
+        /// <summary>Widest item (m, at display scale) that counts as <see cref="SlotSize.Medium"/>.</summary>
+        public const float MediumMax = 0.26f;
+
+        /// <summary>Items taller than this (m, at display scale) need a tall slot (top row, open above).</summary>
+        public const float TallMin = 0.24f;
+
+        [SerializeField]
+        [Tooltip("Widest item class this slot holds. Wide (default) = anything.")]
+        private SlotSize size = SlotSize.Wide;
+
+        [SerializeField]
+        [Tooltip("True when the space above the slot is open, so tall items fit (default: yes).")]
+        private bool acceptsTall = true;
+
+        /// <summary>Size class of the slot.</summary>
+        public SlotSize Size => size;
+
+        /// <summary>True when tall items (football, gnome, bags) fit above this slot.</summary>
+        public bool AcceptsTall => acceptsTall;
+
+        /// <summary>Generator / test API: sets the size class and whether tall items fit.</summary>
+        public void SetSize(SlotSize value, bool tall = true)
+        {
+            size = value;
+            acceptsTall = tall;
+        }
+
+        /// <summary>Width class for an item width in metres (at display scale).</summary>
+        public static SlotSize ClassFor(float width)
+        {
+            return width <= SmallMax ? SlotSize.Small : width <= MediumMax ? SlotSize.Medium : SlotSize.Wide;
+        }
+
+        /// <summary>True when an item of this height (m, at display scale) needs a tall slot.</summary>
+        public static bool IsTall(float height)
+        {
+            return height > TallMin;
+        }
 
         /// <summary>Display zone of the slot.</summary>
         public DisplayZone Zone => zone;

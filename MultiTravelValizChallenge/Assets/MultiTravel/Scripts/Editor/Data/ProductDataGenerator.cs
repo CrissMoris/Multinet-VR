@@ -460,7 +460,7 @@ namespace MultiTravel.EditorTools.Data
                 TimeLimitSeconds = 0,
                 RevertScoreOnRemoval = true,
                 CountdownSeconds = 3,
-                EnableLocomotion = false,
+                EnableLocomotion = true,
                 ShuffleSpawnPositions = true
             };
 
@@ -484,7 +484,7 @@ namespace MultiTravel.EditorTools.Data
             config.Branding = new AppConfig.BrandingSection
             {
                 ProductTitle = "MultiTravel Valiz Challenge",
-                LogoSprite = logo,
+                LogoSprite = logo != null ? logo : BrandAssets.LoadSprite(BrandAssets.HorizontalLight),
                 PrimaryColor = MaterialLibrary.Colors.BrandDeepBlue,
                 AccentColor = MaterialLibrary.Colors.Orange
             };

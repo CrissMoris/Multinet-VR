@@ -104,6 +104,7 @@ namespace MultiTravel.EditorTools.Fonts
                 }
 
                 EnsureSubAssets(fontAsset);
+                EnsureOverlayMaterial();
                 EditorUtility.SetDirty(fontAsset);
                 AssetDatabase.SaveAssets();
 
@@ -119,6 +120,28 @@ namespace MultiTravel.EditorTools.Fonts
             }
 
             return report;
+        }
+
+        /// <summary>Resources material that keeps the TMP overlay SDF shader in builds (product name tags).</summary>
+        private static void EnsureOverlayMaterial()
+        {
+            const string path = GeneratedAssetUtil.ResourcesFolder + "/NameTagOverlay.mat";
+            var shader = Shader.Find("TextMeshPro/Distance Field Overlay");
+            if (shader == null)
+            {
+                return;
+            }
+
+            var material = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (material == null)
+            {
+                AssetDatabase.CreateAsset(new Material(shader), path);
+            }
+            else if (material.shader != shader)
+            {
+                material.shader = shader;
+                EditorUtility.SetDirty(material);
+            }
         }
 
         private static TMP_FontAsset Create(Font font)

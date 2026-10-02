@@ -53,7 +53,7 @@ namespace MultiTravel.Gameplay.Items
         public const float MaxReleaseAngularSpeed = 6f;
 
         /// <summary>A release closer than this to the home slot (metres) tweens the item back home.</summary>
-        public const float HomeSnapRadius = 0.22f;
+        public const float HomeSnapRadius = 0.6f;
 
         /// <summary>Duration of the home-snap tween (seconds, unscaled).</summary>
         public const float HomeSnapSeconds = 0.25f;
@@ -80,6 +80,21 @@ namespace MultiTravel.Gameplay.Items
         private bool applyDefinitionPhysics = true;
 
         [SerializeField]
+        [Tooltip("Scale while the item rests in its display slot (1 = real size). The item grows to real size when grabbed.")]
+        [Range(0.4f, 1f)]
+        private float displayScale = 1f;
+
+        [SerializeField]
+        [Tooltip("Width (metres, along the shelf) of the item at display scale; picks the slot size class.")]
+        [Min(0f)]
+        private float displayFootprint = 0.1f;
+
+        [SerializeField]
+        [Tooltip("Height (metres) of the item at display scale; tall items need a top-row slot.")]
+        [Min(0f)]
+        private float displayHeight = 0.1f;
+
+        [SerializeField]
         [Tooltip("Keep Free items kinematic while they rest at their home slot (hangers, shelves).")]
         private bool dockAtHome = true;
 
@@ -97,6 +112,7 @@ namespace MultiTravel.Gameplay.Items
         private bool hasSpawnPose;
         private Transform homeParent;
         private Coroutine returnRoutine;
+        private Coroutine scaleRoutine;
         private Bounds localBounds;
         private bool hasLocalBounds;
         private bool interactionEnabled = true;
@@ -456,6 +472,55 @@ namespace MultiTravel.Gameplay.Items
         }
 
         /// <summary>Generator API: point used for the inside-suitcase test (null = item root).</summary>
+        /// <summary>Scale while resting in the display slot (1 = real size).</summary>
+        public float DisplayScale => displayScale;
+
+        /// <summary>Width in metres along the shelf at display scale.</summary>
+        public float DisplayFootprint => displayFootprint;
+
+        /// <summary>Height in metres at display scale.</summary>
+        public float DisplayHeight => displayHeight;
+
+        /// <summary>Slot size class this item needs (<see cref="SlotSize"/>).</summary>
+        public SlotSize RequiredSlotSize => SpawnSlot.ClassFor(displayFootprint);
+
+        /// <summary>True when the item needs a tall (open above) slot.</summary>
+        public bool NeedsTallSlot => SpawnSlot.IsTall(displayHeight);
+
+        /// <summary>Generator / test API: display scale, width and height (metres, already at display scale).</summary>
+        public void SetDisplayMetrics(float scale, float width, float height)
+        {
+            displayScale = Mathf.Clamp(scale, 0.4f, 1f);
+            displayFootprint = Mathf.Max(0f, width);
+            displayHeight = Mathf.Max(0f, height);
+        }
+
+        private Vector3 HomeScale => baseLocalScale * displayScale;
+
+        private void StopScaleRoutine()
+        {
+            if (scaleRoutine != null)
+            {
+                StopCoroutine(scaleRoutine);
+                scaleRoutine = null;
+            }
+        }
+
+        private IEnumerator GrowTo(Vector3 target, float seconds)
+        {
+            var start = transform.localScale;
+            float t = 0f;
+            while (t < seconds)
+            {
+                t += Time.unscaledDeltaTime;
+                transform.localScale = Vector3.Lerp(start, target, Mathf.SmoothStep(0f, 1f, t / seconds));
+                yield return null;
+            }
+
+            transform.localScale = target;
+            scaleRoutine = null;
+        }
+
         public void SetAnchorPoint(Transform anchor)
         {
             anchorPoint = anchor;
@@ -974,7 +1039,16 @@ namespace MultiTravel.Gameplay.Items
             LastInteractor = args != null && args.interactorObject != null ? args.interactorObject.transform : null;
 
             float grabScale = GrabScale();
-            transform.localScale = Mathf.Approximately(grabScale, 1f) ? baseLocalScale : baseLocalScale * grabScale;
+            var heldScale = Mathf.Approximately(grabScale, 1f) ? baseLocalScale : baseLocalScale * grabScale;
+            StopScaleRoutine();
+            if (displayScale < 0.999f && isActiveAndEnabled && (transform.localScale - heldScale).sqrMagnitude > 1e-6f)
+            {
+                scaleRoutine = StartCoroutine(GrowTo(heldScale, 0.12f));
+            }
+            else
+            {
+                transform.localScale = heldScale;
+            }
 
             heldSampled = false;
             heldVelocity = Vector3.zero;
@@ -996,6 +1070,7 @@ namespace MultiTravel.Gameplay.Items
             LastReleaseTime = Time.unscaledTime;
             bool canceled = args != null && args.isCanceled;
 
+            StopScaleRoutine();
             transform.localScale = baseLocalScale;
             if (homeParent != null && transform.parent == null && gameObject.scene == homeParent.gameObject.scene)
             {
@@ -1055,10 +1130,11 @@ namespace MultiTravel.Gameplay.Items
             float half = returnFadeSeconds * 0.5f;
 
             float t = 0f;
+            var from = transform.localScale;
             while (t < half)
             {
                 t += Time.unscaledDeltaTime;
-                transform.localScale = baseLocalScale * Mathf.Lerp(1f, 0.01f, Mathf.Clamp01(t / half));
+                transform.localScale = from * Mathf.Lerp(1f, 0.01f, Mathf.Clamp01(t / half));
                 yield return null;
             }
 
@@ -1067,11 +1143,11 @@ namespace MultiTravel.Gameplay.Items
             while (t < half)
             {
                 t += Time.unscaledDeltaTime;
-                transform.localScale = baseLocalScale * Mathf.Lerp(0.01f, 1f, Mathf.Clamp01(t / half));
+                transform.localScale = HomeScale * Mathf.Lerp(0.01f, 1f, Mathf.Clamp01(t / half));
                 yield return null;
             }
 
-            transform.localScale = baseLocalScale;
+            transform.localScale = HomeScale;
             returnRoutine = null;
             if (State == ProductItemState.Free)
             {
@@ -1086,6 +1162,7 @@ namespace MultiTravel.Gameplay.Items
             body.isKinematic = true;
             var startPosition = transform.position;
             var startRotation = transform.rotation;
+            var startScale = transform.localScale;
             bool swapped = false;
             float t = 0f;
             while (t < HomeSnapSeconds)
@@ -1096,6 +1173,7 @@ namespace MultiTravel.Gameplay.Items
                 transform.SetPositionAndRotation(
                     Vector3.Lerp(startPosition, spawnPose.position, eased),
                     Quaternion.Slerp(startRotation, spawnPose.rotation, eased));
+                transform.localScale = Vector3.Lerp(startScale, HomeScale, eased);
                 if (!swapped && k >= 0.5f)
                 {
                     swapped = true;
@@ -1138,7 +1216,7 @@ namespace MultiTravel.Gameplay.Items
                 variant.SetVariant(ItemVariant.Hanging);
             }
 
-            transform.localScale = baseLocalScale;
+            transform.localScale = HomeScale;
             transform.SetPositionAndRotation(spawnPose.position, spawnPose.rotation);
             if (body != null && gameObject.activeInHierarchy)
             {

@@ -30,6 +30,13 @@ namespace MultiTravel.Operator
         [Tooltip("Smoothing time of the look-at point in seconds.")]
         [SerializeField, Min(0.01f)] private float smoothTime = 0.35f;
 
+        [Header("Mirror the headset")]
+        [Tooltip("Show exactly what the participant sees: the camera follows the headset camera (lightly smoothed).")]
+        [SerializeField] private bool mirrorHeadset = true;
+
+        [Tooltip("Vertical field of view used when mirroring the headset.")]
+        [SerializeField, Range(40f, 110f)] private float headsetFieldOfView = 78f;
+
         [Header("Render")]
         [SerializeField, Range(5, 60)] private int framesPerSecond = 30;
         [SerializeField] private int width = 1280;
@@ -190,6 +197,31 @@ namespace MultiTravel.Operator
 
         private void AimCamera(float deltaTime)
         {
+            if (mirrorHeadset)
+            {
+                var head = Camera.main;
+                if (head != null && head.isActiveAndEnabled && head.gameObject != gameObject)
+                {
+                    var t = head.transform;
+                    float k = 1f - Mathf.Exp(-deltaTime * 16f);
+                    if (!targetInitialised)
+                    {
+                        transform.SetPositionAndRotation(t.position, t.rotation);
+                        targetInitialised = true;
+                    }
+                    else
+                    {
+                        transform.SetPositionAndRotation(t.position, Quaternion.Slerp(transform.rotation, t.rotation, k));
+                    }
+
+                    cam.fieldOfView = headsetFieldOfView;
+                    return;
+                }
+
+                cam.fieldOfView = fieldOfView;
+                targetInitialised = false;
+            }
+
             Vector3 target = followTarget != null ? followTarget.position + followOffset : lookAtPoint;
             if (!targetInitialised)
             {

@@ -50,17 +50,31 @@ namespace MultiTravel.Tests.PlayMode
                 }
             }
 
+            foreach (var it in Object.FindObjectsByType<MultiTravel.Gameplay.Items.ProductItem>(FindObjectsInactive.Exclude))
+            {
+                Debug.Log("QAITEM " + it.ProductId + " zone=" + it.Definition.Presentation.Zone + " pos=" + it.transform.position.ToString("F2"));
+            }
+
             var camGo = new GameObject("QaCamera");
             var cam = camGo.AddComponent<Camera>();
             cam.fieldOfView = 90f;
             cam.nearClipPlane = 0.05f;
             cam.depth = 10;
             var eye = new Vector3(0f, 1.70f, 0f);
-            yield return Shot(cam, dir, "play-eye-front", eye, Quaternion.Euler(12f, 0f, 0f));
-            yield return Shot(cam, dir, "play-eye-left", eye, Quaternion.Euler(12f, -65f, 0f));
-            yield return Shot(cam, dir, "play-eye-right", eye, Quaternion.Euler(12f, 65f, 0f));
-            yield return Shot(cam, dir, "play-eye-down", eye, Quaternion.Euler(55f, 0f, 0f));
-            yield return Shot(cam, dir, "play-overview", new Vector3(0f, 2.5f, -3.0f), Quaternion.Euler(22f, 0f, 0f));
+            var start = new Vector3(0f, 1.70f, -5.6f);
+            yield return Shot(cam, dir, "r-start", start, Quaternion.Euler(8f, 0f, 0f));
+            yield return Shot(cam, dir, "r-start-left", start, Quaternion.Euler(8f, -70f, 0f));
+            yield return Shot(cam, dir, "r-start-right", start, Quaternion.Euler(8f, 70f, 0f));
+            yield return Shot(cam, dir, "r-start-back", start, Quaternion.Euler(8f, 180f, 0f));
+            yield return Shot(cam, dir, "r-room-corner", new Vector3(-4.1f, 2.7f, -7.7f), Quaternion.Euler(22f, 40f, 0f));
+            yield return Shot(cam, dir, "r-room-top", new Vector3(0f, 12f, -2.6f), Quaternion.Euler(90f, 0f, 0f));
+            yield return Shot(cam, dir, "r-entrance", new Vector3(0f, 1.7f, -2.6f), Quaternion.Euler(8f, 0f, 0f));
+            yield return Shot(cam, dir, "r-cabin-front", eye, Quaternion.Euler(8f, 0f, 0f));
+            yield return Shot(cam, dir, "r-cabin-left", eye, Quaternion.Euler(8f, -65f, 0f));
+            yield return Shot(cam, dir, "r-cabin-right", eye, Quaternion.Euler(8f, 65f, 0f));
+            yield return Shot(cam, dir, "r-cabin-left-back", eye, Quaternion.Euler(8f, -125f, 0f));
+            yield return Shot(cam, dir, "r-cabin-right-back", eye, Quaternion.Euler(8f, 125f, 0f));
+            yield return Shot(cam, dir, "r-cabin-top", new Vector3(0f, 7f, 0f), Quaternion.Euler(90f, 0f, 0f));
             Object.Destroy(camGo);
             AppBootstrap.DataRootOverride = null;
             AppBootstrap.BackendFactoryOverride = null;

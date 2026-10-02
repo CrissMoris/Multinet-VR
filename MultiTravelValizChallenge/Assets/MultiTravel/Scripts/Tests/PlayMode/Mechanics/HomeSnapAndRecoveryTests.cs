@@ -89,7 +89,7 @@ namespace MultiTravel.Tests.PlayMode.Mechanics
             int snaps = 0;
             item.HomeSnapStarted += _ => snaps++;
             MechanicsFixtures.Grab(scene, hand, item);
-            MechanicsFixtures.ReleaseAt(scene, hand, item, home + new Vector3(0.5f, 0.1f, 0f));
+            MechanicsFixtures.ReleaseAt(scene, hand, item, home + new Vector3(1.0f, 0.1f, 0f));
 
             Assert.AreEqual(0, snaps);
             Assert.IsFalse(item.IsReturning);
@@ -124,7 +124,7 @@ namespace MultiTravel.Tests.PlayMode.Mechanics
             recovery.ItemRecovered += _ => recoveredAt = Time.realtimeSinceStartup;
 
             MechanicsFixtures.Grab(scene, hand, item);
-            MechanicsFixtures.ReleaseAt(scene, hand, item, home + new Vector3(0.5f, 0.02f, 0f));
+            MechanicsFixtures.ReleaseAt(scene, hand, item, home + new Vector3(1.0f, 0.02f, 0f));
             float releasedAt = Time.realtimeSinceStartup;
 
             yield return GameplayTestScene.WaitUntil(() => recoveredAt > 0f && !item.IsReturning, 6f);

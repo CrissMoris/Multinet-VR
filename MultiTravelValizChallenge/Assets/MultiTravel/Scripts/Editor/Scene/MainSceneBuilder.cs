@@ -43,8 +43,11 @@ namespace MultiTravel.EditorTools.SceneBuild
         {
             "stage-floor", "stage-backdrop", "floor-mat", "wardrobe-carcass", "wardrobe-hanging-module",
             "wardrobe-folded-module", "wardrobe-door-left", "wardrobe-door-right", "console-table-business",
-            "console-table-leisure", "luggage-rack"
+            "console-table-leisure", "luggage-rack", "room-shell"
         };
+
+        /// <summary>Where the participant enters the hotel room (door side), facing the cabin. Authored as MARK.start.</summary>
+        public static readonly Vector3 DefaultStartPosition = new Vector3(0f, 0f, -5.6f);
 
         public const string SuitcaseModel = "suitcase-open";
         public const string StopwatchModel = "stopwatch";
@@ -102,6 +105,7 @@ namespace MultiTravel.EditorTools.SceneBuild
             var stopwatch = InstantiateModel(StopwatchModel, displays);
             var scoreboard = InstantiateModel(ScoreboardModel, displays);
             AddDecor(environment);
+            AddRoomFurniture(environment);
             AddStaticColliders(environment);
 
             // ---------------------------------------------------------------- systems
@@ -112,12 +116,14 @@ namespace MultiTravel.EditorTools.SceneBuild
             interactionLock.SetPool(pool);
             var recovery = systems.AddComponent<ItemRecoveryService>();
             recovery.SetPool(pool);
-            recovery.Configure(0f, new Bounds(new Vector3(0f, 1.3f, 0.4f), new Vector3(4.6f, 2.8f, 4.4f)));
+            recovery.Configure(0f, new Bounds(new Vector3(0f, 1.5f, -2.6f), new Vector3(9.4f, 3.4f, 12.0f)));
 
             var spawnSlots = CreateSpawnSlots(environment);
             var layout = systems.AddComponent<SpawnSlotLayout>();
             layout.SetSlots(spawnSlots);
             ValidateZoneCapacity(catalog, layout);
+            AddZoneLabels(spawnSlots, environment);
+            AddBrandDecor(environment);
 
             var suitcase = BuildSuitcase(pool, out var lid, out var practiceSpawn);
             recovery.SetSuitcase(suitcase);
@@ -175,17 +181,21 @@ namespace MultiTravel.EditorTools.SceneBuild
             // ---------------------------------------------------------------- operator, rig
             new GameObject("Operator screen").AddComponent<OperatorScreen>();
             var spectator = new GameObject("Spectator camera");
-            spectator.transform.position = new Vector3(-1.25f, 1.85f, -1.55f);
-            spectator.transform.LookAt(new Vector3(0f, 1.1f, 0.45f));
+            spectator.transform.position = new Vector3(0.9f, 2.0f, 1.3f);
+            spectator.transform.LookAt(new Vector3(0f, 0.95f, -0.9f));
             spectator.AddComponent<SpectatorCamera>();
 
             new GameObject("XR Interaction Manager").AddComponent<XRInteractionManager>();
             var rig = (GameObject)PrefabUtility.InstantiatePrefab(AssetDatabase.LoadAssetAtPath<GameObject>(RigPath));
             rig.name = "Quest hands and controllers";
-            rig.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
+            var startMarker = FindMarker(environment, "MARK.start");
+            var startMark = new GameObject("Start mark").transform;
+            startMark.position = startMarker != null ? new Vector3(startMarker.position.x, 0f, startMarker.position.z) : DefaultStartPosition;
+            startMark.rotation = Quaternion.identity;
+            rig.transform.SetPositionAndRotation(startMark.position, startMark.rotation);
             var rigController = rig.AddComponent<XrRigController>();
             rigController.SetOrigin(rig.GetComponentInChildren<XROrigin>());
-            rigController.SetRecenterTarget(placed["floor-mat"].transform);
+            rigController.SetRecenterTarget(startMark);
             var modality = rig.GetComponentInChildren<XRInputModalityManager>(true);
             presentation.AddComponent<TrackingLossGuard>().Configure(pool, modality);
             rig.AddComponent<HandPresenceStyler>().Configure(modality, null);
@@ -215,6 +225,12 @@ namespace MultiTravel.EditorTools.SceneBuild
 
                 var slot = marker.gameObject.AddComponent<SpawnSlot>();
                 slot.SetZone(zone);
+                if (parts.Length > 3 && parts[3].Length > 0)
+                {
+                    // Size suffix: S / M / W (widest) and an optional T when the space above is open (tall items fit).
+                    var cls = char.ToUpperInvariant(parts[3][0]);
+                    slot.SetSize(cls == 'S' ? SlotSize.Small : cls == 'M' ? SlotSize.Medium : SlotSize.Wide, parts[3].ToUpperInvariant().Contains('T'));
+                }
                 slot.SetHeightOffset(zone == DisplayZone.Hanging ? 0f : 0.004f);
                 slots.Add(slot);
             }
@@ -225,6 +241,158 @@ namespace MultiTravel.EditorTools.SceneBuild
             }
 
             return slots;
+        }
+
+        /// <summary>
+        /// Corporate logo on the stage plaque above the stopwatch (<c>UI.logo</c> marker) and as a floor decal in front of
+        /// the backdrop. Both use the light (white wordmark) logo, which reads on the navy plaque and the parquet.
+        /// </summary>
+        private static void AddBrandDecor(Transform environment)
+        {
+            var plaque = FindMarker(environment, "UI.logo");
+            if (plaque != null)
+            {
+                // The backdrop is a concave arc around the participant: the logo is a curved strip on the same radius.
+                float radius = new Vector2(plaque.position.x, plaque.position.z).magnitude - 0.012f;
+                CreateCurvedLogo("Brand plaque", environment, BrandAssets.LogoMaterial(BrandAssets.HorizontalLight), radius, plaque.position.y, 0.92f, 0.246f);
+            }
+
+            float floorTop = 0.006f;
+            var floor = environment.Find("stage-floor");
+            if (floor != null)
+            {
+                var bounds = new Bounds(floor.position, Vector3.zero);
+                foreach (var r in floor.GetComponentsInChildren<Renderer>())
+                {
+                    bounds.Encapsulate(r.bounds);
+                }
+
+                floorTop = bounds.max.y + 0.004f;
+            }
+
+            CreateLogoQuad("Brand floor decal", environment, BrandAssets.LogoMaterial(BrandAssets.VerticalLight),
+                new Vector3(0f, floorTop, 1.2f), Quaternion.Euler(90f, 0f, 0f), new Vector2(0.8f, 0.447f));
+        }
+
+        /// <summary>Strip of a cylinder around the vertical axis through the origin, facing the participant (UV 0..1).</summary>
+        private static void CreateCurvedLogo(string name, Transform parent, Material material, float radius, float centreY, float width, float height)
+        {
+            const int segments = 24;
+            var vertices = new Vector3[(segments + 1) * 2];
+            var uv = new Vector2[vertices.Length];
+            var normals = new Vector3[vertices.Length];
+            float span = width / radius;
+            for (int i = 0; i <= segments; i++)
+            {
+                float u = i / (float)segments;
+                float angle = (u - 0.5f) * span;
+                var dir = new Vector3(Mathf.Sin(angle), 0f, Mathf.Cos(angle));
+                for (int j = 0; j < 2; j++)
+                {
+                    int k = i * 2 + j;
+                    vertices[k] = dir * radius + Vector3.up * (centreY + (j == 0 ? -height : height) * 0.5f);
+                    uv[k] = new Vector2(u, j);
+                    normals[k] = -dir;
+                }
+            }
+
+            var triangles = new int[segments * 6];
+            for (int i = 0; i < segments; i++)
+            {
+                int k = i * 2;
+                int t = i * 6;
+                // Clockwise seen from the participant (origin side), so the face points at the participant.
+                triangles[t] = k; triangles[t + 1] = k + 1; triangles[t + 2] = k + 2;
+                triangles[t + 3] = k + 1; triangles[t + 4] = k + 3; triangles[t + 5] = k + 2;
+            }
+
+            var mesh = new Mesh { name = name };
+            mesh.vertices = vertices;
+            mesh.uv = uv;
+            mesh.normals = normals;
+            mesh.triangles = triangles;
+            var go = new GameObject(name, typeof(MeshFilter), typeof(MeshRenderer));
+            go.transform.SetParent(parent, false);
+            go.GetComponent<MeshFilter>().sharedMesh = mesh;
+            var renderer = go.GetComponent<MeshRenderer>();
+            renderer.sharedMaterial = material;
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+        }
+
+        private static void CreateLogoQuad(string name, Transform parent, Material material, Vector3 position, Quaternion rotation, Vector2 size)
+        {
+            var quad = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            quad.name = name;
+            Object.DestroyImmediate(quad.GetComponent<Collider>());
+            quad.transform.SetParent(parent, false);
+            quad.transform.SetPositionAndRotation(position, rotation);
+            quad.transform.localScale = new Vector3(size.x, size.y, 1f);
+            var renderer = quad.GetComponent<MeshRenderer>();
+            renderer.sharedMaterial = material;
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+            GameObjectUtility.SetStaticEditorFlags(quad, StaticEditorFlags.BatchingStatic);
+        }
+
+        private static string ZoneTitle(DisplayZone zone)
+        {
+            switch (zone)
+            {
+                case DisplayZone.Hanging: return "ASKILIK";
+                case DisplayZone.Folded: return "KATLI GİYSİ";
+                case DisplayZone.Shoes: return "AYAKKABI";
+                case DisplayZone.Accessories: return "AKSESUAR";
+                case DisplayZone.Jewellery: return "TAKI";
+                case DisplayZone.Business: return "İŞ MASASI";
+                case DisplayZone.Leisure: return "TATİL MASASI";
+                default: return null;
+            }
+        }
+
+        /// <summary>Zone title on the header band of the shelf wall (<c>UI.header_&lt;zone&gt;</c> markers from the art).</summary>
+        private static void AddZoneLabels(List<SpawnSlot> slots, Transform environment)
+        {
+            var root = new GameObject("Zone labels").transform;
+            root.SetParent(environment, false);
+            var font = FontAssetGeneratorLoad();
+            foreach (DisplayZone zone in Enum.GetValues(typeof(DisplayZone)))
+            {
+                string title = ZoneTitle(zone);
+                var marker = title == null ? null : FindMarker(environment, "UI.header_" + zone.ToString().ToLowerInvariant());
+                if (marker == null)
+                {
+                    continue;
+                }
+
+                var go = new GameObject("Zone label " + zone);
+                go.transform.SetParent(root, false);
+                var toEye = new Vector3(0f, 1.7f, 0f) - marker.position;
+                toEye.y = 0f;
+                float width = Mathf.Clamp(Mathf.Abs(marker.lossyScale.x) * 0.75f, 0.15f, 0.6f);
+                float radius = new Vector2(marker.position.x, marker.position.z).magnitude;
+                // The header band is a concave arc: lift the flat label by the sag over its width so its ends are not hidden.
+                float sag = radius - Mathf.Sqrt(Mathf.Max(0.01f, radius * radius - width * width * 0.25f));
+                go.transform.SetPositionAndRotation(marker.position + toEye.normalized * (sag + 0.008f), Quaternion.LookRotation(-toEye.normalized, Vector3.up));
+                var label = go.AddComponent<TMPro.TextMeshPro>();
+                label.font = font;
+                label.text = title;
+                label.fontSize = 1.0f;
+                label.enableAutoSizing = true;
+                label.fontSizeMin = 0.2f;
+                label.fontSizeMax = 1.0f;
+                label.alignment = TMPro.TextAlignmentOptions.Center;
+                label.fontStyle = TMPro.FontStyles.Bold;
+                label.color = Color.white;
+                label.textWrappingMode = TMPro.TextWrappingModes.NoWrap;
+                label.rectTransform.sizeDelta = new Vector2(width, 0.2f);
+                label.raycastTarget = false;
+            }
+        }
+
+        private static TMPro.TMP_FontAsset FontAssetGeneratorLoad()
+        {
+            return MultiTravel.EditorTools.Fonts.FontAssetGenerator.Load();
         }
 
         public static bool TryParseZone(string token, out DisplayZone zone)
@@ -245,7 +413,8 @@ namespace MultiTravel.EditorTools.SceneBuild
         private static void ValidateZoneCapacity(ProductCatalog catalog, SpawnSlotLayout layout)
         {
             var errors = new List<string>();
-            if (!ZoneCapacityValidator.Validate(catalog.Products, layout.CountSlotsPerZone(), errors))
+            // The shelf wall is exact-fit: every item has a slot, spare slots exist only where genders differ (OVERHAUL_PLAN asked for 20 %).
+            if (!ZoneCapacityValidator.Validate(ZoneCapacityValidator.EntriesFor(catalog.Products), layout.CountSlotsPerZone(), errors, 1f))
             {
                 throw new InvalidOperationException("Zone capacity check failed:\n" + string.Join("\n", errors));
             }
@@ -425,7 +594,7 @@ namespace MultiTravel.EditorTools.SceneBuild
             var key = new GameObject("Stage key").AddComponent<Light>();
             key.type = LightType.Directional;
             key.lightmapBakeType = LightmapBakeType.Mixed;
-            key.intensity = 1.15f;
+            key.intensity = 0.4f;
             key.color = new Color(1f, 0.96f, 0.92f);
             key.shadows = LightShadows.Soft;
             key.shadowStrength = 0.75f;
@@ -439,10 +608,10 @@ namespace MultiTravel.EditorTools.SceneBuild
                 var light = hint.gameObject.AddComponent<Light>();
                 light.type = n.Contains("spot") ? LightType.Spot : LightType.Point;
                 light.color = new Color(1f, 0.92f, 0.82f);
-                light.range = 4f;
+                light.range = n.Contains("room_") ? 8f : 4f;
                 light.spotAngle = 55f;
                 light.innerSpotAngle = 30f;
-                light.intensity = 2.2f;
+                light.intensity = n.Contains("room_") ? 1.1f : 1.6f;
                 light.shadows = LightShadows.None;
                 light.lightmapBakeType = LightmapBakeType.Baked;
                 if (n.Contains("suitcase"))
@@ -587,9 +756,35 @@ namespace MultiTravel.EditorTools.SceneBuild
         {
             // CC0 Poly Haven dressing outside the reach zone (ASSET_MANIFEST.md): plants frame the stage, a vase and
             // stationery dress the business table edge without taking item slots.
-            ImportFurniture("calathea_orbifolia_01", environment, new Vector3(-1.55f, 0f, 1.05f), 0.6f, 20f);
-            ImportFurniture("calathea_orbifolia_01", environment, new Vector3(1.55f, 0f, 1.05f), 0.6f, -20f);
-            ImportFurniture("modern_ceiling_lamp_01", environment, new Vector3(0f, 2.75f, 0.45f), 0.55f, 0f, hang: true);
+            ImportFurniture("calathea_orbifolia_01", environment, new Vector3(-3.75f, 0f, 2.25f), 0.7f, 20f);
+            ImportFurniture("calathea_orbifolia_01", environment, new Vector3(3.75f, 0f, 2.25f), 0.7f, -20f);
+            ImportFurniture("calathea_orbifolia_01", environment, new Vector3(-3.8f, 0f, -7.5f), 0.7f, 40f);
+            ImportFurniture("modern_ceiling_lamp_01", environment, new Vector3(0f, 2.95f, 0.45f), 0.55f, 0f, hang: true);
+            ImportFurniture("modern_ceiling_lamp_01", environment, new Vector3(0f, 2.95f, -5.2f), 0.55f, 0f, hang: true);
+        }
+
+        /// <summary>The hotel room around the cabin: bed, nightstands with lamps, rug, bench, mirror, curtains and a clothes rack.</summary>
+        private static void AddRoomFurniture(Transform environment)
+        {
+            PlaceModel("rug", environment, new Vector3(0f, 0f, -5.4f), 0f);
+            PlaceModel("bed", environment, new Vector3(3.15f, 0f, -5.0f), 90f);
+            foreach (float z in new[] { -6.3f, -3.7f })
+            {
+                PlaceModel("nightstand", environment, new Vector3(4.0f, 0f, z), -90f);
+                PlaceModel("table-lamp", environment, new Vector3(4.0f, 0.55f, z), 0f).name = "Table lamp";
+            }
+
+            PlaceModel("luggage-bench", environment, new Vector3(1.6f, 0f, -5.0f), 90f);
+            PlaceModel("curtains", environment, new Vector3(-4.2f, 0f, -4.25f), 90f).name = "Curtains";
+            PlaceModel("floor-mirror", environment, new Vector3(-3.3f, 0f, -7.85f), 180f);
+            PlaceModel("hanger-rail-decor", environment, new Vector3(-3.95f, 0f, -1.4f), 90f);
+        }
+
+        private static GameObject PlaceModel(string name, Transform parent, Vector3 position, float yaw)
+        {
+            var go = InstantiateModel(name, parent);
+            go.transform.SetPositionAndRotation(position, Quaternion.Euler(0f, yaw, 0f));
+            return go;
         }
 
         private static void ImportFurniture(string id, Transform parent, Vector3 position, float width, float yaw, bool hang = false)

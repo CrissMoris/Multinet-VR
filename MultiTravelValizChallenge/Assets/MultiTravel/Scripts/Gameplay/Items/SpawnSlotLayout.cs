@@ -137,9 +137,29 @@ namespace MultiTravel.Gameplay.Items
                 zones[i] = PresentationRules.EffectiveZone(itemOrder[i].Definition);
             }
 
-            // Pass 1: own named zone (category preference first, then any slot of the zone).
+            // Pass 1: own named zone. Biggest items first so they get the roomy slots; each takes the smallest slot of its
+            // zone that fits (category preference first), and any slot of the zone when none fits.
+            var bySize = new List<int>(itemOrder.Count);
             for (int i = 0; i < itemOrder.Count; i++)
             {
+                bySize.Add(i);
+            }
+
+            bySize.Sort((a, b) =>
+            {
+                int t = itemOrder[b].NeedsTallSlot.CompareTo(itemOrder[a].NeedsTallSlot);
+                if (t != 0)
+                {
+                    return t;
+                }
+
+                int c = ((int)itemOrder[b].RequiredSlotSize).CompareTo((int)itemOrder[a].RequiredSlotSize);
+                return c != 0 ? c : a.CompareTo(b);
+            });
+
+            for (int n = 0; n < bySize.Count; n++)
+            {
+                int i = bySize[n];
                 var zone = zones[i];
                 if (zone == DisplayZone.Any)
                 {
@@ -147,8 +167,23 @@ namespace MultiTravel.Gameplay.Items
                 }
 
                 var definition = itemOrder[i].Definition;
-                assignedSlots[i] = TakeSlot(s => s.Zone == zone && definition != null && s.Prefers(definition.Category))
-                                   ?? TakeSlot(s => s.Zone == zone);
+                int need = (int)itemOrder[i].RequiredSlotSize;
+                bool tall = itemOrder[i].NeedsTallSlot;
+                SpawnSlot taken = null;
+                // Smallest class that fits; items that are not tall keep the open top-row slots free for the tall ones.
+                for (int pass = 0; pass < 2 && taken == null; pass++)
+                {
+                    bool allowTall = tall || pass == 1;
+                    for (int fit = need; fit <= (int)SlotSize.Wide && taken == null; fit++)
+                    {
+                        int f = fit;
+                        taken = TakeSlot(s => s.Zone == zone && (int)s.Size == f && (tall ? s.AcceptsTall : (allowTall || !s.AcceptsTall)) &&
+                                              definition != null && s.Prefers(definition.Category))
+                                ?? TakeSlot(s => s.Zone == zone && (int)s.Size == f && (tall ? s.AcceptsTall : (allowTall || !s.AcceptsTall)));
+                    }
+                }
+
+                assignedSlots[i] = taken ?? TakeSlot(s => s.Zone == zone);
             }
 
             // Pass 2: named-zone items fall back to Any slots only (never a different named zone).

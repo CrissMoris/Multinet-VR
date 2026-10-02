@@ -18,6 +18,8 @@ namespace MultiTravel.Operator
         private readonly OperatorContext context;
         private readonly Action onLeaderboardToggle;
         private TextMeshProUGUI titleLabel;
+        private UnityEngine.UI.Image logoImage;
+        private GameObject brandMark;
         private UiPill stationChip;
         private UiButton leaderboardButton;
 
@@ -37,8 +39,14 @@ namespace MultiTravel.Operator
             UiFactory.IgnoreLayout(line);
             UiFactory.AnchorBottom(line.rectTransform, 1f);
 
-            // brand mark
+            // corporate logo (shown once the config provides a sprite) or the generic brand mark
+            logoImage = UiFactory.CreateImage("Logo", bar.rectTransform, Color.white, false);
+            logoImage.preserveAspect = true;
+            UiFactory.SetLayout(logoImage, 168f, 46f, 0f, 0f, 168f, 46f);
+            logoImage.gameObject.SetActive(false);
+
             var mark = UiFactory.CreateRounded("BrandMark", bar.rectTransform, OperatorUiStyle.Primary, 10, false);
+            brandMark = mark.gameObject;
             UiFactory.SetLayout(mark, 40f, 40f, 0f, 0f, 40f, 40f);
             var markIcon = UiFactory.CreateIcon(mark.rectTransform, "Icon", UiIcon.Suitcase, 24f, Color.white);
             UiFactory.IgnoreLayout(markIcon);
@@ -74,6 +82,15 @@ namespace MultiTravel.Operator
             var config = context.Config;
             var title = config.Branding.ProductTitle;
             titleLabel.text = string.IsNullOrWhiteSpace(title) ? DefaultTitle : title;
+            var logo = config.Branding.LogoSprite;
+            if (logo != null)
+            {
+                logoImage.sprite = logo;
+                logoImage.gameObject.SetActive(true);
+                brandMark.SetActive(false);
+                titleLabel.text = "Valiz Challenge";
+                titleLabel.color = OperatorUiStyle.TextSecondary;
+            }
             var station = config.Backend.StationId;
             stationChip.Set("İstasyon " + (string.IsNullOrWhiteSpace(station) ? "—" : station), OperatorUiStyle.Accent, true);
         }

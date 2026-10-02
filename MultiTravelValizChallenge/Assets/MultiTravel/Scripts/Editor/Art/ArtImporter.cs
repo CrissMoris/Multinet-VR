@@ -423,6 +423,7 @@ namespace MultiTravel.EditorTools.Art
             importer.isReadable = readable;
             importer.meshCompression = ModelImporterMeshCompression.Off;
             importer.addCollider = false;
+            importer.generateSecondaryUV = importer.assetPath.Contains("/Environment/"); // lightmapped set
             importer.materialImportMode = ModelImporterMaterialImportMode.ImportViaMaterialDescription;
             importer.materialLocation = ModelImporterMaterialLocation.InPrefab;
         }
@@ -685,6 +686,11 @@ namespace MultiTravel.EditorTools.Art
                 item.SetGripAttach(attach);
                 item.Setup(product);
                 item.SetAnchorPoint(anchor);
+                var fullSize = (hangingRoot != null ? hangingBounds : foldedBounds).size;
+                float displayScale = optional ? 1f : DisplayScaleFor(fullSize);
+                float footprint = fullSize.x * displayScale;
+                float displayHeight = fullSize.y * displayScale;
+                item.SetDisplayMetrics(displayScale, footprint, displayHeight);
                 var prefab = PrefabUtility.SaveAsPrefabAsset(root, prefabPath);
                 if (product.VisualPrefab != prefab)
                 {
@@ -694,7 +700,7 @@ namespace MultiTravel.EditorTools.Art
 
                 var size = displayBounds.size;
                 report.Updated.Add($"{prefabPath} ← {modelPath}{(hangingRoot != null ? " + " + hangingPath : string.Empty)} " +
-                                   $"({size.x:0.00}×{size.y:0.00}×{size.z:0.00} m)");
+                                   $"({size.x:0.00}×{size.y:0.00}×{size.z:0.00} m, display ×{displayScale:0.00}, w {footprint:0.00} h {displayHeight:0.00} = {SpawnSlot.ClassFor(footprint)})");
             }
             catch (Exception ex)
             {
@@ -705,6 +711,34 @@ namespace MultiTravel.EditorTools.Art
                 UnityEngine.Object.DestroyImmediate(root);
             }
         }
+
+        /// <summary>
+        /// Resting scale of an item in its display slot: big items are shown smaller (and grow to real size when grabbed), so
+        /// the shelf wall can show every product without overlap while reach stays comfortable.
+        /// </summary>
+        public static float DisplayScaleFor(Vector3 size)
+        {
+            float largest = Mathf.Max(size.x, Mathf.Max(size.y, size.z));
+            float scale = largest >= 0.40f ? 0.80f : largest >= 0.28f ? 0.90f : 1f;
+            // The shelf is 0.26 m deep: long items (ukulele, trousers) shrink until their depth fits.
+            if (size.z * scale > ShelfDepth)
+            {
+                scale = ShelfDepth / size.z;
+            }
+
+            if (size.x * scale > MaxDisplayWidth)
+            {
+                scale = MaxDisplayWidth / size.x;
+            }
+
+            return Mathf.Clamp(scale, 0.5f, 1f);
+        }
+
+        /// <summary>Usable shelf depth (m) of the shelf wall.</summary>
+        public const float ShelfDepth = 0.28f;
+
+        /// <summary>Widest item (m) on the shelf wall: the widest slot class.</summary>
+        public const float MaxDisplayWidth = 0.34f;
 
         private static GameObject InstantiateModel(string productId, GameObject model, Transform parent, string name)
         {

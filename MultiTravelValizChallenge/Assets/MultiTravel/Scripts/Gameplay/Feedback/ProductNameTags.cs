@@ -126,7 +126,11 @@ namespace MultiTravel.Gameplay.Feedback
                 return;
             }
 
-            var item = interactable.transform.GetComponent<ProductItem>();
+            ChangeItem(interactable.transform.GetComponent<ProductItem>(), delta);
+        }
+
+        private void ChangeItem(ProductItem item, int delta)
+        {
             if (item == null)
             {
                 return;
@@ -178,6 +182,7 @@ namespace MultiTravel.Gameplay.Feedback
         /// <summary>Hides every label (session reset / interaction lock).</summary>
         public void HideAll()
         {
+            gazeItem = null;
             scratch.Clear();
             scratch.AddRange(shown.Keys);
             foreach (var item in scratch)
@@ -186,6 +191,76 @@ namespace MultiTravel.Gameplay.Feedback
             }
 
             scratch.Clear();
+        }
+
+        [SerializeField]
+        [Tooltip("Items the participant looks at (within this distance, metres) get their name without being touched.")]
+        private float gazeDistance = 3.2f;
+
+        [SerializeField]
+        [Tooltip("Gaze cone half-angle in degrees.")]
+        private float gazeAngle = 6f;
+
+        private ProductItem gazeItem;
+        private float nextGazeCheck;
+
+        private void Update()
+        {
+            if (pool == null || Time.unscaledTime < nextGazeCheck)
+            {
+                return;
+            }
+
+            nextGazeCheck = Time.unscaledTime + 0.1f;
+            if (viewCamera == null || !viewCamera.isActiveAndEnabled)
+            {
+                viewCamera = Camera.main;
+            }
+
+            ProductItem best = null;
+            if (viewCamera != null)
+            {
+                var origin = viewCamera.transform.position;
+                var forward = viewCamera.transform.forward;
+                float bestAngle = gazeAngle;
+                var items = pool.ActiveItems;
+                for (int i = 0; i < items.Count; i++)
+                {
+                    var item = items[i];
+                    if (item == null || item.State != ProductItemState.Free || !item.gameObject.activeInHierarchy)
+                    {
+                        continue;
+                    }
+
+                    var to = WorldBounds(item).center - origin;
+                    float distance = to.magnitude;
+                    if (distance > gazeDistance || distance < 0.15f)
+                    {
+                        continue;
+                    }
+
+                    float angle = Vector3.Angle(forward, to);
+                    if (angle < bestAngle)
+                    {
+                        bestAngle = angle;
+                        best = item;
+                    }
+                }
+            }
+
+            if (best != gazeItem)
+            {
+                if (gazeItem != null)
+                {
+                    ChangeItem(gazeItem, -1);
+                }
+
+                gazeItem = best;
+                if (gazeItem != null)
+                {
+                    ChangeItem(gazeItem, +1);
+                }
+            }
         }
 
         private void LateUpdate()
@@ -226,9 +301,19 @@ namespace MultiTravel.Gameplay.Feedback
 
             var bounds = WorldBounds(item);
             var position = new Vector3(bounds.center.x, bounds.max.y + gap, bounds.center.z);
-            label.transform.position = position;
+            float distance = 1f;
             if (viewCamera != null)
             {
+                // In front of the item (towards the viewer), so the shelf behind never covers the name.
+                var toViewer = viewCamera.transform.position - position;
+                toViewer.y = 0f;
+                distance = Mathf.Max(0.4f, toViewer.magnitude);
+                if (toViewer.sqrMagnitude > 1e-6f)
+                {
+                    position += toViewer.normalized * (bounds.extents.magnitude + 0.08f);
+                }
+
+                label.transform.position = position;
                 var toLabel = position - viewCamera.transform.position;
                 toLabel.y = 0f;
                 if (toLabel.sqrMagnitude > 1e-6f)
@@ -236,6 +321,13 @@ namespace MultiTravel.Gameplay.Feedback
                     label.transform.rotation = Quaternion.LookRotation(toLabel.normalized, Vector3.up);
                 }
             }
+            else
+            {
+                label.transform.position = position;
+            }
+
+            // Keep the apparent size readable when the viewer is further away (gaze labels).
+            label.transform.localScale = Vector3.one * Mathf.Clamp(distance * 0.7f, 1f, 2.6f);
         }
 
         private static Bounds WorldBounds(ProductItem item)
@@ -278,6 +370,13 @@ namespace MultiTravel.Gameplay.Feedback
             {
                 // One private material for all tags: the outline must not leak into the shared font material (VR panel).
                 outlinedMaterial = new Material(label.font.material) { name = "Product name tag (outline)" };
+                // Overlay SDF shader (kept alive by a Resources material): the name is drawn on top of the shelves.
+                var overlayMaterial = Resources.Load<Material>("NameTagOverlay");
+                if (overlayMaterial != null && overlayMaterial.shader != null)
+                {
+                    outlinedMaterial.shader = overlayMaterial.shader;
+                }
+
                 outlinedMaterial.EnableKeyword(ShaderUtilities.Keyword_Outline);
                 outlinedMaterial.SetFloat(ShaderUtilities.ID_OutlineWidth, 0.25f);
                 outlinedMaterial.SetColor(ShaderUtilities.ID_OutlineColor, new Color32(12, 22, 48, 255));

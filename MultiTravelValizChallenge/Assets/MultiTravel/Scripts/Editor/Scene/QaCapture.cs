@@ -17,7 +17,7 @@ namespace MultiTravel.EditorTools.SceneBuild
 
         public static void Run()
         {
-            string outDir = "docs/qa/" + DateTime.Now.ToString("yyyy-MM-dd");
+            string outDir = "../docs/qa/" + DateTime.Now.ToString("yyyy-MM-dd") + "/v4";
             var args = Environment.GetCommandLineArgs();
             for (int i = 0; i < args.Length - 1; i++)
             {

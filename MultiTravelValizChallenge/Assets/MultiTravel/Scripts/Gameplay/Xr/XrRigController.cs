@@ -40,6 +40,9 @@ namespace MultiTravel.Gameplay.Xr
         /// <summary>Floor offset limit (metres, ±).</summary>
         public const float FloorLimit = 0.12f;
 
+        /// <summary>Walking speed (m/s) of the left-stick smooth move.</summary>
+        public const float WalkSpeed = 1.3f;
+
         private const string LocomotionChildName = "Locomotion";
         private const string TeleportInteractorName = "Teleport Interactor";
         private const string TutorialCalloutPrefix = "Affordance Callouts";
@@ -86,7 +89,9 @@ namespace MultiTravel.Gameplay.Xr
         private readonly List<MonoBehaviour> behaviours = new List<MonoBehaviour>();
         private readonly List<TunnelingVignetteController> vignettes = new List<TunnelingVignetteController>();
         private RuntimeConfig config;
+        private MultiTravel.Core.Session.SessionController session;
         private float floorOffset;
+        private float autoFloorOffset;
         private bool settingsLoaded;
 
         /// <summary>Test seam: full path of the settings file (null = persistentDataPath/rig.json). Never set by the app.</summary>
@@ -198,7 +203,20 @@ namespace MultiTravel.Gameplay.Xr
             {
                 if (providers[i] != null)
                 {
-                    providers[i].enabled = enableLocomotion;
+                    // Walking = controller sticks only: smooth move, snap turn and gravity. Teleport, grab-move, climb and
+                    // jump stay off (the stage is walked, products are reached for).
+                    string typeName = providers[i].GetType().Name;
+                    bool allowed = enableLocomotion && (typeName == "DynamicMoveProvider" || typeName == "ContinuousMoveProvider" ||
+                                                        typeName == "SnapTurnProvider" || typeName == "GravityProvider");
+                    providers[i].enabled = allowed;
+                    if (allowed && (typeName == "DynamicMoveProvider" || typeName == "ContinuousMoveProvider"))
+                    {
+                        var speed = providers[i].GetType().GetProperty("moveSpeed");
+                        if (speed != null && speed.CanWrite)
+                        {
+                            speed.SetValue(providers[i], WalkSpeed);
+                        }
+                    }
                 }
             }
 
@@ -255,6 +273,14 @@ namespace MultiTravel.Gameplay.Xr
                 return;
             }
 
+            RequestFloorTracking();
+            StartCoroutine(RecenterWhenTracked());
+            if (AppServices.TryGet(out MultiTravel.Core.Session.SessionController sessionController))
+            {
+                session = sessionController;
+                session.StateChanged += OnSessionStateChanged;
+            }
+
             if (requirePhysicalReach)
             {
                 foreach (var nearFar in xrOrigin.GetComponentsInChildren<NearFarInteractor>(true))
@@ -286,7 +312,9 @@ namespace MultiTravel.Gameplay.Xr
                 }
             }
 
-            if (disableTunnelingVignette)
+            // With walking the template's tunnelling vignette stays on (comfort); without locomotion it is removed.
+            bool walks = ServiceResolver.TryResolve(ref config) && config.Gameplay.EnableLocomotion;
+            if (disableTunnelingVignette && !walks)
             {
                 xrOrigin.GetComponentsInChildren(true, vignettes);
                 for (int i = 0; i < vignettes.Count; i++)
@@ -315,17 +343,103 @@ namespace MultiTravel.Gameplay.Xr
             ApplyFloorOffset();
         }
 
+        /// <summary>
+        /// The booth is authored for a floor-level tracking origin (head height above the floor, no extra camera offset). In
+        /// the device / eye-level mode the template adds its 1.1 m camera offset on top of the real head height, which puts the
+        /// participant at the ceiling.
+        /// </summary>
+        private void RequestFloorTracking()
+        {
+            xrOrigin.RequestedTrackingOriginMode = XROrigin.TrackingOriginMode.Floor;
+            var inputSubsystems = new List<XRInputSubsystem>();
+            SubsystemManager.GetSubsystems(inputSubsystems);
+            foreach (var subsystem in inputSubsystems)
+            {
+                if ((subsystem.GetSupportedTrackingOriginModes() & TrackingOriginModeFlags.Floor) != 0)
+                {
+                    subsystem.TrySetTrackingOriginMode(TrackingOriginModeFlags.Floor);
+                }
+            }
+        }
+
+        /// <summary>Puts the participant on the floor mark ("Buraya bas", the room entrance) as soon as the headset tracks.</summary>
+        private System.Collections.IEnumerator RecenterWhenTracked()
+        {
+            float waited = 0f;
+            while (waited < 15f)
+            {
+                yield return new WaitForSecondsRealtime(0.5f);
+                waited += 0.5f;
+                if (xrOrigin == null || xrOrigin.Camera == null)
+                {
+                    continue;
+                }
+
+                var local = xrOrigin.CameraInOriginSpacePos;
+                if (local.y > 0.3f)
+                {
+                    RequestFloorTracking();
+                    yield return new WaitForSecondsRealtime(0.3f);
+                    Recenter();
+                    yield return null;
+                    float headHeight = xrOrigin.Camera.transform.position.y;
+                    Debug.Log(ServiceResolver.LogPrefix + $"XrRigController: tracking floorMode={IsFloorMode()}, head height {headHeight:0.00} m (origin local {xrOrigin.CameraInOriginSpacePos.y:0.00} m).");
+                    if (headHeight > 2.3f)
+                    {
+                        // Nobody's eyes are 2.3 m up: the runtime floor level is wrong (or the eye-level offset was applied twice).
+                        autoFloorOffset = Mathf.Min(1.5f, headHeight - 1.7f);
+                        Debug.LogWarning(ServiceResolver.LogPrefix + $"XrRigController: head height {headHeight:0.00} m is implausible; lowering the rig by {autoFloorOffset:0.00} m.");
+                    }
+
+                    yield break;
+                }
+            }
+        }
+
         private void Update()
         {
             // XROrigin rewrites the offset object's height when the tracking origin mode changes; keep our correction on top.
-            if (floorOffset != 0f)
+            ApplyFloorOffset();
+        }
+
+        private readonly List<XRInputSubsystem> inputSubsystems = new List<XRInputSubsystem>();
+
+        private bool IsFloorMode()
+        {
+            if (xrOrigin != null && (xrOrigin.CurrentTrackingOriginMode & TrackingOriginModeFlags.Floor) != 0)
             {
-                ApplyFloorOffset();
+                return true;
+            }
+
+            inputSubsystems.Clear();
+            SubsystemManager.GetSubsystems(inputSubsystems);
+            foreach (var subsystem in inputSubsystems)
+            {
+                if ((subsystem.GetTrackingOriginMode() & TrackingOriginModeFlags.Floor) != 0)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private void OnSessionStateChanged(MultiTravel.Core.Session.SessionState from, MultiTravel.Core.Session.SessionState to)
+        {
+            // A new participant walks in from the room entrance again.
+            if (to == MultiTravel.Core.Session.SessionState.Welcome && from != MultiTravel.Core.Session.SessionState.Welcome)
+            {
+                Recenter();
             }
         }
 
         private void OnDestroy()
         {
+            if (session != null)
+            {
+                session.StateChanged -= OnSessionStateChanged;
+            }
+
             if (AppServices.TryGet(out IXrRigControl registered) && ReferenceEquals(registered, this))
             {
                 AppServices.Unregister<IXrRigControl>();
@@ -341,9 +455,11 @@ namespace MultiTravel.Gameplay.Xr
                 return;
             }
 
-            float baseHeight = xrOrigin.CurrentTrackingOriginMode == TrackingOriginModeFlags.Floor ? 0f : xrOrigin.CameraYOffset;
+            // Floor-level tracking already puts the head at its real height above the floor (offset 0); the eye-level mode needs
+            // the template's camera offset on top. The flags are tested, not compared: runtimes may report extra bits.
+            float baseHeight = IsFloorMode() ? 0f : xrOrigin.CameraYOffset;
             // A positive correction raises the virtual floor relative to the player, i.e. the camera offset goes down.
-            float expected = baseHeight - floorOffset;
+            float expected = baseHeight - floorOffset - autoFloorOffset;
             var offsetTransform = xrOrigin.CameraFloorOffsetObject.transform;
             var local = offsetTransform.localPosition;
             if (Mathf.Abs(local.y - expected) > 1e-4f)

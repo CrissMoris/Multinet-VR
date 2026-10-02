@@ -20,6 +20,8 @@ namespace MultiTravel.Operator.Panels
         private TextMeshProUGUI scenario;
         private RectTransform scenarioCard;
         private UiButton startButton;
+        private UnityEngine.UI.Image logo;
+        private GameObject brandMark;
 
         public WelcomePanel(OperatorContext context) : base(context)
         {
@@ -42,7 +44,12 @@ namespace MultiTravel.Operator.Panels
             UiFactory.SetLayout(left, 560f, -1f, 0f, 0f, 560f);
 
             var markRow = UiFactory.CreateRow(left, "MarkRow", 0f, TextAnchor.MiddleLeft, false);
+            logo = UiFactory.CreateImage("Logo", markRow, Color.white, false);
+            logo.preserveAspect = true;
+            UiFactory.SetLayout(logo, 360f, 100f, 0f, 0f, 360f, 100f);
+            logo.gameObject.SetActive(false);
             var mark = UiFactory.CreateRounded("BrandMark", markRow, OperatorUiStyle.Primary, 24, false);
+            brandMark = mark.gameObject;
             UiFactory.SetLayout(mark, 96f, 96f, 0f, 0f, 96f, 96f);
             var markIcon = UiFactory.CreateIcon(mark.rectTransform, "Icon", UiIcon.Suitcase, 56f, Color.white);
             UiFactory.IgnoreLayout(markIcon);
@@ -85,6 +92,14 @@ namespace MultiTravel.Operator.Panels
         {
             var config = Context.Config;
             var texts = config.Texts;
+            var sprite = config.Branding.LogoSprite;
+            if (sprite != null)
+            {
+                logo.sprite = sprite;
+                logo.gameObject.SetActive(true);
+                brandMark.SetActive(false);
+            }
+
             var welcome = string.IsNullOrWhiteSpace(texts.WelcomeTitle) ? config.Branding.ProductTitle : texts.WelcomeTitle;
             title.text = welcome;
             subtitle.text = texts.WelcomeSubtitle;
