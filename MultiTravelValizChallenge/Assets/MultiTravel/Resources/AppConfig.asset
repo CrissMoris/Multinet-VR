@@ -25,7 +25,7 @@ MonoBehaviour:
     TimeLimitSeconds: 0
     RevertScoreOnRemoval: 1
     CountdownSeconds: 3
-    EnableLocomotion: 0
+    EnableLocomotion: 1
     ShuffleSpawnPositions: 1
   Texts:
     WelcomeTitle: MultiTravel Valiz Challenge
@@ -39,7 +39,7 @@ MonoBehaviour:
     ConsentVersion: 1.0
   Branding:
     ProductTitle: MultiTravel Valiz Challenge
-    LogoSprite: {fileID: 0}
+    LogoSprite: {fileID: 21300000, guid: 341e28f86a8146f4c88b96e834a8c965, type: 3}
     PrimaryColor: {r: 0.043137256, g: 0.23529412, b: 0.54901963, a: 1}
     AccentColor: {r: 0.9529412, g: 0.57254905, b: 0, a: 1}
   Debug:

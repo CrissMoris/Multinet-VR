@@ -384,6 +384,9 @@ MonoBehaviour:
   gripAttach: {fileID: 3161839317216920102}
   returnFadeSeconds: 0.2
   applyDefinitionPhysics: 1
+  displayScale: 1
+  displayFootprint: 0.07000001
+  displayHeight: 0.06217539
   dockAtHome: 1
   homeSnap: 1
 --- !u!1001 &8047842879850437791
