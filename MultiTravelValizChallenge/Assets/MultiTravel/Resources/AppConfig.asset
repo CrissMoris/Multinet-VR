@@ -1,0 +1,46 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c65c39ef5694e7948b28d3b1037cc44f, type: 3}
+  m_Name: AppConfig
+  m_EditorClassIdentifier: MultiTravel.Core::MultiTravel.Core.Config.AppConfig
+  Backend:
+    SupabaseUrl: 
+    SupabaseAnonKey: 
+    EventSlug: multitravel-2026
+    EventAccessCode: 
+    StationId: VR-01
+    RequestTimeoutSeconds: 10
+    MaxAutoRetries: 5
+  Gameplay:
+    CompletionMode: 0
+    TimeLimitSeconds: 0
+    RevertScoreOnRemoval: 1
+    CountdownSeconds: 3
+    EnableLocomotion: 0
+    ShuffleSpawnPositions: 1
+  Texts:
+    WelcomeTitle: MultiTravel Valiz Challenge
+    WelcomeSubtitle: "Toplant\u0131 seyahatin i\xE7in valizini haz\u0131rla!"
+    InstructionsText: "Bu seyahat i\xE7in gerekli \xFCr\xFCnleri bul ve valize koy.\nDo\u011Fru
+      \xFCr\xFCn: +10 puan. Yanl\u0131\u015F \xFCr\xFCn: -5 puan.\nGerekli t\xFCm
+      \xFCr\xFCnler valize girince oyun biter. H\u0131zl\u0131 ol!"
+    ScenarioText: "Arabayla, 1 gece konaklamal\u0131 toplant\u0131 seyahati"
+  Privacy:
+    ConsentText: 
+    ConsentVersion: 1.0
+  Branding:
+    ProductTitle: MultiTravel Valiz Challenge
+    LogoSprite: {fileID: 0}
+    PrimaryColor: {r: 0.043137256, g: 0.23529412, b: 0.54901963, a: 1}
+    AccentColor: {r: 0.9529412, g: 0.57254905, b: 0, a: 1}
+  Debug:
+    EnableDeviceSimulatorWhenNoHmd: 1

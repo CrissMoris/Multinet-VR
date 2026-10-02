@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2acc832562da3e74d8e903845efaf7d4, type: 3}
+  m_Name: ukulele
+  m_EditorClassIdentifier: MultiTravel.Core::MultiTravel.Core.Products.ProductDefinition
+  Id: ukulele
+  DisplayName: Ukulele
+  Category: 7
+  Availability: 3
+  IsCorrect: 0
+  ScoreOverride: 0
+  IsRequiredForCompletion: 0
+  requiredExplicitlySet: 0
+  lastAutoRequired: 0
+  VisualPrefab: {fileID: 4645267390858560639, guid: b8b5c7c9ee681a24fb6d3284c5ba2d02, type: 3}
+  BrandSprite: {fileID: 0}
+  Interaction:
+    Mass: 0.5
+    GrabScale: 1
+    TwoHanded: 0
+    HoldOffset: {x: 0, y: 0, z: 0}

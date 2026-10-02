@@ -1,0 +1,62 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b0822f5672267584d8e35f61ef57bba6, type: 3}
+  m_Name: ProductCatalog
+  m_EditorClassIdentifier: MultiTravel.Core::MultiTravel.Core.Products.ProductCatalog
+  ScenarioTitle: "Arabayla, 1 gece konaklamal\u0131 toplant\u0131 seyahati"
+  Products:
+  - {fileID: 11400000, guid: 758ed5fcc43a5af41a0a2e39ea9ee0c2, type: 2}
+  - {fileID: 11400000, guid: fd24bc6e45e77a74d8ee4e927e3803e7, type: 2}
+  - {fileID: 11400000, guid: da2b62a6865770b429cba8e3b1dcc343, type: 2}
+  - {fileID: 11400000, guid: c87d6c15c1a958144b85e87104b62902, type: 2}
+  - {fileID: 11400000, guid: ffa5d6fb9ddeb67499e0173fc630dbe1, type: 2}
+  - {fileID: 11400000, guid: c2c0746ea7715f844ad415eab6c3838b, type: 2}
+  - {fileID: 11400000, guid: cc3f23b0a97e834419ed4107868ffaaa, type: 2}
+  - {fileID: 11400000, guid: d1f8075e019b770449e12028b4c35d0c, type: 2}
+  - {fileID: 11400000, guid: 4e5880e7a83d1c240a4a4cf7059e57c9, type: 2}
+  - {fileID: 11400000, guid: 1034e6dc32d45da4aa82b26c0ba89aa9, type: 2}
+  - {fileID: 11400000, guid: 8e4b92044c00f5245b1a4dd4f8c8190c, type: 2}
+  - {fileID: 11400000, guid: 4b9f41f0a0c9d8544aafc1515901f76a, type: 2}
+  - {fileID: 11400000, guid: d0f98355084dfc043ad026f2ecc03ec3, type: 2}
+  - {fileID: 11400000, guid: 76f6d8dc4f47d784b8e5440031203a9f, type: 2}
+  - {fileID: 11400000, guid: 8bfe4a9c9e12396439601eeaa04dc623, type: 2}
+  - {fileID: 11400000, guid: 4d16ffb14db810646b92b88125881c03, type: 2}
+  - {fileID: 11400000, guid: 54f8a87fe82b0fb469731a7a35184cc1, type: 2}
+  - {fileID: 11400000, guid: 5b5ed03ff0122114bb285f7bb8c57da5, type: 2}
+  - {fileID: 11400000, guid: 0886c4f95859358449236a538ed76485, type: 2}
+  - {fileID: 11400000, guid: e5c4acbfa709fdb49b6f10085cb27156, type: 2}
+  - {fileID: 11400000, guid: 791ef87d1cd578749a4ecdfecb466465, type: 2}
+  - {fileID: 11400000, guid: 7cb066b3815c1714e8298854192fca39, type: 2}
+  - {fileID: 11400000, guid: 42ce133e3b7a7994b907c00c8aa80227, type: 2}
+  - {fileID: 11400000, guid: ad4a345b29826a64fa795fa709ae8958, type: 2}
+  - {fileID: 11400000, guid: 9e4e3a6141acf654188ef1ef75a2659f, type: 2}
+  - {fileID: 11400000, guid: dea33ef9d9a6a1b429107585dead4798, type: 2}
+  - {fileID: 11400000, guid: 7f00f230672bfc4489521027eb7129f9, type: 2}
+  - {fileID: 11400000, guid: d05d9d3af69bcde4f812eb0fc31d4548, type: 2}
+  - {fileID: 11400000, guid: 9a257f3feaf8f534987059364a788b0f, type: 2}
+  - {fileID: 11400000, guid: bb68c26ea2a2a8d40a95e4381d8ff7ae, type: 2}
+  - {fileID: 11400000, guid: 37e22f9ca9a011d40ae4635f7012ef4d, type: 2}
+  - {fileID: 11400000, guid: 9f8094659559554419084385569450a4, type: 2}
+  - {fileID: 11400000, guid: 4caaffc3d94b36f43b5a6fc5b684db5a, type: 2}
+  - {fileID: 11400000, guid: 3544fdc358e1e6548b3b35f34428187d, type: 2}
+  - {fileID: 11400000, guid: 2e858dad13539a241a8970d2bb2f15dc, type: 2}
+  - {fileID: 11400000, guid: 43d9ca49f231ffa41aba3e90f192186d, type: 2}
+  - {fileID: 11400000, guid: 399668b16cc55bc4ba6b18689ded6abb, type: 2}
+  - {fileID: 11400000, guid: ef7e2a2c1e04dbe45b276e96fc9bdc9c, type: 2}
+  - {fileID: 11400000, guid: 6331d32b50712544e86ba80cd99cb53b, type: 2}
+  - {fileID: 11400000, guid: 72bd643180d2d5d40be0de0079e8ed9d, type: 2}
+  - {fileID: 11400000, guid: 5639806becc9382408ee037823a178e9, type: 2}
+  DefaultPositiveScore: 10
+  DefaultNegativeScore: -5
+  ShuffleSpawnPositions: 1
+  ShuffleSeedMode: 0
+  FixedShuffleSeed: 1

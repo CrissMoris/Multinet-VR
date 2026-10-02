@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2acc832562da3e74d8e903845efaf7d4, type: 3}
+  m_Name: snorkel-mask
+  m_EditorClassIdentifier: MultiTravel.Core::MultiTravel.Core.Products.ProductDefinition
+  Id: snorkel-mask
+  DisplayName: "\u015Enorkel Maskesi"
+  Category: 7
+  Availability: 3
+  IsCorrect: 0
+  ScoreOverride: 0
+  IsRequiredForCompletion: 0
+  requiredExplicitlySet: 0
+  lastAutoRequired: 0
+  VisualPrefab: {fileID: 1162547359824619773, guid: c5a2bf89c5b47d145b6ce0a563c76bc6, type: 3}
+  BrandSprite: {fileID: 0}
+  Interaction:
+    Mass: 0.4
+    GrabScale: 1
+    TwoHanded: 0
+    HoldOffset: {x: 0, y: 0, z: 0}

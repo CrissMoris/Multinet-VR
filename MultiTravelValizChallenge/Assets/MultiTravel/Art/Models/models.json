@@ -1,0 +1,674 @@
+{
+  "beach-towel": {
+    "name": "beach-towel",
+    "tris": 2108,
+    "dims_xyz": [
+      0.4041,
+      0.1253,
+      0.124
+    ],
+    "materials": [
+      "towel_turquoise",
+      "towel_white",
+      "towel_orange"
+    ],
+    "folder": "Products"
+  },
+  "bed": {
+    "name": "bed",
+    "tris": 21016,
+    "dims_xyz": [
+      2.0,
+      2.1302,
+      1.2779
+    ],
+    "materials": [
+      "upholstery_navy",
+      "brass",
+      "bedding_white",
+      "bedding_throw"
+    ],
+    "folder": "Environment"
+  },
+  "bikini": {
+    "name": "bikini",
+    "tris": 5252,
+    "dims_xyz": [
+      0.2402,
+      0.3422,
+      0.0107
+    ],
+    "materials": [
+      "swim_tropical"
+    ],
+    "folder": "Products"
+  },
+  "blazer": {
+    "name": "blazer",
+    "tris": 7188,
+    "dims_xyz": [
+      0.2814,
+      0.3777,
+      0.0735
+    ],
+    "materials": [
+      "blazer_camel",
+      "button_horn"
+    ],
+    "folder": "Products"
+  },
+  "blouse": {
+    "name": "blouse",
+    "tris": 8620,
+    "dims_xyz": [
+      0.2514,
+      0.3344,
+      0.0422
+    ],
+    "materials": [
+      "blouse_silk",
+      "button_pearl"
+    ],
+    "folder": "Products"
+  },
+  "curtains": {
+    "name": "curtains",
+    "tris": 9340,
+    "dims_xyz": [
+      2.944,
+      0.078,
+      2.6222
+    ],
+    "materials": [
+      "curtain_linen",
+      "brass"
+    ],
+    "folder": "Environment"
+  },
+  "dress": {
+    "name": "dress",
+    "tris": 5248,
+    "dims_xyz": [
+      0.2431,
+      0.4759,
+      0.0287
+    ],
+    "materials": [
+      "dress_burgundy",
+      "leather_black",
+      "gold"
+    ],
+    "folder": "Products"
+  },
+  "flip-flops": {
+    "name": "flip-flops",
+    "tris": 1136,
+    "dims_xyz": [
+      0.204,
+      0.26,
+      0.0325
+    ],
+    "materials": [
+      "flipflop_foam",
+      "flipflop_strap"
+    ],
+    "folder": "Products"
+  },
+  "floor-mirror": {
+    "name": "floor-mirror",
+    "tris": 680,
+    "dims_xyz": [
+      0.7,
+      0.2329,
+      1.8924
+    ],
+    "materials": [
+      "oak_veneer",
+      "mirror_glass",
+      "lacquer_greige"
+    ],
+    "folder": "Environment"
+  },
+  "hanger-rail-decor": {
+    "name": "hanger-rail-decor",
+    "tris": 7082,
+    "dims_xyz": [
+      1.3,
+      0.5,
+      1.8672
+    ],
+    "materials": [
+      "chrome",
+      "hanger_wood",
+      "suit_navy",
+      "shirt_white",
+      "blazer_camel",
+      "suit_charcoal",
+      "shirt_blue",
+      "dress_burgundy"
+    ],
+    "folder": "Environment"
+  },
+  "headphones": {
+    "name": "headphones",
+    "tris": 4608,
+    "dims_xyz": [
+      0.227,
+      0.2098,
+      0.084
+    ],
+    "materials": [
+      "plastic_black",
+      "cushion_black",
+      "chrome",
+      "space_grey"
+    ],
+    "folder": "Products"
+  },
+  "id-card": {
+    "name": "id-card",
+    "tris": 2428,
+    "dims_xyz": [
+      0.0856,
+      0.054,
+      0.0011
+    ],
+    "materials": [
+      "card_white",
+      "card_blue",
+      "card_photo",
+      "card_ink",
+      "gold"
+    ],
+    "folder": "Products"
+  },
+  "jacket": {
+    "name": "jacket",
+    "tris": 7376,
+    "dims_xyz": [
+      0.3014,
+      0.4081,
+      0.0784
+    ],
+    "materials": [
+      "suit_navy",
+      "button_horn"
+    ],
+    "folder": "Products"
+  },
+  "kids-book": {
+    "name": "kids-book",
+    "tris": 3252,
+    "dims_xyz": [
+      0.21,
+      0.28,
+      0.0077
+    ],
+    "materials": [
+      "book_cover_a",
+      "paper",
+      "book_cover_b",
+      "book_cover_c",
+      "book_cover_d"
+    ],
+    "folder": "Products"
+  },
+  "laptop": {
+    "name": "laptop",
+    "tris": 1872,
+    "dims_xyz": [
+      0.313,
+      0.2245,
+      0.0167
+    ],
+    "materials": [
+      "aluminium",
+      "plastic_black",
+      "space_grey",
+      "rubber_feet"
+    ],
+    "folder": "Products"
+  },
+  "laptop-bag": {
+    "name": "laptop-bag",
+    "tris": 5740,
+    "dims_xyz": [
+      0.4007,
+      0.3549,
+      0.0859
+    ],
+    "materials": [
+      "leather_black",
+      "zipper_tape",
+      "chrome"
+    ],
+    "folder": "Products"
+  },
+  "laptop-charger": {
+    "name": "laptop-charger",
+    "tris": 2840,
+    "dims_xyz": [
+      0.124,
+      0.2059,
+      0.029
+    ],
+    "materials": [
+      "plastic_white",
+      "chrome",
+      "plastic_grey",
+      "plastic_black"
+    ],
+    "folder": "Products"
+  },
+  "luggage-bench": {
+    "name": "luggage-bench",
+    "tris": 3668,
+    "dims_xyz": [
+      0.8615,
+      0.5612,
+      0.4206
+    ],
+    "materials": [
+      "upholstery_boucle",
+      "oak_veneer",
+      "brass"
+    ],
+    "folder": "Environment"
+  },
+  "men-shoes": {
+    "name": "men-shoes",
+    "tris": 14968,
+    "dims_xyz": [
+      0.2303,
+      0.2921,
+      0.1067
+    ],
+    "materials": [
+      "leather_brown",
+      "sole_leather",
+      "insole",
+      "lace_black"
+    ],
+    "folder": "Products"
+  },
+  "men-trousers": {
+    "name": "men-trousers",
+    "tris": 6188,
+    "dims_xyz": [
+      0.2211,
+      0.4026,
+      0.0468
+    ],
+    "materials": [
+      "suit_charcoal",
+      "button_horn"
+    ],
+    "folder": "Products"
+  },
+  "men-tshirt": {
+    "name": "men-tshirt",
+    "tris": 7000,
+    "dims_xyz": [
+      0.2615,
+      0.3143,
+      0.0411
+    ],
+    "materials": [
+      "tshirt_navy"
+    ],
+    "folder": "Products"
+  },
+  "neck-pillow": {
+    "name": "neck-pillow",
+    "tris": 5188,
+    "dims_xyz": [
+      0.2689,
+      0.2702,
+      0.0852
+    ],
+    "materials": [
+      "velvet_grey",
+      "strap_grey"
+    ],
+    "folder": "Products"
+  },
+  "nightstand": {
+    "name": "nightstand",
+    "tris": 752,
+    "dims_xyz": [
+      0.5,
+      0.424,
+      0.55
+    ],
+    "materials": [
+      "oak_veneer",
+      "lacquer_white",
+      "brass",
+      "lacquer_greige"
+    ],
+    "folder": "Environment"
+  },
+  "notebook": {
+    "name": "notebook",
+    "tris": 684,
+    "dims_xyz": [
+      0.157,
+      0.2485,
+      0.0192
+    ],
+    "materials": [
+      "notebook_cover",
+      "paper",
+      "elastic_band",
+      "lining_satin"
+    ],
+    "folder": "Products"
+  },
+  "passport": {
+    "name": "passport",
+    "tris": 4736,
+    "dims_xyz": [
+      0.0883,
+      0.125,
+      0.0058
+    ],
+    "materials": [
+      "passport_cover",
+      "paper",
+      "gold"
+    ],
+    "folder": "Products"
+  },
+  "pen": {
+    "name": "pen",
+    "tris": 492,
+    "dims_xyz": [
+      0.011,
+      0.1265,
+      0.0125
+    ],
+    "materials": [
+      "pen_body",
+      "chrome"
+    ],
+    "folder": "Products"
+  },
+  "phone": {
+    "name": "phone",
+    "tris": 3488,
+    "dims_xyz": [
+      0.0734,
+      0.1475,
+      0.0113
+    ],
+    "materials": [
+      "space_grey",
+      "glass_screen",
+      "paper",
+      "plastic_black",
+      "chrome",
+      "lens_tinted"
+    ],
+    "folder": "Products"
+  },
+  "phone-cable": {
+    "name": "phone-cable",
+    "tris": 3356,
+    "dims_xyz": [
+      0.1403,
+      0.0907,
+      0.0194
+    ],
+    "materials": [
+      "plastic_white",
+      "chrome",
+      "plastic_black"
+    ],
+    "folder": "Products"
+  },
+  "room-shell": {
+    "name": "room-shell",
+    "tris": 1228,
+    "dims_xyz": [
+      7.14,
+      5.94,
+      3.1
+    ],
+    "materials": [
+      "parquet",
+      "ceiling_white",
+      "plaster_wall",
+      "oak_veneer",
+      "lacquer_white",
+      "brass",
+      "window_glass",
+      "led_strip"
+    ],
+    "folder": "Environment"
+  },
+  "rug": {
+    "name": "rug",
+    "tris": 376,
+    "dims_xyz": [
+      2.62,
+      2.62,
+      0.012
+    ],
+    "materials": [
+      "rug_wool",
+      "upholstery_navy"
+    ],
+    "folder": "Environment"
+  },
+  "shirt": {
+    "name": "shirt",
+    "tris": 7820,
+    "dims_xyz": [
+      0.2714,
+      0.3659,
+      0.0618
+    ],
+    "materials": [
+      "shirt_blue",
+      "button_pearl"
+    ],
+    "folder": "Products"
+  },
+  "snorkel-mask": {
+    "name": "snorkel-mask",
+    "tris": 4614,
+    "dims_xyz": [
+      0.2271,
+      0.4354,
+      0.0508
+    ],
+    "materials": [
+      "silicone_clear",
+      "plastic_black",
+      "snorkel_glass",
+      "silicone_yellow"
+    ],
+    "folder": "Products"
+  },
+  "socks": {
+    "name": "socks",
+    "tris": 6376,
+    "dims_xyz": [
+      0.2061,
+      0.2403,
+      0.0284
+    ],
+    "materials": [
+      "socks_knit"
+    ],
+    "folder": "Products"
+  },
+  "suitcase-open": {
+    "name": "suitcase-open",
+    "tris": 11062,
+    "dims_xyz": [
+      0.708,
+      0.689,
+      0.6466
+    ],
+    "materials": [
+      "shell_navy",
+      "lining_jacquard",
+      "zipper_tape",
+      "strap_grey",
+      "plastic_black",
+      "chrome",
+      "wheel_rubber",
+      "space_grey",
+      "mesh_pocket",
+      "zipper_metal"
+    ],
+    "folder": "Environment"
+  },
+  "swim-shorts": {
+    "name": "swim-shorts",
+    "tris": 5348,
+    "dims_xyz": [
+      0.3404,
+      0.2716,
+      0.0302
+    ],
+    "materials": [
+      "swim_print",
+      "flipflop_foam",
+      "flipflop_strap"
+    ],
+    "folder": "Products"
+  },
+  "swimsuit": {
+    "name": "swimsuit",
+    "tris": 5000,
+    "dims_xyz": [
+      0.2203,
+      0.4009,
+      0.0136
+    ],
+    "materials": [
+      "swim_coral"
+    ],
+    "folder": "Products"
+  },
+  "table-lamp": {
+    "name": "table-lamp",
+    "tris": 580,
+    "dims_xyz": [
+      0.3,
+      0.3,
+      0.53
+    ],
+    "materials": [
+      "brass",
+      "lamp_shade"
+    ],
+    "folder": "Environment"
+  },
+  "tie": {
+    "name": "tie",
+    "tris": 5188,
+    "dims_xyz": [
+      0.0637,
+      0.3701,
+      0.0097
+    ],
+    "materials": [
+      "tie_silk"
+    ],
+    "folder": "Products"
+  },
+  "toiletry-bag": {
+    "name": "toiletry-bag",
+    "tris": 5668,
+    "dims_xyz": [
+      0.2781,
+      0.1316,
+      0.1216
+    ],
+    "materials": [
+      "toiletry_fabric",
+      "zipper_tape",
+      "zipper_metal",
+      "leather_cognac"
+    ],
+    "folder": "Products"
+  },
+  "travel-bag": {
+    "name": "travel-bag",
+    "tris": 6664,
+    "dims_xyz": [
+      0.462,
+      0.264,
+      0.3478
+    ],
+    "materials": [
+      "duffel_canvas",
+      "leather_cognac",
+      "webbing_olive",
+      "zipper_tape"
+    ],
+    "folder": "Products"
+  },
+  "wardrobe-bay": {
+    "name": "wardrobe-bay",
+    "tris": 1964,
+    "dims_xyz": [
+      0.45,
+      0.392,
+      2.05
+    ],
+    "materials": [
+      "oak_veneer",
+      "lacquer_greige",
+      "led_strip",
+      "lacquer_white",
+      "brass"
+    ],
+    "folder": "Environment"
+  },
+  "women-shoes": {
+    "name": "women-shoes",
+    "tris": 11888,
+    "dims_xyz": [
+      0.2049,
+      0.2465,
+      0.1
+    ],
+    "materials": [
+      "leather_black",
+      "sole_rubber",
+      "insole"
+    ],
+    "folder": "Products"
+  },
+  "women-trousers": {
+    "name": "women-trousers",
+    "tris": 6188,
+    "dims_xyz": [
+      0.2113,
+      0.3824,
+      0.0431
+    ],
+    "materials": [
+      "trousers_beige",
+      "button_horn"
+    ],
+    "folder": "Products"
+  },
+  "women-tshirt": {
+    "name": "women-tshirt",
+    "tris": 7000,
+    "dims_xyz": [
+      0.2412,
+      0.2844,
+      0.0364
+    ],
+    "materials": [
+      "tshirt_white"
+    ],
+    "folder": "Products"
+  }
+}
