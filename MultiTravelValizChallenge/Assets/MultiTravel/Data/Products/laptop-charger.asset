@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: laptop-charger
   m_EditorClassIdentifier: MultiTravel.Core::MultiTravel.Core.Products.ProductDefinition
   Id: laptop-charger
-  DisplayName: "\u015Earj Adapt\xF6r\xFC"
+  DisplayName: "\u015Earj Cihaz\u0131"
   Category: 4
   Availability: 3
   IsCorrect: 1

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: men-shoes
   m_EditorClassIdentifier: MultiTravel.Core::MultiTravel.Core.Products.ProductDefinition
   Id: men-shoes
-  DisplayName: "Deri Ayakkab\u0131"
+  DisplayName: "Klasik Ayakkab\u0131"
   Category: 1
   Availability: 2
   IsCorrect: 1

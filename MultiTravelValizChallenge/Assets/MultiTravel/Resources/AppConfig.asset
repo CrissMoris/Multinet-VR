@@ -22,23 +22,24 @@ MonoBehaviour:
     MaxAutoRetries: 5
   Gameplay:
     CompletionMode: 0
-    TimeLimitSeconds: 0
+    TimeLimitSeconds: 45
     RevertScoreOnRemoval: 1
     CountdownSeconds: 3
     EnableLocomotion: 1
     ShuffleSpawnPositions: 1
   Texts:
-    WelcomeTitle: MultiTravel Valiz Challenge
+    WelcomeTitle: 'MultiTravel: Packing Challenge'
     WelcomeSubtitle: "Toplant\u0131 seyahatin i\xE7in valizini haz\u0131rla!"
     InstructionsText: "Bu seyahat i\xE7in gerekli \xFCr\xFCnleri bul ve valize koy.\nDo\u011Fru
-      \xFCr\xFCn: +10 puan. Yanl\u0131\u015F \xFCr\xFCn: -5 puan.\nGerekli t\xFCm
+      \xFCr\xFCn: +15 puan. Yanl\u0131\u015F \xFCr\xFCn: -5 puan.\nGerekli t\xFCm
       \xFCr\xFCnler valize girince oyun biter. H\u0131zl\u0131 ol!"
     ScenarioText: "Arabayla, 1 gece konaklamal\u0131 toplant\u0131 seyahati"
   Privacy:
-    ConsentText: 
-    ConsentVersion: 1.0
+    ConsentText: "Kullan\u0131c\u0131 Ayd\u0131nlatma Metni'ni okudum, anlad\u0131m
+      ve onayl\u0131yorum."
+    ConsentVersion: 2026-10-kvkk-1
   Branding:
-    ProductTitle: MultiTravel Valiz Challenge
+    ProductTitle: 'MultiTravel: Packing Challenge'
     LogoSprite: {fileID: 21300000, guid: 341e28f86a8146f4c88b96e834a8c965, type: 3}
     PrimaryColor: {r: 0.043137256, g: 0.23529412, b: 0.54901963, a: 1}
     AccentColor: {r: 0.9529412, g: 0.57254905, b: 0, a: 1}

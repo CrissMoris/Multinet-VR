@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: snorkel-mask
   m_EditorClassIdentifier: MultiTravel.Core::MultiTravel.Core.Products.ProductDefinition
   Id: snorkel-mask
-  DisplayName: "\u015Enorkel Maskesi"
+  DisplayName: "\u015Enorkel"
   Category: 7
   Availability: 3
   IsCorrect: 0

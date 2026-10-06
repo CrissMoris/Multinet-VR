@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: beach-hat
   m_EditorClassIdentifier: MultiTravel.Core::MultiTravel.Core.Products.ProductDefinition
   Id: beach-hat
-  DisplayName: "Bal\u0131k\xE7\u0131 \u015Eapkas\u0131"
+  DisplayName: "Plaj \u015Eapkas\u0131"
   Category: 2
-  Availability: 3
+  Availability: 1
   IsCorrect: 0
   ScoreOverride: 0
   IsRequiredForCompletion: 0
