@@ -1,4 +1,4 @@
-# MultiTravel Valiz Challenge
+# MultiTravel: Packing Challenge
 
 ## Marka Hakkında
 
@@ -6,7 +6,7 @@
 
 ## Challenge Hakkında
 
-**MultiTravel Valiz Challenge**, katılımcıların arabayla gerçekleştirecekleri **1 gece konaklamalı bir toplantı seyahati** için ihtiyaç duyacakları ürünleri seçerek valize yerleştirdikleri interaktif bir oyundur.
+**MultiTravel: Packing Challenge**, katılımcıların arabayla gerçekleştirecekleri **1 gece konaklamalı bir toplantı seyahati** için ihtiyaç duyacakları ürünleri seçerek valize yerleştirdikleri interaktif bir oyundur.
 
 ### Oyun Akışı
 

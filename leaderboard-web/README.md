@@ -1,4 +1,4 @@
-# MultiTravel Valiz Challenge — public leaderboard (web)
+# MultiTravel: Packing Challenge — public leaderboard (web)
 
 A single static page (`index.html`) that shows the live ranking of an event on a
 TV, a tablet or a phone. No build step, no framework, no external scripts: it

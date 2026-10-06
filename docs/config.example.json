@@ -10,24 +10,24 @@
   },
   "gameplay": {
     "completionMode": "RequiredItemsPlaced",
-    "timeLimitSeconds": 0,
+    "timeLimitSeconds": 45,
     "revertScoreOnRemoval": true,
     "countdownSeconds": 3,
     "enableLocomotion": true,
     "shuffleSpawnPositions": true
   },
   "texts": {
-    "welcomeTitle": "MultiTravel Valiz Challenge",
+    "welcomeTitle": "MultiTravel: Packing Challenge",
     "welcomeSubtitle": "Arabayla, 1 gece konaklamalı toplantı seyahati",
-    "instructionsText": "Valizi iş seyahati için hazırlayın. Doğru ürünler puan kazandırır, gereksiz ürünler puan kaybettirir. Gerekli tüm ürünler valize girince oyun biter.",
+    "instructionsText": "Odanın girişindesin: sol çubukla kabine yürü, sağ çubukla dön. Valiz için gerekli 5 ürünü bul ve valize koy: doğru ürün +15, yanlış ürün -5 puan. 45 saniyen var!",
     "scenarioText": "Arabayla, 1 gece konaklamalı toplantı seyahati"
   },
   "privacy": {
-    "consentText": "",
-    "consentVersion": ""
+    "consentText": "Kullanıcı Aydınlatma Metni'ni okudum, anladım ve onaylıyorum.",
+    "consentVersion": "2026-10-kvkk-1"
   },
   "branding": {
-    "productTitle": "MultiTravel Valiz Challenge"
+    "productTitle": "MultiTravel: Packing Challenge"
   },
   "debug": {
     "enableDeviceSimulatorWhenNoHmd": false

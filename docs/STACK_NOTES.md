@@ -1,4 +1,4 @@
-# MultiTravel Valiz Challenge — Stack Notes
+# MultiTravel: Packing Challenge — Stack Notes
 
 Engineering reference for the Unity side of the project. Every type name, namespace, serialized
 field name, prefab path and enum value below was read from the installed sources/assets of this
@@ -911,7 +911,7 @@ renderer** (HDR on, MSAA 4×, per-pixel additional lights). `SceneGenerator` sho
 * `ProjectSettings/ProjectSettings.asset`: `activeInputHandler: 1` → **Input System Package (New)** only
   (`0` = Input Manager (Old), `2` = Both). uGUI `StandaloneInputModule` therefore does not work; use
   `XRUIInputModule` (XRI) or `InputSystemUIInputModule`.
-* Other player settings already set: `companyName: ECR Etkinlik Bilgisayar`, `productName: MultiTravel Valiz Challenge`,
+* Other player settings already set: `companyName: ECR Etkinlik Bilgisayar`, `productName: MultiTravel Packing Challenge`,
   `bundleVersion: 1.0.0`, `fullscreenMode: 1` (FullScreenWindow), `runInBackground: 1`, `resizableWindow: 0`,
   `visibleInBackground: 1`, `allowFullscreenSwitch: 1`, `defaultScreenWidth/Height 1024×768`,
   `scriptingBackend: { Android: 1 (IL2CPP), Standalone: 0 (Mono) }`, `apiCompatibilityLevel: 6`, `gcIncremental: 1`,

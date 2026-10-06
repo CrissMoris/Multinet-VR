@@ -1,4 +1,4 @@
-# MultiTravel Valiz Challenge — Architecture Contract
+# MultiTravel: Packing Challenge — Architecture Contract
 
 This document is the binding contract for every module in the repository. All contributors
 must follow the names, folders, data shapes and behaviours below. If something here is
@@ -221,7 +221,7 @@ Score DESC, completion_ms ASC, completed_at ASC. Implemented once in SQL (`get_l
 - Gameplay: `CompletionMode=RequiredItemsPlaced`, `TimeLimitSeconds=0`, `RevertScoreOnRemoval=true`, `CountdownSeconds=3`, `EnableLocomotion=false`, `ShuffleSpawnPositions=true`
 - Texts: `WelcomeTitle`, `WelcomeSubtitle`, `InstructionsText` (TR), `ScenarioText`
 - Privacy: `ConsentText` (empty by default — the customer supplies KVKK wording), `ConsentVersion`
-- Branding: `ProductTitle="MultiTravel Valiz Challenge"`, `LogoSprite` (optional; if null the UI shows the text wordmark and the generator logs an asset dependency), `PrimaryColor`, `AccentColor`
+- Branding: `ProductTitle="MultiTravel: Packing Challenge"`, `LogoSprite` (optional; if null the UI shows the text wordmark and the generator logs an asset dependency), `PrimaryColor`, `AccentColor`
 - Debug: `EnableDeviceSimulatorWhenNoHmd=true` (editor/dev builds only)
 
 Runtime override (JSON, partial, same keys, camelCase): `StreamingAssets/multitravel.config.json` then `persistentDataPath/multitravel.config.json` (later wins). `RuntimeConfig` is the merged, immutable result registered in `AppServices`. `ConfigLoader` (Core, pure, testable) performs the merge. Missing/invalid JSON → logged warning, defaults used, app keeps running.
@@ -275,7 +275,7 @@ Hardware-only (documented, not claimed): hand tracking grab quality over Quest L
 
 ## 11. Build
 
-`unity build MultiTravelValizChallenge --target StandaloneWindows64 --execute-method MultiTravel.EditorTools.BuildScript.BuildWindows --output-path Build/Windows/MultiTravelValizChallenge.exe`. Player settings: company "ECR Etkinlik Bilgisayar", product "MultiTravel Valiz Challenge", version from `ProjectSettings` (1.0.0), fullscreen window, run in background ON, resizable window, no splash config changes beyond defaults allowed by license, Active Input Handling: Input System (Both only if the template requires it), scripting backend Mono (IL2CPP module not installed on the dev machine; documented), XR: OpenXR initialised on startup for Standalone.
+`unity build MultiTravelValizChallenge --target StandaloneWindows64 --execute-method MultiTravel.EditorTools.BuildScript.BuildWindows --output-path Build/Windows/MultiTravelValizChallenge.exe`. Player settings: company "ECR Etkinlik Bilgisayar", product "MultiTravel Packing Challenge", version from `ProjectSettings` (1.0.0), fullscreen window, run in background ON, resizable window, no splash config changes beyond defaults allowed by license, Active Input Handling: Input System (Both only if the template requires it), scripting backend Mono (IL2CPP module not installed on the dev machine; documented), XR: OpenXR initialised on startup for Standalone.
 
 Station config: the editor's `StreamingAssets/multitravel.config.json` is a developer file (local Supabase). After a
 successful build, `BuildScript` copies `-stationConfig <file>` or, by default, `Deployment/multitravel.config.json` into

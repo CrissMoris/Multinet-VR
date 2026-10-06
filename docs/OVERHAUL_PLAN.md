@@ -1,4 +1,4 @@
-# MultiTravel Valiz Challenge — Experience Overhaul (v2) Contract
+# MultiTravel: Packing Challenge — Experience Overhaul (v2) Contract
 
 Goal: turn the playable build into an event-grade VR experience. The participant stands on a floor mark inside a
 branded dressing-room stage, in front of an open wardrobe whose zones match the item types, and packs a real-feeling

@@ -8,7 +8,7 @@ Every third-party file in the project is listed here with its source and licence
 - **Original project models** are authored from code in this repository (`tools/blender/*.py`, Blender 5.1 headless) and
   carry no third-party licence.
 - **Official MultiTravel branding: NOT SUPPLIED.** No logo, brand typeface or brand colours were provided. The apps show
-  the product title as plain text ("MultiTravel Valiz Challenge"); no logo was drawn or imitated. Dependency: the event
+  the product title as plain text ("MultiTravel: Packing Challenge"); no logo was drawn or imitated. Dependency: the event
   owner must supply the official logo (PNG/SVG) → `AppConfig.Branding.LogoSprite` (VR/operator) and the web leaderboard
   header. The suitcase model is deliberately unbranded.
 

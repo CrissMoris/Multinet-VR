@@ -1,4 +1,4 @@
-// MultiTravel Valiz Challenge - public leaderboard configuration.
+// MultiTravel: Packing Challenge - public leaderboard configuration.
 //
 // CLIENT-SAFE VALUES ONLY. This file is served to every browser that opens the
 // leaderboard, so it may contain the Supabase project URL and the *anon*
