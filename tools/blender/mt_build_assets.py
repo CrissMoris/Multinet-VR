@@ -27,6 +27,7 @@ import mt_stage  # noqa: E402
 import mt_wardrobe  # noqa: E402
 import mt_garments  # noqa: E402
 import mt_jewellery  # noqa: E402
+import mt_beach  # noqa: E402
 
 REPO = os.path.abspath(os.path.join(HERE, "..", ".."))
 ART = os.path.join(REPO, "MultiTravelValizChallenge", "Assets", "MultiTravel", "Art")
@@ -59,6 +60,7 @@ def main():
     builders = [(n, f, "Products") for n, f in mt_products.BUILDERS.items()]
     builders += [(n, f, "Products") for n, f in mt_garments.BUILDERS.items()]
     builders += [(n, f, "Products") for n, f in mt_jewellery.BUILDERS.items()]
+    builders += [(n, f, "Products") for n, f in mt_beach.BUILDERS.items()]
     builders += [(n, f, "Environment") for n, f in mt_environment.BUILDERS.items()]
     builders += [(n, f, "Environment") for n, f in mt_stage.BUILDERS.items()]
     builders += [(n, f, "Environment") for n, f in mt_wardrobe.BUILDERS.items()]

@@ -114,27 +114,29 @@ WEDGE_MARGIN = 0.07                    # slot-free margin at each wedge boundary
 HEADER_Z = (1.90, 2.16)
 WALL_TOP = 2.14
 WALL_BOTTOM = 0.0
-SLOT_W = {"S": 0.19, "M": 0.31, "W": 0.42}
+SLOT_W = {"S": 0.20, "M": 0.30, "W": 0.46}
 SLOT_GAP = 0.0
 FRONT_OPEN_T = 28.0                    # wall starts here (stopwatch / scoreboard / logo stay visible in front)
 ENTRANCE_T = 152.0                     # wall ends here (rear opening = entrance, 56 deg wide)
 
 # zone -> (side, class string of plain slots, class string of tall slots, accent material, front flag (unused))
+# Final product list (October 2026): laptop + charger (business), shirt / blouse + bikini (hanging), trousers + swim shorts +
+# beach towel (folded), classic shoes, hat (accessories), snorkel + fins + sea mattress (leisure).
 ZONES = {
-    "business": (-1, "SSSSSSMMWW", "", "velvet_navy", False),
-    "folded": (-1, "MMMWW", "", "towel_orange", False),
-    "leisure": (1, "SSSSSMMWW", "", "mat_teal", False),
-    "shoes": (1, "MMM", "", "leather_cognac", False),
-    "accessories": (1, "MMMWS", "", "walnut", False),
-    "jewellery": (1, "SSSSSS", "", "velvet_wine", False),
+    "business": (-1, "SW", "", "velvet_navy", False),
+    "folded": (-1, "MWW", "", "towel_orange", False),
+    "leisure": (1, "MWW", "", "mat_teal", False),
+    "shoes": (1, "M", "", "leather_cognac", False),
+    "accessories": (1, "W", "", "walnut", False),
 }
 ACCENT = {z: v[3] for z, v in ZONES.items()}
 ACCENT["hanging"] = "leather_tan"
 HANGING_SIDE = -1
-HANGING_WIDTH = 30.0
+HANGING_WIDTH = 30.0       # minimum; the free angle of each side is shared out evenly
+SPREAD = True
 GAP_DEG = 1.6
 FIRST_T = FRONT_OPEN_T + 1.5
-RAILS = ((1.32, 1.86, 3), (1.45, 1.86, 3))      # hanging rails: (radius, height z, hooks); the rear rail is offset half a step
+RAILS = ((1.32, 1.86, 2), (1.45, 1.86, 2))      # hanging rails: (radius, height z, hooks); the rear rail is offset half a step
 
 
 def row_start_angle(r=WALL_R):
@@ -158,12 +160,14 @@ def pack_zone(zone, t0, t1):
         avail.append(math.radians(max(0.0, hi - lo)) * WALL_R)
     used = [0.0] * len(ROW_Z)
     rows = [[] for _ in ROW_Z]
+    order = [1, 2, 0] if len(ROW_Z) == 3 else list(range(len(ROW_Z)))        # middle shelf first: items sit side by side at chest height
     for c, t in items:
-        cand = [TOP_ROW] if t else range(len(ROW_Z))
+        cand = [TOP_ROW] if t else order
         best = None
         for ri in cand:
-            if used[ri] + SLOT_W[c] <= avail[ri] + 1e-9 and (best is None or used[ri] < used[best]):
+            if used[ri] + SLOT_W[c] <= avail[ri] + 1e-9:
                 best = ri
+                break
         if best is None:
             return None
         used[best] += SLOT_W[c] + SLOT_GAP
@@ -172,24 +176,32 @@ def pack_zone(zone, t0, t1):
 
 
 def _build_wedges():
-    """Packs the zones side by side; returns {zone: (side, t0, t1, rows)} and the hanging wedge."""
+    """Packs the zones side by side (minimal widths), then shares the free angle of each side out evenly."""
+    sides = {-1: ["business", "hanging", "folded"], 1: ["leisure", "shoes", "accessories"]}
     out = {}
-    cursor = {-1: FIRST_T, 1: FIRST_T}
-    order = [("business", -1), ("hanging", -1), ("folded", -1), ("leisure", 1), ("shoes", 1), ("accessories", 1), ("jewellery", 1)]
-    for zone, side in order:
-        t0 = cursor[side]
-        if zone == "hanging":
-            out[zone] = (side, t0, t0 + HANGING_WIDTH, None)
-            cursor[side] = t0 + HANGING_WIDTH + GAP_DEG
-            continue
-        for w in range(8, 160):
-            rows = pack_zone(zone, t0, t0 + w)
-            if rows is not None:
-                out[zone] = (side, t0, t0 + w, rows)
-                cursor[side] = t0 + w + GAP_DEG
-                break
-        else:
-            raise RuntimeError(f"zone {zone} does not fit")
+    for side, zones in sides.items():
+        mins = {}
+        for zone in zones:
+            if zone == "hanging":
+                mins[zone] = HANGING_WIDTH
+                continue
+            for w in range(8, 160):
+                packed = pack_zone(zone, 0.0, w)
+                if packed is not None and sum(1 for r in packed if r) <= 1:      # one shelf per zone
+                    mins[zone] = float(w)
+                    break
+            else:
+                raise RuntimeError(f"zone {zone} does not fit")
+        avail = ENTRANCE_T - FIRST_T - GAP_DEG * (len(zones) - 1)
+        extra = max(0.0, avail - sum(mins.values())) if SPREAD else 0.0
+        t = FIRST_T
+        for zone in zones:
+            w = mins[zone] + extra / len(zones)
+            if zone == "hanging":
+                out[zone] = (side, t, t + w, None)
+            else:
+                out[zone] = (side, t, t + w, pack_zone(zone, t, t + w))
+            t += w + GAP_DEG
     return out
 
 
@@ -262,12 +274,8 @@ def accessory_slots():
     return wedge_slots("accessories")
 
 
-def jewellery_slots():
-    return wedge_slots("jewellery")
-
-
 def all_slots():
-    return hooks() + business_slots() + leisure_slots() + folded_slots() + shoe_slots() + accessory_slots() + jewellery_slots()
+    return hooks() + business_slots() + leisure_slots() + folded_slots() + shoe_slots() + accessory_slots()
 
 
 # ---------------------------------------------------------------------------------------------- audit

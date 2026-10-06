@@ -110,6 +110,8 @@
     "stage_grad_15":       { "texture": "", "tint": "19B394", "metallic": 0, "smoothness": 0.2, "tile": 1 },
     "stage_cove":          { "texture": "", "tint": "07224F", "metallic": 0, "smoothness": 0.3, "tile": 1 },
     "stage_lower":        { "texture": "", "tint": "072B66", "metallic": 0, "smoothness": 0.2, "tile": 1 },
+    "fin_blue":            { "texture": "", "tint": "1FA6DC", "metallic": 0, "smoothness": 0.35, "tile": 1 },
+    "mattress_blue":       { "texture": "", "tint": "2BB7F2", "metallic": 0, "smoothness": 0.55, "tile": 1 },
     "stage_logo":         { "texture": "", "tint": "18153D", "metallic": 0, "smoothness": 0.25, "tile": 1 },
     "stage_trim":          { "texture": "", "tint": "D8DCE2", "metallic": 0.9, "smoothness": 0.55, "tile": 1 },
     "led_cove":            { "texture": "", "tint": "E6F7FF", "metallic": 0, "smoothness": 0.5, "tile": 1, "emission": "9FE8FF", "emissionIntensity": 2.5 },

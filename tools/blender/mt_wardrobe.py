@@ -121,7 +121,6 @@ def shoes_unit():
 @builder("wardrobe-door-right")
 def accessories_unit():
     shelf_unit("accessories")
-    shelf_unit("jewellery")
 
 
 @builder("wardrobe-hanging-module")
