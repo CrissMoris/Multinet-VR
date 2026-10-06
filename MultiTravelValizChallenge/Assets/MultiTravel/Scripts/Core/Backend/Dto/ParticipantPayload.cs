@@ -13,6 +13,15 @@ namespace MultiTravel.Core.Backend
         [JsonProperty("last_name")]
         public string LastName { get; set; }
 
+        [JsonProperty("title")]
+        public string Title { get; set; }
+
+        [JsonProperty("company")]
+        public string Company { get; set; }
+
+        [JsonProperty("location")]
+        public string Location { get; set; }
+
         [JsonProperty("phone")]
         public string Phone { get; set; }
 
@@ -48,6 +57,9 @@ namespace MultiTravel.Core.Backend
             {
                 FirstName = input.FirstName,
                 LastName = input.LastName,
+                Title = input.Title,
+                Company = input.Company,
+                Location = input.Location,
                 Phone = input.Phone,
                 Email = input.Email,
                 Gender = WireFormats.GenderToWire(session.Gender),

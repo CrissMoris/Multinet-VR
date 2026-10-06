@@ -14,11 +14,15 @@ namespace MultiTravel.Core.Session
     {
         public const string FieldFirstName = "firstName";
         public const string FieldLastName = "lastName";
+        public const string FieldTitle = "title";
+        public const string FieldCompany = "company";
+        public const string FieldLocation = "location";
         public const string FieldPhone = "phone";
         public const string FieldEmail = "email";
         public const string FieldConsent = "consent";
 
         public const int MaxNameLength = 60;
+        public const int MaxProfileFieldLength = 100;
         public const int MinPhoneDigits = 10;
         public const int MaxPhoneDigits = 15;
         public const int MaxEmailLength = 254;
@@ -26,7 +30,7 @@ namespace MultiTravel.Core.Session
         /// <summary>Field keys in form order (used for "first error" selection).</summary>
         public static readonly IReadOnlyList<string> FieldOrder = new[]
         {
-            FieldFirstName, FieldLastName, FieldPhone, FieldEmail, FieldConsent
+            FieldFirstName, FieldLastName, FieldTitle, FieldCompany, FieldLocation, FieldPhone, FieldEmail, FieldConsent
         };
 
         private static readonly Regex PhonePattern = new Regex("^\\+?[0-9]{10,15}$", RegexOptions.Compiled);
@@ -48,6 +52,10 @@ namespace MultiTravel.Core.Session
 
             normalized.FirstName = ValidateName(input.FirstName, FieldFirstName, "Ad", errors);
             normalized.LastName = ValidateName(input.LastName, FieldLastName, "Soyad", errors);
+
+            normalized.Title = ValidateProfileField(input.Title, FieldTitle, "Unvan", errors);
+            normalized.Company = ValidateProfileField(input.Company, FieldCompany, "Kurum", errors);
+            normalized.Location = ValidateProfileField(input.Location, FieldLocation, "Şirket lokasyonu", errors);
 
             normalized.Phone = NormalizePhone(input.Phone);
             if (string.IsNullOrEmpty(normalized.Phone))
@@ -121,6 +129,21 @@ namespace MultiTravel.Core.Session
         public static bool IsValidEmail(string email)
         {
             return !string.IsNullOrEmpty(email) && EmailPattern.IsMatch(email);
+        }
+
+        private static string ValidateProfileField(string raw, string field, string label, Dictionary<string, string> errors)
+        {
+            var value = (raw ?? string.Empty).Trim();
+            if (value.Length == 0)
+            {
+                errors[field] = label + " alanı zorunludur.";
+            }
+            else if (value.Length > MaxProfileFieldLength)
+            {
+                errors[field] = string.Format(CultureInfo.InvariantCulture, "{0} en fazla {1} karakter olabilir.", label, MaxProfileFieldLength);
+            }
+
+            return value;
         }
 
         private static string ValidateName(string raw, string field, string label, Dictionary<string, string> errors)

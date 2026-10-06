@@ -8,7 +8,7 @@ using UnityEngine.InputSystem;
 namespace MultiTravel.Operator.Panels
 {
     /// <summary>
-    /// Registration form in a two-column 960 px card: Ad, Soyad, Telefon, E-posta (floating labels, live validity check,
+    /// Registration form in a two-column 960 px card: Ad, Soyad, Unvan, Kurum, Şirket Lokasyonu (İl/İlçe), Cep Telefonu, E-posta (floating labels, live validity check,
     /// inline errors) and the KVKK consent block when configured. The phone number formats itself as 0XXX XXX XX XX. Enter moves
     /// to the next field and submits from the last one; Tab / Shift+Tab move the focus. "Devam" calls
     /// <see cref="SessionController.SubmitRegistration"/>; field errors from the <see cref="ValidationResult"/> are shown
@@ -16,17 +16,24 @@ namespace MultiTravel.Operator.Panels
     /// </summary>
     public sealed class RegistrationPanel : OperatorPanel
     {
-        private const int FieldCount = 4;
+        private const int FieldCount = 7;
         private const int IndexFirstName = 0;
         private const int IndexLastName = 1;
-        private const int IndexPhone = 2;
-        private const int IndexEmail = 3;
+        private const int IndexTitle = 2;
+        private const int IndexCompany = 3;
+        private const int IndexLocation = 4;
+        private const int IndexPhone = 5;
+        private const int IndexEmail = 6;
         private const int PhoneCharacterLimit = 24;
+        private const string KvkkResourceName = "KvkkAydinlatmaMetni";
 
         private static readonly string[] FieldKeys =
         {
             ParticipantValidator.FieldFirstName,
             ParticipantValidator.FieldLastName,
+            ParticipantValidator.FieldTitle,
+            ParticipantValidator.FieldCompany,
+            ParticipantValidator.FieldLocation,
             ParticipantValidator.FieldPhone,
             ParticipantValidator.FieldEmail
         };
@@ -67,15 +74,23 @@ namespace MultiTravel.Operator.Panels
             fields[IndexFirstName] = CreateField(rowNames, IndexFirstName, "Ad", "Örn. Ayşe", TMP_InputField.ContentType.Standard, ParticipantValidator.MaxNameLength);
             fields[IndexLastName] = CreateField(rowNames, IndexLastName, "Soyad", "Örn. Yılmaz", TMP_InputField.ContentType.Standard, ParticipantValidator.MaxNameLength);
 
-            var rowContact = UiFactory.CreateRow(card, "ContactRow", 24f, TextAnchor.UpperLeft);
-            fields[IndexPhone] = CreateField(rowContact, IndexPhone, "Telefon", "0XXX XXX XX XX", TMP_InputField.ContentType.Standard, PhoneCharacterLimit);
-            fields[IndexEmail] = CreateField(rowContact, IndexEmail, "E-posta", "ornek@alanadi.com", TMP_InputField.ContentType.EmailAddress, ParticipantValidator.MaxEmailLength);
+            var rowWork = UiFactory.CreateRow(card, "WorkRow", 24f, TextAnchor.UpperLeft);
+            fields[IndexTitle] = CreateField(rowWork, IndexTitle, "Unvan", "Örn. Satın Alma Müdürü", TMP_InputField.ContentType.Standard, ParticipantValidator.MaxProfileFieldLength);
+            fields[IndexCompany] = CreateField(rowWork, IndexCompany, "Kurum", "Örn. ABC Lojistik A.Ş.", TMP_InputField.ContentType.Standard, ParticipantValidator.MaxProfileFieldLength);
+
+            var rowPlace = UiFactory.CreateRow(card, "PlaceRow", 24f, TextAnchor.UpperLeft);
+            fields[IndexLocation] = CreateField(rowPlace, IndexLocation, "Şirket Lokasyonu (İl/İlçe)", "Örn. İstanbul / Şişli", TMP_InputField.ContentType.Standard, ParticipantValidator.MaxProfileFieldLength);
+            fields[IndexPhone] = CreateField(rowPlace, IndexPhone, "Cep Telefonu", "0XXX XXX XX XX", TMP_InputField.ContentType.Standard, PhoneCharacterLimit);
+
+            var rowMail = UiFactory.CreateRow(card, "MailRow", 24f, TextAnchor.UpperLeft);
+            fields[IndexEmail] = CreateField(rowMail, IndexEmail, "E-posta", "ornek@alanadi.com", TMP_InputField.ContentType.EmailAddress, ParticipantValidator.MaxEmailLength);
 
             var phone = fields[IndexPhone].Input;
             phone.keyboardType = TouchScreenKeyboardType.PhonePad;
             phone.onValidateInput = ValidatePhoneCharacter;
 
             consentBlock = UiFactory.CreateColumn(card, "ConsentBlock", 6f);
+            CreateKvkkDocument(consentBlock);
             consentToggle = UiToggle.Create(consentBlock, "ConsentToggle", string.Empty, OperatorUiStyle.FontLabel);
             consentToggle.Changed += OnConsentChanged;
             consentError = UiFactory.CreateLabel(consentBlock, "ConsentError", string.Empty, OperatorUiStyle.FontCaption, OperatorUiStyle.DangerText);
@@ -161,6 +176,56 @@ namespace MultiTravel.Operator.Panels
             }
         }
 
+        /// <summary>Scrollable KVKK Aydınlatma Metni (Resources/KvkkAydinlatmaMetni.txt), shown above the consent checkbox.</summary>
+        private void CreateKvkkDocument(RectTransform parent)
+        {
+            var asset = Resources.Load<TextAsset>(KvkkResourceName);
+            if (asset == null || string.IsNullOrWhiteSpace(asset.text))
+            {
+                return;
+            }
+
+            var caption = UiFactory.CreateLabel(parent, "KvkkCaption", "KVKK Aydınlatma Metni (fare tekeri ile kaydırın)", OperatorUiStyle.FontCaption,
+                OperatorUiStyle.TextMuted, FontStyles.Bold);
+            UiFactory.MakeSingleLine(caption);
+
+            var box = UiFactory.CreateImage("KvkkScroll", parent, OperatorUiStyle.Elevated, true);
+            UiFactory.SetLayout(box, -1f, 130f, 1f, -1f, -1f, 130f);
+
+            var viewport = UiFactory.CreateRect("Viewport", box.transform);
+            UiFactory.Stretch(viewport, 12f, 8f, 12f, 8f);
+            viewport.gameObject.AddComponent<UnityEngine.UI.RectMask2D>();
+
+            var content = UiFactory.CreateRect("Content", viewport);
+            content.anchorMin = new Vector2(0f, 1f);
+            content.anchorMax = new Vector2(1f, 1f);
+            content.pivot = new Vector2(0.5f, 1f);
+            content.offsetMin = Vector2.zero;
+            content.offsetMax = Vector2.zero;
+            var text = UiFactory.CreateLabel(content, "Text", asset.text, OperatorUiStyle.FontCaption, OperatorUiStyle.TextSecondary);
+            UiFactory.Stretch(text.rectTransform);
+            text.rectTransform.anchorMin = new Vector2(0f, 1f);
+            text.rectTransform.anchorMax = new Vector2(1f, 1f);
+            text.rectTransform.pivot = new Vector2(0.5f, 1f);
+            var fitter = content.gameObject.AddComponent<UnityEngine.UI.ContentSizeFitter>();
+            fitter.verticalFit = UnityEngine.UI.ContentSizeFitter.FitMode.PreferredSize;
+            var textFitter = text.gameObject.AddComponent<UnityEngine.UI.ContentSizeFitter>();
+            textFitter.verticalFit = UnityEngine.UI.ContentSizeFitter.FitMode.PreferredSize;
+            var layout = content.gameObject.AddComponent<UnityEngine.UI.VerticalLayoutGroup>();
+            layout.childControlWidth = true;
+            layout.childControlHeight = true;
+            layout.childForceExpandWidth = true;
+            layout.childForceExpandHeight = false;
+
+            var scroll = box.gameObject.AddComponent<UnityEngine.UI.ScrollRect>();
+            scroll.viewport = viewport;
+            scroll.content = content;
+            scroll.horizontal = false;
+            scroll.vertical = true;
+            scroll.movementType = UnityEngine.UI.ScrollRect.MovementType.Clamped;
+            scroll.scrollSensitivity = 40f;
+        }
+
         private UiField CreateField(Transform row, int index, string label, string hint, TMP_InputField.ContentType contentType, int characterLimit)
         {
             var field = UiField.Create(row, label + "Field", label, hint, contentType, characterLimit);
@@ -229,6 +294,9 @@ namespace MultiTravel.Operator.Panels
             {
                 FirstName = fields[IndexFirstName].Text,
                 LastName = fields[IndexLastName].Text,
+                Title = fields[IndexTitle].Text,
+                Company = fields[IndexCompany].Text,
+                Location = fields[IndexLocation].Text,
                 Phone = fields[IndexPhone].Text,
                 Email = fields[IndexEmail].Text,
                 ConsentAccepted = consentRequired ? consentToggle.IsOn : (bool?)null,

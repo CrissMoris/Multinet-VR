@@ -42,6 +42,12 @@ namespace MultiTravel.Core.Backend
                     return "Ad";
                 case "lastname":
                     return "Soyad";
+                case "title":
+                    return "Unvan";
+                case "company":
+                    return "Kurum";
+                case "location":
+                    return "Şirket lokasyonu";
                 case "phone":
                     return "Telefon";
                 case "email":

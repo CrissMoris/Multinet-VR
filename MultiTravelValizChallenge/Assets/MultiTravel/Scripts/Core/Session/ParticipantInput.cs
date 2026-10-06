@@ -10,6 +10,15 @@ namespace MultiTravel.Core.Session
 
         public string LastName { get; set; }
 
+        /// <summary>Job title (Unvan).</summary>
+        public string Title { get; set; }
+
+        /// <summary>Company / institution (Kurum).</summary>
+        public string Company { get; set; }
+
+        /// <summary>Company location, province / district (İl/İlçe).</summary>
+        public string Location { get; set; }
+
         /// <summary>Phone number; normalised to an optional leading '+' followed by 10..15 digits.</summary>
         public string Phone { get; set; }
 
@@ -28,6 +37,9 @@ namespace MultiTravel.Core.Session
             {
                 FirstName = FirstName,
                 LastName = LastName,
+                Title = Title,
+                Company = Company,
+                Location = Location,
                 Phone = Phone,
                 Email = Email,
                 ConsentAccepted = ConsentAccepted,

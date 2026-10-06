@@ -33,7 +33,7 @@ namespace MultiTravel.Tests.PlayMode
             yield return GameplayTestScene.WaitUntil(() => Object.FindAnyObjectByType<OperatorScreen>()?.IsBound == true, 15);
             var session = AppServices.Get<SessionController>();
             session.BeginRegistration();
-            session.SubmitRegistration(new ParticipantInput { FirstName = "Qa", LastName = "Run", Phone = "05320000000", Email = "qa@example.invalid" });
+            session.SubmitRegistration(new ParticipantInput { FirstName = "Qa", LastName = "Run", Title = "Müdür", Company = "Test A.Ş.", Location = "İstanbul / Şişli", Phone = "05320000000", Email = "qa@example.invalid", ConsentAccepted = true, ConsentVersion = "test" });
             session.SelectGender(Gender.Female);
             session.StartGame();
             yield return GameplayTestScene.WaitUntil(() => session.State == SessionState.Playing, 10);

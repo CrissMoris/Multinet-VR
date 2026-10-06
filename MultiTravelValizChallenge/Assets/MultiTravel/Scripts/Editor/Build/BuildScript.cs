@@ -32,9 +32,9 @@ namespace MultiTravel.EditorTools
     /// </summary>
     public static class BuildScript
     {
-        public const string ExecutableName = "MultiTravel Valiz Challenge.exe";
+        public const string ExecutableName = "MultiTravel Packing Challenge.exe";
 
-        /// <summary>Default output: <c>&lt;project&gt;/Build/Windows/MultiTravel Valiz Challenge.exe</c>.</summary>
+        /// <summary>Default output: <c>&lt;project&gt;/Build/Windows/MultiTravel Packing Challenge.exe</c>.</summary>
         public static string DefaultOutputPath => Path.Combine(GeneratedAssetUtil.ProjectRoot, "Build", "Windows", ExecutableName);
 
         /// <summary>

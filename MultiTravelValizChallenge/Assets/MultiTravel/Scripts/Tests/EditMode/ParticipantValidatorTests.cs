@@ -152,7 +152,7 @@ namespace MultiTravel.Tests.EditMode
             var result = ParticipantValidator.Validate(null, consentRequired: true);
 
             Assert.IsFalse(result.IsValid);
-            Assert.AreEqual(5, result.Errors.Count);
+            Assert.AreEqual(8, result.Errors.Count);
             Assert.AreEqual("Ad alanı zorunludur.", result.FirstError);
             Assert.IsTrue(result.Errors.ContainsKey(ParticipantValidator.FieldConsent));
         }

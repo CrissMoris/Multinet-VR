@@ -13,7 +13,7 @@ namespace MultiTravel.EditorTools
     public static class PlayerSettingsConfigurator
     {
         public const string CompanyName = "ECR Etkinlik Bilgisayar";
-        public const string ProductName = "MultiTravel Valiz Challenge";
+        public const string ProductName = "MultiTravel Packing Challenge";
         public const string DefaultVersion = "1.0.0";
 
         /// <summary>URP asset used by the Standalone default quality level (HDR, MSAA 4x, Standalone renderer; STACK_NOTES §8).</summary>

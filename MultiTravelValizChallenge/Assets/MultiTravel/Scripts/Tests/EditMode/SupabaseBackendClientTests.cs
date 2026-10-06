@@ -22,7 +22,7 @@ namespace MultiTravel.Tests.EditMode
         private static readonly string[] RegisterParams =
         {
             "p_event_slug", "p_access_code", "p_station_id", "p_client_session_id", "p_first_name", "p_last_name",
-            "p_phone", "p_email", "p_gender", "p_consent_accepted", "p_consent_version"
+            "p_title", "p_company", "p_location", "p_phone", "p_email", "p_gender", "p_consent_accepted", "p_consent_version"
         };
 
         private static readonly string[] SubmitParams =
@@ -158,7 +158,7 @@ namespace MultiTravel.Tests.EditMode
             transport.EnqueueJson(200, "{\"participant_id\":\"22222222-2222-2222-2222-222222222222\",\"created\":true}");
             var session = new ParticipantSession(
                 Guid.NewGuid(),
-                new ParticipantInput { FirstName = "A", LastName = "B", Phone = "05321234567", Email = "a@b.co" },
+                new ParticipantInput { FirstName = "A", LastName = "B", Title = "Müdür", Company = "Test A.Ş.", Location = "İstanbul / Şişli", Phone = "05321234567", Email = "a@b.co" },
                 DateTime.UtcNow);
             session.Gender = Gender.Female;
             session.GenderSelected = true;

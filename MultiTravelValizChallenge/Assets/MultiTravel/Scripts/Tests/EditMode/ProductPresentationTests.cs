@@ -14,7 +14,7 @@ using UnityEditor;
 namespace MultiTravel.Tests.EditMode
 {
     /// <summary>
-    /// Zone mapping, presentation data, jewellery data and zone capacity (OVERHAUL_PLAN §3, §7).
+    /// Zone mapping, presentation data, the final product list and zone capacity (OVERHAUL_PLAN §3, §7).
     /// </summary>
     public sealed class ProductPresentationTests
     {
@@ -24,24 +24,22 @@ namespace MultiTravel.Tests.EditMode
         /// </summary>
         public static readonly IReadOnlyDictionary<DisplayZone, int> PlannedSlotCounts = new Dictionary<DisplayZone, int>
         {
-            { DisplayZone.Hanging, 8 },
-            { DisplayZone.Folded, 9 },
-            { DisplayZone.Shoes, 6 },
-            { DisplayZone.Accessories, 8 },
-            { DisplayZone.Jewellery, 8 },
-            { DisplayZone.Business, 14 },
-            { DisplayZone.Leisure, 12 },
+            { DisplayZone.Hanging, 4 },
+            { DisplayZone.Folded, 3 },
+            { DisplayZone.Shoes, 1 },
+            { DisplayZone.Accessories, 1 },
+            { DisplayZone.Business, 2 },
+            { DisplayZone.Leisure, 3 },
         };
 
         private static readonly Dictionary<DisplayZone, string[]> ZoneTable = new Dictionary<DisplayZone, string[]>
         {
-            { DisplayZone.Hanging, new[] { "shirt", "blouse", "jacket", "blazer", "dress", "swimsuit", "bikini" } },
-            { DisplayZone.Folded, new[] { "men-trousers", "women-trousers", "men-tshirt", "women-tshirt", "socks", "swim-shorts", "beach-towel" } },
-            { DisplayZone.Shoes, new[] { "men-shoes", "women-shoes", "flip-flops" } },
-            { DisplayZone.Accessories, new[] { "tie", "glasses", "sunglasses", "beach-hat", "toiletry-bag" } },
-            { DisplayZone.Jewellery, new[] { "wristwatch", "cufflinks", "pearl-earrings", "minimal-necklace", "shell-necklace", "party-tiara" } },
-            { DisplayZone.Business, new[] { "laptop", "laptop-bag", "laptop-charger", "phone-cable", "phone", "notebook", "pen", "id-card", "passport", "headphones" } },
-            { DisplayZone.Leisure, new[] { "snorkel-mask", "rubber-duck", "football", "ukulele", "garden-gnome", "binoculars", "kids-book", "neck-pillow", "travel-bag" } },
+            { DisplayZone.Hanging, new[] { "shirt", "blouse", "bikini" } },
+            { DisplayZone.Folded, new[] { "men-trousers", "women-trousers", "swim-shorts", "beach-towel" } },
+            { DisplayZone.Shoes, new[] { "men-shoes", "women-shoes" } },
+            { DisplayZone.Accessories, new[] { "beach-hat", "straw-hat" } },
+            { DisplayZone.Business, new[] { "laptop", "laptop-charger" } },
+            { DisplayZone.Leisure, new[] { "snorkel-mask", "fins", "sea-bed" } },
         };
 
         private ScriptableObjectFactory so;
@@ -143,42 +141,25 @@ namespace MultiTravel.Tests.EditMode
         [Test]
         public void DefaultProducts_PackedGripAndVariantFollowTheTable()
         {
-            foreach (var id in new[] { "shirt", "blouse", "jacket", "blazer", "dress", "swimsuit", "bikini" })
+            foreach (var id in new[] { "shirt", "blouse", "bikini" })
             {
                 AssertPresentation(id, PackedKind.Flat, GripPreset.Hanger, true);
             }
 
-            foreach (var id in new[] { "men-trousers", "women-trousers", "men-tshirt", "women-tshirt", "socks", "swim-shorts", "beach-towel" })
+            foreach (var id in new[] { "men-trousers", "women-trousers", "swim-shorts", "beach-towel" })
             {
                 AssertPresentation(id, PackedKind.Flat, GripPreset.FoldedGarment, false);
             }
 
-            foreach (var id in new[] { "men-shoes", "women-shoes", "flip-flops" })
+            foreach (var id in new[] { "men-shoes", "women-shoes" })
             {
                 AssertPresentation(id, PackedKind.ShoeCorner, GripPreset.Shoe, false);
             }
 
-            foreach (var id in new[] { "toiletry-bag", "laptop-bag", "travel-bag" })
-            {
-                AssertPresentation(id, PackedKind.Upright, GripPreset.Handle, false);
-            }
+            AssertPresentation("laptop", PackedKind.Flat, GripPreset.FlatEdge, false);
+            AssertPresentation("laptop-charger", PackedKind.Organiser, GripPreset.Dynamic, false);
 
-            foreach (var id in new[] { "laptop", "notebook", "kids-book" })
-            {
-                AssertPresentation(id, PackedKind.Flat, GripPreset.FlatEdge, false);
-            }
-
-            foreach (var id in new[] { "passport", "id-card", "phone" })
-            {
-                AssertPresentation(id, PackedKind.LidPocket, GripPreset.FlatEdge, false);
-            }
-
-            foreach (var id in new[] { "pen", "phone-cable", "laptop-charger", "glasses", "sunglasses", "tie" }.Concat(ZoneTable[DisplayZone.Jewellery]))
-            {
-                AssertPresentation(id, PackedKind.Organiser, GripPreset.Dynamic, false);
-            }
-
-            foreach (var id in new[] { "garden-gnome", "rubber-duck", "football", "ukulele", "binoculars", "snorkel-mask", "neck-pillow", "headphones", "beach-hat" })
+            foreach (var id in new[] { "snorkel-mask", "fins", "sea-bed", "beach-hat", "straw-hat" })
             {
                 AssertPresentation(id, PackedKind.Top, GripPreset.Dynamic, false);
             }
@@ -192,49 +173,44 @@ namespace MultiTravel.Tests.EditMode
             Assert.AreEqual(hanging, presentation.HasHangingVariant, id + " hanging variant");
         }
 
-        // ----- jewellery -----
+        // ----- the client's final product list -----
 
         [Test]
-        public void Jewellery_SixProducts_WithTurkishNamesAvailabilityAndCorrectness()
+        public void FinalProductList_FiveRequiredAndSixDistractorsPerGender()
         {
-            var expected = new[]
+            var catalog = so.Catalog(ProductDataGenerator.DefaultProducts.Select(Definition).ToArray());
+            var resolver = new ProductSetResolver();
+            foreach (var gender in new[] { Gender.Female, Gender.Male })
             {
-                ("wristwatch", "Kol Saati", GenderAvailability.Both, true),
-                ("cufflinks", "Kol Düğmesi", GenderAvailability.Male, true),
-                ("pearl-earrings", "İnci Küpe", GenderAvailability.Female, true),
-                ("minimal-necklace", "İnce Kolye", GenderAvailability.Female, true),
-                ("shell-necklace", "Deniz Kabuğu Kolye", GenderAvailability.Both, false),
-                ("party-tiara", "Parti Tacı", GenderAvailability.Female, false),
-            };
-
-            var jewellery = ProductDataGenerator.DefaultProducts.Where(p => p.Category == ProductCategory.Jewellery).ToList();
-            Assert.AreEqual(expected.Length, jewellery.Count);
-            foreach (var (id, name, availability, correct) in expected)
-            {
-                var spec = Spec(id);
-                Assert.AreEqual(ProductCategory.Jewellery, spec.Category, id);
-                Assert.AreEqual(name, spec.DisplayName, id);
-                Assert.AreEqual(availability, spec.Availability, id);
-                Assert.AreEqual(correct, spec.IsCorrect, id);
-                Assert.AreEqual(false, spec.RequiredOverride, id + " must not be required by default");
-                Assert.AreEqual(DisplayZone.Jewellery, spec.Presentation.Zone, id);
-
-                var definition = Definition(spec);
-                Assert.IsFalse(definition.IsEffectivelyRequired, id);
-                Assert.IsTrue(definition.RequiredExplicitlySet, id + " uses SetRequiredForCompletion(false)");
+                var set = resolver.Resolve(catalog, gender);
+                Assert.AreEqual(5, set.Required.Count, gender + " required");
+                Assert.AreEqual(11, set.Items.Count, gender + " items");
             }
+
+            CollectionAssert.AreEquivalent(
+                new[] { "laptop", "laptop-charger", "blouse", "women-trousers", "women-shoes" },
+                resolver.Resolve(catalog, Gender.Female).Required.Select(p => p.Id));
+            CollectionAssert.AreEquivalent(
+                new[] { "laptop", "laptop-charger", "shirt", "men-trousers", "men-shoes" },
+                resolver.Resolve(catalog, Gender.Male).Required.Select(p => p.Id));
+            var femaleOnly = new[] { "bikini", "beach-hat" };
+            var maleOnly = new[] { "swim-shorts", "straw-hat" };
+            Assert.IsTrue(femaleOnly.All(id => resolver.Resolve(catalog, Gender.Female).Items.Any(p => p.Id == id)));
+            Assert.IsFalse(femaleOnly.Any(id => resolver.Resolve(catalog, Gender.Male).Items.Any(p => p.Id == id)));
+            Assert.IsTrue(maleOnly.All(id => resolver.Resolve(catalog, Gender.Male).Items.Any(p => p.Id == id)));
+            Assert.IsFalse(maleOnly.Any(id => resolver.Resolve(catalog, Gender.Female).Items.Any(p => p.Id == id)));
         }
 
         [Test]
-        public void Jewellery_DoesNotChangeTheRequiredCountPerGender()
+        public void FinalProductList_TurkishNamesFollowTheClientWording()
         {
-            var definitions = ProductDataGenerator.DefaultProducts.Select(Definition).ToArray();
-            var catalog = so.Catalog(definitions);
-            var resolver = new ProductSetResolver();
-            Assert.AreEqual(17, resolver.Resolve(catalog, Gender.Female).Required.Count);
-            Assert.AreEqual(17, resolver.Resolve(catalog, Gender.Male).Required.Count);
-            Assert.IsTrue(resolver.Resolve(catalog, Gender.Female).Items.Any(p => p.Id == "pearl-earrings"));
-            Assert.IsFalse(resolver.Resolve(catalog, Gender.Male).Items.Any(p => p.Id == "pearl-earrings"));
+            Assert.AreEqual("Şarj Cihazı", Spec("laptop-charger").DisplayName);
+            Assert.AreEqual("Kumaş Pantolon", Spec("men-trousers").DisplayName);
+            Assert.AreEqual("Klasik Ayakkabı", Spec("women-shoes").DisplayName);
+            Assert.AreEqual("Palet", Spec("fins").DisplayName);
+            Assert.AreEqual("Deniz Yatağı", Spec("sea-bed").DisplayName);
+            Assert.AreEqual("Plaj Şapkası", Spec("beach-hat").DisplayName);
+            Assert.AreEqual("Hasır Şapka", Spec("straw-hat").DisplayName);
         }
 
         [Test]
@@ -253,19 +229,21 @@ namespace MultiTravel.Tests.EditMode
         public void ZoneCapacity_DefaultDataFitsThePlannedLayout_PerGender()
         {
             var errors = new List<string>();
-            Assert.IsTrue(ZoneCapacityValidator.Validate(DefaultEntries(), PlannedSlotCounts, errors), string.Join("\n", errors));
+            Assert.IsTrue(ZoneCapacityValidator.Validate(DefaultEntries(), PlannedSlotCounts, errors, 1f), string.Join("\n", errors));
 
-            var minimum = ZoneCapacityValidator.MinimumSlotCounts(DefaultEntries());
+            var minimum = ZoneCapacityValidator.MinimumSlotCounts(DefaultEntries(), 1f);
             foreach (var pair in minimum)
             {
                 Assert.LessOrEqual(pair.Value, PlannedSlotCounts[pair.Key], pair.Key.ToString());
             }
 
-            // Hand-checked worst case per zone (OVERHAUL_PLAN §3): female hanging 5, male folded 5, business 10, leisure 9.
-            Assert.AreEqual(7, minimum[DisplayZone.Hanging]);
-            Assert.AreEqual(7, minimum[DisplayZone.Folded]);
-            Assert.AreEqual(13, minimum[DisplayZone.Business]);
-            Assert.AreEqual(12, minimum[DisplayZone.Leisure]);
+            // Hand-checked worst case per zone: the shelf wall is exact-fit (every item has a slot).
+            Assert.AreEqual(2, minimum[DisplayZone.Hanging]);
+            Assert.AreEqual(3, minimum[DisplayZone.Folded]);
+            Assert.AreEqual(1, minimum[DisplayZone.Shoes]);
+            Assert.AreEqual(1, minimum[DisplayZone.Accessories]);
+            Assert.AreEqual(2, minimum[DisplayZone.Business]);
+            Assert.AreEqual(3, minimum[DisplayZone.Leisure]);
         }
 
         [Test]
@@ -310,7 +288,7 @@ namespace MultiTravel.Tests.EditMode
         // ----- generated catalog asset -----
 
         [Test]
-        public void CatalogAsset_EveryProductHasANamedZone_AndTheJewellery()
+        public void CatalogAsset_EveryProductHasANamedZone_AndMatchesTheFinalList()
         {
             var catalog = AssetDatabase.LoadAssetAtPath<ProductCatalog>(ProductDataGenerator.CatalogPath);
             if (catalog == null)
@@ -324,13 +302,9 @@ namespace MultiTravel.Tests.EditMode
                 Assert.AreNotEqual(DisplayZone.Any, product.Presentation.Zone, product.Id + ": run MultiTravel/Generate/Product Data");
             }
 
-            foreach (var id in ZoneTable[DisplayZone.Jewellery])
-            {
-                var product = catalog.FindById(id);
-                Assert.IsNotNull(product, id + " must be in the catalog");
-                Assert.AreEqual(ProductCategory.Jewellery, product.Category);
-            }
-
+            CollectionAssert.AreEquivalent(ProductDataGenerator.DefaultProducts.Select(p => p.Id), catalog.Products.Select(p => p.Id));
+            Assert.AreEqual(15, catalog.DefaultPositiveScore);
+            Assert.AreEqual(-5, catalog.DefaultNegativeScore);
             Assert.IsNull(catalog.FindById(ProductDataGenerator.PracticeId), "the practice item is not a catalog product");
         }
 
@@ -339,17 +313,11 @@ namespace MultiTravel.Tests.EditMode
         [Test]
         public void SoundKinds_FollowMaterial()
         {
-            Assert.AreEqual(SoundKind.Metal, ProductSoundKinds.For(Definition(Spec("wristwatch"))));
             Assert.AreEqual(SoundKind.Leather, ProductSoundKinds.For(Definition(Spec("men-shoes"))));
-            Assert.AreEqual(SoundKind.Leather, ProductSoundKinds.For(Definition(Spec("laptop-bag"))));
-            Assert.AreEqual(SoundKind.Paper, ProductSoundKinds.For(Definition(Spec("notebook"))));
-            Assert.AreEqual(SoundKind.Paper, ProductSoundKinds.For(Definition(Spec("passport"))));
             Assert.AreEqual(SoundKind.Cloth, ProductSoundKinds.For(Definition(Spec("beach-towel"))));
             Assert.AreEqual(SoundKind.Cloth, ProductSoundKinds.For(Definition(Spec("shirt"))));
             Assert.AreEqual(SoundKind.Hard, ProductSoundKinds.For(Definition(Spec("laptop"))));
-            Assert.AreEqual(SoundKind.Hard, ProductSoundKinds.For(Definition(Spec("football"))));
             Assert.AreEqual(SoundKind.Hard, ProductSoundKinds.For(null));
-            Assert.IsTrue(ProductSoundKinds.IsSoft(Definition(Spec("socks"))));
             Assert.IsTrue(ProductSoundKinds.IsSoft(Definition(Spec("beach-towel"))));
             Assert.IsFalse(ProductSoundKinds.IsSoft(Definition(Spec("laptop"))));
         }

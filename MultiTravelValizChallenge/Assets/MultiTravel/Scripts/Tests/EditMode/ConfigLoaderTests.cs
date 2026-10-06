@@ -59,7 +59,7 @@ namespace MultiTravel.Tests.EditMode
             Assert.AreEqual(3, config.Gameplay.CountdownSeconds);
             Assert.IsFalse(config.Gameplay.EnableLocomotion);
             Assert.IsTrue(config.Gameplay.ShuffleSpawnPositions);
-            Assert.AreEqual("MultiTravel Valiz Challenge", config.Branding.ProductTitle);
+            Assert.AreEqual("MultiTravel: Packing Challenge", config.Branding.ProductTitle);
             Assert.IsFalse(config.Privacy.IsConsentRequired);
             Assert.IsTrue(config.Debug.EnableDeviceSimulatorWhenNoHmd);
             Assert.IsFalse(config.Backend.IsConfigured);

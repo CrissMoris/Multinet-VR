@@ -51,7 +51,7 @@ namespace MultiTravel.Tests.EditMode.Fakes
             {
                 FirstName = "  Ayşe ",
                 LastName = " Yılmaz",
-                Phone = "+90 (532) 123-45-67",
+                Title = "Müdür", Company = "Test A.Ş.", Location = "İstanbul / Şişli", Phone = "+90 (532) 123-45-67",
                 Email = " ayse@example.com ",
                 ConsentAccepted = true
             };

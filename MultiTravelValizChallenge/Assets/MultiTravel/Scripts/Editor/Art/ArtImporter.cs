@@ -54,7 +54,6 @@ namespace MultiTravel.EditorTools.Art
         {
             { "glasses", "round_spectacles" },
             { "sunglasses", "round_spectacles" },
-            { "beach-hat", "fishermans_hat" },
             { "rubber-duck", "rubber_duck_toy" },
             { "football", "football" },
             { "ukulele", "Ukulele_01" },
@@ -718,8 +717,7 @@ namespace MultiTravel.EditorTools.Art
         /// </summary>
         public static float DisplayScaleFor(Vector3 size)
         {
-            float largest = Mathf.Max(size.x, Mathf.Max(size.y, size.z));
-            float scale = largest >= 0.40f ? 0.80f : largest >= 0.28f ? 0.90f : 1f;
+            float scale = 1f; // few products on a big cabin wall: everything is shown at real size unless it exceeds the shelf
             // The shelf is 0.26 m deep: long items (ukulele, trousers) shrink until their depth fits.
             if (size.z * scale > ShelfDepth)
             {
@@ -735,10 +733,10 @@ namespace MultiTravel.EditorTools.Art
         }
 
         /// <summary>Usable shelf depth (m) of the shelf wall.</summary>
-        public const float ShelfDepth = 0.28f;
+        public const float ShelfDepth = 0.34f;
 
         /// <summary>Widest item (m) on the shelf wall: the widest slot class.</summary>
-        public const float MaxDisplayWidth = 0.34f;
+        public const float MaxDisplayWidth = 0.46f;
 
         private static GameObject InstantiateModel(string productId, GameObject model, Transform parent, string name)
         {

@@ -13,7 +13,7 @@ namespace MultiTravel.Operator
     {
         public const float Height = OperatorUiStyle.TopBarHeight;
 
-        private const string DefaultTitle = "MultiTravel Valiz Challenge";
+        private const string DefaultTitle = "MultiTravel: Packing Challenge";
 
         private readonly OperatorContext context;
         private readonly Action onLeaderboardToggle;
@@ -88,7 +88,7 @@ namespace MultiTravel.Operator
                 logoImage.sprite = logo;
                 logoImage.gameObject.SetActive(true);
                 brandMark.SetActive(false);
-                titleLabel.text = "Valiz Challenge";
+                titleLabel.text = "Packing Challenge";
                 titleLabel.color = OperatorUiStyle.TextSecondary;
             }
             var station = config.Backend.StationId;

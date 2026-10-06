@@ -62,7 +62,7 @@ namespace MultiTravel.Tests.PlayMode
                 session.BeginRegistration();
                 Assert.That(session.SubmitRegistration(new ParticipantInput()).IsValid,Is.False);
                 Assert.That(session.State,Is.EqualTo(SessionState.Registration));
-                Assert.That(session.SubmitRegistration(new ParticipantInput {FirstName="Integration",LastName="Test",Phone="05320000000",Email="integration@example.invalid"}).IsValid,Is.True);
+                Assert.That(session.SubmitRegistration(new ParticipantInput {FirstName="Integration",LastName="Test",Title = "Müdür", Company = "Test A.Ş.", Location = "İstanbul / Şişli", Phone="05320000000",Email="integration@example.invalid",ConsentAccepted=true,ConsentVersion="test"}).IsValid,Is.True);
                 session.SelectGender(gender);
                 session.StartGame();
                 yield return GameplayTestScene.WaitUntil(()=>session.State==SessionState.Playing,10);

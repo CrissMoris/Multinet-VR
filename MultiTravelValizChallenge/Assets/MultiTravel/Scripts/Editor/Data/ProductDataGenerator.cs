@@ -112,63 +112,31 @@ namespace MultiTravel.EditorTools.Data
 
         private static PresentationSpec Odd(DisplayZone zone) => Pres(zone, PackedKind.Top, GripPreset.Dynamic);
 
-        /// <summary>The initial product list from ARCHITECTURE.md §9, in catalog order.</summary>
+        /// <summary>
+        /// The client's final product list (October 2026): five required items per gender (laptop, charger, shirt / blouse,
+        /// trousers, classic shoes) and six distractors (swimwear, snorkel, fins, hat, beach towel, sea mattress).
+        /// </summary>
         public static readonly IReadOnlyList<ProductSpec> DefaultProducts = new[]
         {
-            // Common, correct (+10, required).
+            // Required (+15 each).
             new ProductSpec("laptop", "Dizüstü Bilgisayar", ProductCategory.Electronics, Both, true, 1.6f, FlatRigid(DisplayZone.Business)),
-            new ProductSpec("laptop-charger", "Şarj Adaptörü", ProductCategory.Electronics, Both, true, 0.35f, Small(DisplayZone.Business)),
-            new ProductSpec("phone-cable", "Telefon Şarj Kablosu", ProductCategory.Electronics, Both, true, 0.08f, Small(DisplayZone.Business)),
-            new ProductSpec("notebook", "Not Defteri", ProductCategory.Business, Both, true, 0.3f, FlatRigid(DisplayZone.Business)),
-            new ProductSpec("pen", "Kalem", ProductCategory.Business, Both, true, 0.02f, Small(DisplayZone.Business)),
-            new ProductSpec("toiletry-bag", "Kozmetik/Tıraş Çantası", ProductCategory.Toiletry, Both, true, 0.6f, Bag(DisplayZone.Accessories)),
-            new ProductSpec("id-card", "Kimlik Kartı", ProductCategory.Document, Both, true, 0.01f, Pocket(DisplayZone.Business)),
-            // Female, correct.
+            new ProductSpec("laptop-charger", "Şarj Cihazı", ProductCategory.Electronics, Both, true, 0.35f, Small(DisplayZone.Business)),
             new ProductSpec("blouse", "Bluz", ProductCategory.Clothing, Female, true, 0.2f, HangingGarment()),
-            new ProductSpec("women-trousers", "Kumaş Pantolon", ProductCategory.Clothing, Female, true, 0.45f, FoldedGarment()),
-            new ProductSpec("blazer", "Blazer Ceket", ProductCategory.Clothing, Female, true, 0.7f, HangingGarment()),
-            new ProductSpec("women-shoes", "Klasik Ayakkabı", ProductCategory.Shoes, Female, true, 0.6f, Shoe()),
-            // Male, correct.
             new ProductSpec("shirt", "Gömlek", ProductCategory.Clothing, Male, true, 0.25f, HangingGarment()),
+            new ProductSpec("women-trousers", "Kumaş Pantolon", ProductCategory.Clothing, Female, true, 0.45f, FoldedGarment()),
             new ProductSpec("men-trousers", "Kumaş Pantolon", ProductCategory.Clothing, Male, true, 0.5f, FoldedGarment()),
-            new ProductSpec("jacket", "Ceket", ProductCategory.Clothing, Male, true, 0.9f, HangingGarment()),
-            new ProductSpec("men-shoes", "Deri Ayakkabı", ProductCategory.Shoes, Male, true, 0.9f, Shoe()),
-            new ProductSpec("tie", "Kravat", ProductCategory.Accessory, Male, true, 0.06f, Small(DisplayZone.Accessories)),
-            // Common, incorrect (-5).
-            new ProductSpec("beach-towel", "Plaj Havlusu", ProductCategory.Leisure, Both, false, 0.6f, FoldedGarment()),
-            new ProductSpec("snorkel-mask", "Şnorkel Maskesi", ProductCategory.Leisure, Both, false, 0.4f, Odd(DisplayZone.Leisure)),
-            new ProductSpec("beach-hat", "Balıkçı Şapkası", ProductCategory.Accessory, Both, false, 0.15f, Odd(DisplayZone.Accessories)),
-            new ProductSpec("neck-pillow", "Boyun Yastığı", ProductCategory.Leisure, Both, false, 0.3f, Odd(DisplayZone.Leisure)),
-            new ProductSpec("kids-book", "Boyama Kitabı", ProductCategory.Leisure, Both, false, 0.25f, FlatRigid(DisplayZone.Leisure)),
-            new ProductSpec("passport", "Pasaport", ProductCategory.Document, Both, false, 0.04f, Pocket(DisplayZone.Business)),
-            new ProductSpec("rubber-duck", "Oyuncak Ördek", ProductCategory.Leisure, Both, false, 0.1f, Odd(DisplayZone.Leisure)),
-            new ProductSpec("football", "Futbol Topu", ProductCategory.Leisure, Both, false, 0.43f, Odd(DisplayZone.Leisure)),
-            new ProductSpec("ukulele", "Ukulele", ProductCategory.Leisure, Both, false, 0.5f, Odd(DisplayZone.Leisure)),
-            new ProductSpec("garden-gnome", "Bahçe Cücesi", ProductCategory.Other, Both, false, 0.8f, Odd(DisplayZone.Leisure)),
-            new ProductSpec("binoculars", "Dürbün", ProductCategory.Leisure, Both, false, 0.6f, Odd(DisplayZone.Leisure)),
-            // Female, incorrect.
+            new ProductSpec("women-shoes", "Klasik Ayakkabı", ProductCategory.Shoes, Female, true, 0.6f, Shoe()),
+            new ProductSpec("men-shoes", "Klasik Ayakkabı", ProductCategory.Shoes, Male, true, 0.9f, Shoe()),
+
+            // Not needed for the trip (-5 each).
             new ProductSpec("bikini", "Bikini", ProductCategory.Clothing, Female, false, 0.1f, HangingGarment()),
-            new ProductSpec("swimsuit", "Mayo", ProductCategory.Clothing, Female, false, 0.15f, HangingGarment()),
-            // Male, incorrect.
             new ProductSpec("swim-shorts", "Deniz Şortu", ProductCategory.Clothing, Male, false, 0.2f, FoldedGarment()),
-            new ProductSpec("flip-flops", "Terlik", ProductCategory.Shoes, Male, false, 0.3f, Shoe()),
-            new ProductSpec("phone", "Telefon", ProductCategory.Electronics, Both, true, 0.18f, Pocket(DisplayZone.Business)),
-            new ProductSpec("laptop-bag", "Bilgisayar Çantası", ProductCategory.Business, Both, true, 0.4f, Bag(DisplayZone.Business)),
-            new ProductSpec("headphones", "Kulaklık", ProductCategory.Electronics, Both, false, 0.2f, Odd(DisplayZone.Business)),
-            new ProductSpec("glasses", "Gözlük", ProductCategory.Accessory, Both, true, 0.05f, Small(DisplayZone.Accessories)),
-            new ProductSpec("sunglasses", "Güneş Gözlüğü", ProductCategory.Accessory, Both, false, 0.05f, Small(DisplayZone.Accessories)),
-            new ProductSpec("travel-bag", "Ek Seyahat Çantası", ProductCategory.Leisure, Both, false, 0.4f, Bag(DisplayZone.Leisure)),
-            new ProductSpec("socks", "Çorap", ProductCategory.Clothing, Both, true, 0.08f, FoldedGarment()),
-            new ProductSpec("men-tshirt", "Erkek Tişört", ProductCategory.Clothing, Male, true, 0.2f, FoldedGarment()),
-            new ProductSpec("women-tshirt", "Kadın Tişört", ProductCategory.Clothing, Female, true, 0.2f, FoldedGarment()),
-            new ProductSpec("dress", "Elbise", ProductCategory.Clothing, Female, true, 0.3f, HangingGarment()),
-            // Jewellery (OVERHAUL_PLAN §3): not required by default so the required count does not change.
-            new ProductSpec("wristwatch", "Kol Saati", ProductCategory.Jewellery, Both, true, 0.08f, Small(DisplayZone.Jewellery), requiredOverride: false),
-            new ProductSpec("cufflinks", "Kol Düğmesi", ProductCategory.Jewellery, Male, true, 0.02f, Small(DisplayZone.Jewellery), requiredOverride: false),
-            new ProductSpec("pearl-earrings", "İnci Küpe", ProductCategory.Jewellery, Female, true, 0.01f, Small(DisplayZone.Jewellery), requiredOverride: false),
-            new ProductSpec("minimal-necklace", "İnce Kolye", ProductCategory.Jewellery, Female, true, 0.02f, Small(DisplayZone.Jewellery), requiredOverride: false),
-            new ProductSpec("shell-necklace", "Deniz Kabuğu Kolye", ProductCategory.Jewellery, Both, false, 0.05f, Small(DisplayZone.Jewellery), requiredOverride: false),
-            new ProductSpec("party-tiara", "Parti Tacı", ProductCategory.Jewellery, Female, false, 0.1f, Small(DisplayZone.Jewellery), requiredOverride: false),
+            new ProductSpec("snorkel-mask", "Şnorkel", ProductCategory.Leisure, Both, false, 0.4f, Odd(DisplayZone.Leisure)),
+            new ProductSpec("fins", "Palet", ProductCategory.Leisure, Both, false, 0.8f, Pres(DisplayZone.Leisure, PackedKind.Top, GripPreset.Dynamic)),
+            new ProductSpec("beach-hat", "Plaj Şapkası", ProductCategory.Accessory, Female, false, 0.15f, Odd(DisplayZone.Accessories)),
+            new ProductSpec("straw-hat", "Hasır Şapka", ProductCategory.Accessory, Male, false, 0.15f, Odd(DisplayZone.Accessories)),
+            new ProductSpec("beach-towel", "Plaj Havlusu", ProductCategory.Leisure, Both, false, 0.6f, FoldedGarment()),
+            new ProductSpec("sea-bed", "Deniz Yatağı", ProductCategory.Leisure, Both, false, 0.9f, Odd(DisplayZone.Leisure)),
         };
 
         /// <summary>
@@ -179,7 +147,13 @@ namespace MultiTravel.EditorTools.Data
                 requiredOverride: false);
 
         /// <summary>Products that were part of earlier default data and are deleted (definition + prefab) by <see cref="Generate"/>.</summary>
-        public static readonly IReadOnlyList<string> RetiredProductIds = new[] { "straw-hat", "crayons", "luggage-tag", "gamepad" };
+        public static readonly IReadOnlyList<string> RetiredProductIds = new[]
+        {
+            "crayons", "luggage-tag", "gamepad", "travel-bag", "socks", "men-tshirt", "women-tshirt", "dress", "jacket", "blazer",
+            "swimsuit", "tie", "flip-flops", "toiletry-bag", "laptop-bag", "notebook", "pen", "id-card", "passport", "phone",
+            "phone-cable", "headphones", "glasses", "sunglasses", "kids-book", "neck-pillow", "rubber-duck", "football", "ukulele",
+            "garden-gnome", "binoculars", "wristwatch", "cufflinks", "pearl-earrings", "minimal-necklace", "shell-necklace", "party-tiara"
+        };
 
         public static string ProductPath(string id)
         {
@@ -393,7 +367,7 @@ namespace MultiTravel.EditorTools.Data
                 }
 
                 catalog.ScenarioTitle = "Arabayla, 1 gece konaklamalı toplantı seyahati";
-                catalog.DefaultPositiveScore = 10;
+                catalog.DefaultPositiveScore = 15;
                 catalog.DefaultNegativeScore = -5;
                 catalog.ShuffleSpawnPositions = true;
                 catalog.ShuffleSeedMode = ShuffleSeedMode.PerSession;
@@ -457,7 +431,7 @@ namespace MultiTravel.EditorTools.Data
             config.Gameplay = new AppConfig.GameplaySection
             {
                 CompletionMode = CompletionMode.RequiredItemsPlaced,
-                TimeLimitSeconds = 0,
+                TimeLimitSeconds = 45,
                 RevertScoreOnRemoval = true,
                 CountdownSeconds = 3,
                 EnableLocomotion = true,
@@ -466,24 +440,24 @@ namespace MultiTravel.EditorTools.Data
 
             config.Texts = new AppConfig.TextsSection
             {
-                WelcomeTitle = "MultiTravel Valiz Challenge",
+                WelcomeTitle = "MultiTravel: Packing Challenge",
                 WelcomeSubtitle = "Toplantı seyahatin için valizini hazırla!",
                 InstructionsText =
                     "Bu seyahat için gerekli ürünleri bul ve valize koy.\n" +
-                    "Doğru ürün: +10 puan. Yanlış ürün: -5 puan.\n" +
+                    "Doğru ürün: +15 puan. Yanlış ürün: -5 puan.\n" +
                     "Gerekli tüm ürünler valize girince oyun biter. Hızlı ol!",
                 ScenarioText = "Arabayla, 1 gece konaklamalı toplantı seyahati"
             };
 
             config.Privacy = new AppConfig.PrivacySection
             {
-                ConsentText = string.Empty,
-                ConsentVersion = "1.0"
+                ConsentText = "Kullanıcı Aydınlatma Metni'ni okudum, anladım ve onaylıyorum.",
+                ConsentVersion = "2026-10-kvkk-1"
             };
 
             config.Branding = new AppConfig.BrandingSection
             {
-                ProductTitle = "MultiTravel Valiz Challenge",
+                ProductTitle = "MultiTravel: Packing Challenge",
                 LogoSprite = logo != null ? logo : BrandAssets.LoadSprite(BrandAssets.HorizontalLight),
                 PrimaryColor = MaterialLibrary.Colors.BrandDeepBlue,
                 AccentColor = MaterialLibrary.Colors.Orange

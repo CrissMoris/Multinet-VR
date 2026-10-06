@@ -62,7 +62,7 @@ namespace MultiTravel.Tests.PlayMode
                 new GameplayConfig(mode, 0, true, countdownSeconds, false, true),
                 new TextsConfig("Başlık", "Alt başlık", "Talimat", "Senaryo"),
                 new PrivacyConfig(string.Empty, "1.0"),
-                new BrandingConfig("MultiTravel Valiz Challenge", null, Color.blue, Color.red),
+                new BrandingConfig("MultiTravel: Packing Challenge", null, Color.blue, Color.red),
                 new DebugConfig(false),
                 "0.0.0-test",
                 Array.Empty<string>(),
@@ -183,7 +183,7 @@ namespace MultiTravel.Tests.PlayMode
             {
                 FirstName = "Ayşe",
                 LastName = "Yılmaz",
-                Phone = "+905321234567",
+                Title = "Müdür", Company = "Test A.Ş.", Location = "İstanbul / Şişli", Phone = "+905321234567",
                 Email = "ayse@example.com"
             };
         }

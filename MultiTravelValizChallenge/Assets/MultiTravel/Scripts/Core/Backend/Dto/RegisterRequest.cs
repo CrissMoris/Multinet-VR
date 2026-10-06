@@ -24,6 +24,15 @@ namespace MultiTravel.Core.Backend
         [JsonProperty("p_last_name")]
         public string LastName { get; set; }
 
+        [JsonProperty("p_title")]
+        public string Title { get; set; }
+
+        [JsonProperty("p_company")]
+        public string Company { get; set; }
+
+        [JsonProperty("p_location")]
+        public string Location { get; set; }
+
         [JsonProperty("p_phone")]
         public string Phone { get; set; }
 

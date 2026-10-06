@@ -72,7 +72,7 @@ namespace MultiTravel.Core.Config
         [Serializable]
         public sealed class TextsSection
         {
-            public string WelcomeTitle = "MultiTravel Valiz Challenge";
+            public string WelcomeTitle = "MultiTravel: Packing Challenge";
 
             public string WelcomeSubtitle = "Valizini doğru hazırla, en hızlı sen ol!";
 
@@ -100,7 +100,7 @@ namespace MultiTravel.Core.Config
         [Serializable]
         public sealed class BrandingSection
         {
-            public string ProductTitle = "MultiTravel Valiz Challenge";
+            public string ProductTitle = "MultiTravel: Packing Challenge";
 
             [Tooltip("Optional logo. When null the UI shows the text wordmark.")]
             public Sprite LogoSprite;

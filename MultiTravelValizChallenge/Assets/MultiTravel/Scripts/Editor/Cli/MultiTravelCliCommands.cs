@@ -70,7 +70,7 @@ namespace MultiTravel.EditorTools.Cli
 
         [CliCommand("mt_build_windows", "MultiTravel: configure, validate and build the Windows x64 player.", Tags = new[] { "build" })]
         public static BuildOutcome BuildWindows(
-            [CliArg("output", "Output .exe path (absolute or project-relative). Default: Build/Windows/MultiTravel Valiz Challenge.exe")] string output = null,
+            [CliArg("output", "Output .exe path (absolute or project-relative). Default: Build/Windows/MultiTravel Packing Challenge.exe")] string output = null,
             [CliArg("development", "Development build.")] bool development = false,
             [CliArg("station_config", "multitravel.config.json copied into the player (default: <repo>/Deployment/multitravel.config.json).")] string stationConfig = null)
         {

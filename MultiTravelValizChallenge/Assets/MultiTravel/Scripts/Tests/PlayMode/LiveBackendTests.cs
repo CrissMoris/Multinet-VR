@@ -74,7 +74,7 @@ namespace MultiTravel.Tests.PlayMode
             {
                 FirstName = "Canlı",
                 LastName = lastName,
-                Phone = "05320000000",
+                Title = "Müdür", Company = "Test A.Ş.", Location = "İstanbul / Şişli", Phone = "05320000000",
                 Email = "canli.test@example.invalid"
             }).IsValid);
             session.SelectGender(Gender.Male);
