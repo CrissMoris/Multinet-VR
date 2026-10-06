@@ -38,6 +38,9 @@ export const SIGNATURES = {
     p_client_session_id: 'uuid',
     p_first_name: 'text',
     p_last_name: 'text',
+    p_title: 'text',
+    p_company: 'text',
+    p_location: 'text',
     p_phone: 'text',
     p_email: 'text',
     p_gender: 'text',
@@ -96,6 +99,9 @@ export function registerArgs(ctx, overrides = {}) {
     p_client_session_id: randomUUID(),
     p_first_name: `Test${tag}`,
     p_last_name: 'Runner',
+    p_title: 'Müdür',
+    p_company: 'Test A.Ş.',
+    p_location: 'İstanbul / Şişli',
     p_phone: '+90 (532) 000-00-00',
     p_email: `test-${tag}@example.com`,
     p_gender: 'female',
@@ -118,6 +124,7 @@ export function submitArgs(ctx, overrides = {}) {
     p_participant: {
       first_name: `Test${tag}`,
       last_name: 'Runner',
+      title: 'Müdür', company: 'Test A.Ş.', location: 'İstanbul / Şişli',
       phone: '+905320000000',
       email: `test-${tag}@example.com`,
       gender: 'male',
@@ -365,6 +372,9 @@ export function registerContractTests(ctx) {
       p_participant: {
         firstName: 'Camel',
         lastName: 'Case',
+        title: 'Mühendis',
+        company: 'Camel A.Ş.',
+        location: 'Ankara / Çankaya',
         phone: '0533 111 22 33',
         email: 'CAMEL@EXAMPLE.COM',
         gender: 'female',
@@ -379,12 +389,15 @@ export function registerContractTests(ctx) {
 
     if (ctx.admin) {
       const rows = await ctx.admin.query(
-        'select first_name, last_name, phone, email, gender, consent_accepted, consent_version, station_id from public.participants where id = $1',
+        'select first_name, last_name, title, company, location, phone, email, gender, consent_accepted, consent_version, station_id from public.participants where id = $1',
         [res.participant_id],
       );
       assert.deepEqual(rows[0], {
         first_name: 'Camel',
         last_name: 'Case',
+        title: 'Mühendis',
+        company: 'Camel A.Ş.',
+        location: 'Ankara / Çankaya',
         phone: '05331112233',
         email: 'camel@example.com',
         gender: 'female',
@@ -441,10 +454,10 @@ export function registerContractTests(ctx) {
     ['completed_at', { p_completed_at: '2001-01-01T00:00:00Z' }],
     ['participant', { p_participant: [] }],
     ['participant', { p_participant: 'text' }],
-    ['first_name', { p_participant: { first_name: '', last_name: 'X', phone: '05320000000', email: 'a@b.co', gender: 'male' } }],
-    ['phone', { p_participant: { first_name: 'A', last_name: 'X', phone: '1', email: 'a@b.co', gender: 'male' } }],
-    ['email', { p_participant: { first_name: 'A', last_name: 'X', phone: '05320000000', email: 'nope', gender: 'male' } }],
-    ['consent_accepted', { p_participant: { first_name: 'A', last_name: 'X', phone: '05320000000', email: 'a@b.co', gender: 'male', consent_accepted: 'maybe' } }],
+    ['first_name', { p_participant: { first_name: '', last_name: 'X', title: 'Müdür', company: 'Test A.Ş.', location: 'İstanbul / Şişli', phone: '05320000000', email: 'a@b.co', gender: 'male' } }],
+    ['phone', { p_participant: { first_name: 'A', last_name: 'X', title: 'Müdür', company: 'Test A.Ş.', location: 'İstanbul / Şişli', phone: '1', email: 'a@b.co', gender: 'male' } }],
+    ['email', { p_participant: { first_name: 'A', last_name: 'X', title: 'Müdür', company: 'Test A.Ş.', location: 'İstanbul / Şişli', phone: '05320000000', email: 'nope', gender: 'male' } }],
+    ['consent_accepted', { p_participant: { first_name: 'A', last_name: 'X', title: 'Müdür', company: 'Test A.Ş.', location: 'İstanbul / Şişli', phone: '05320000000', email: 'a@b.co', gender: 'male', consent_accepted: 'maybe' } }],
   ];
 
   for (const [field, overrides] of SUBMIT_CASES) {
@@ -476,7 +489,7 @@ export function registerContractTests(ctx) {
     const tag = uniq();
     const names = { a: `Alpha${tag}`, b: `Bravo${tag}`, c: `Charlie${tag}`, d: `Delta${tag}` };
     const make = (name, score, ms, at) => submitArgs(ctx, {
-      p_participant: { first_name: name, last_name: 'Order', phone: '05320000000', email: `${name.toLowerCase()}@example.com`, gender: 'male' },
+      p_participant: { first_name: name, last_name: 'Order', title: 'Müdür', company: 'Test A.Ş.', location: 'İstanbul / Şişli', phone: '05320000000', email: `${name.toLowerCase()}@example.com`, gender: 'male' },
       p_score: score,
       p_completion_ms: ms,
       p_completed_at: new Date(at).toISOString(),

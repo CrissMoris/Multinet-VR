@@ -4,7 +4,7 @@
 -- Basarili kurulumdan sonra ayni dosyayi yeniden calistirmayin.
 BEGIN;
 -- =============================================================================
--- MultiTravel Valiz Challenge - backend schema, RPC contract and grants
+-- MultiTravel: Packing Challenge - backend schema, RPC contract and grants
 -- -----------------------------------------------------------------------------
 -- Contract: docs/ARCHITECTURE.md section 4 (Backend contract) and section 5
 -- (Ranking). This file is applied with `supabase db push` (cloud) or
@@ -49,6 +49,9 @@ create table public.participants (
   station_id        text,
   first_name        text        not null check (char_length(first_name) between 1 and 60),
   last_name         text        not null check (char_length(last_name) between 1 and 60),
+  title             text        check (title is null or char_length(title) between 1 and 100),
+  company           text        check (company is null or char_length(company) between 1 and 100),
+  location          text        check (location is null or char_length(location) between 1 and 100),
   phone             text        not null check (phone ~ '^\+?[0-9]{10,15}$'),
   email             text        not null check (char_length(email) between 3 and 254),
   gender            text        not null check (gender in ('female', 'male')),
@@ -58,7 +61,7 @@ create table public.participants (
   updated_at        timestamptz not null default now()
 );
 
-comment on table public.participants is 'Registered players. Contains PII (phone, email) - never exposed through anon-callable RPCs.';
+comment on table public.participants is 'Registered players. Contains PII (title, company, location, phone, email) - never exposed through anon-callable RPCs.';
 
 create index participants_event_idx on public.participants (event_id);
 
@@ -175,6 +178,23 @@ begin
 end
 $$;
 
+-- Required free text of 1..100 printable characters (title, company, location).
+create or replace function public.mt_clean_profile_text(p_value text, p_field text)
+returns text
+language plpgsql
+set search_path = public
+as $$
+declare
+  v text;
+begin
+  v := public.mt_squish(p_value);
+  if v is null or char_length(v) < 1 or char_length(v) > 100 or v ~ '[[:cntrl:]]' then
+    perform public.mt_fail('VALIDATION_FAILED:' || p_field, p_field || ' must be 1..100 printable characters');
+  end if;
+  return v;
+end
+$$;
+
 -- Lower-cases and applies a lightweight RFC-like pattern (local@domain.tld).
 create or replace function public.mt_clean_email(p_value text)
 returns text
@@ -250,6 +270,9 @@ create type public.mt_participant_input as (
   station_id       text,
   first_name       text,
   last_name        text,
+  title            text,
+  company          text,
+  location         text,
   phone            text,
   email            text,
   gender           text,
@@ -274,6 +297,9 @@ begin
   r.station_id := public.mt_clean_optional_text(coalesce(p ->> 'station_id', p ->> 'stationId'), 'station_id', 60);
   r.first_name := public.mt_clean_name(coalesce(p ->> 'first_name', p ->> 'firstName'), 'first_name');
   r.last_name  := public.mt_clean_name(coalesce(p ->> 'last_name', p ->> 'lastName'), 'last_name');
+  r.title      := public.mt_clean_profile_text(p ->> 'title', 'title');
+  r.company    := public.mt_clean_profile_text(p ->> 'company', 'company');
+  r.location   := public.mt_clean_profile_text(p ->> 'location', 'location');
   r.phone      := public.mt_clean_phone(p ->> 'phone');
   r.email      := public.mt_clean_email(p ->> 'email');
   r.gender     := public.mt_clean_gender(p ->> 'gender');
@@ -395,6 +421,9 @@ create or replace function public.register_participant(
   p_client_session_id uuid,
   p_first_name        text,
   p_last_name         text,
+  p_title             text,
+  p_company           text,
+  p_location          text,
   p_phone             text,
   p_email             text,
   p_gender            text,
@@ -422,6 +451,9 @@ begin
     'station_id',       p_station_id,
     'first_name',       p_first_name,
     'last_name',        p_last_name,
+    'title',            p_title,
+    'company',          p_company,
+    'location',         p_location,
     'phone',            p_phone,
     'email',            p_email,
     'gender',           p_gender,
@@ -429,10 +461,11 @@ begin
     'consent_version',  p_consent_version));
 
   insert into public.participants (
-    event_id, client_session_id, station_id, first_name, last_name, phone, email, gender,
+    event_id, client_session_id, station_id, first_name, last_name, title, company, location, phone, email, gender,
     consent_accepted, consent_version)
   values (
     v_event.id, p_client_session_id, v_input.station_id, v_input.first_name, v_input.last_name,
+    v_input.title, v_input.company, v_input.location,
     v_input.phone, v_input.email, v_input.gender, v_input.consent_accepted, v_input.consent_version)
   on conflict (client_session_id) do nothing
   returning id into v_id;
@@ -444,6 +477,9 @@ begin
        set station_id       = v_input.station_id,
            first_name       = v_input.first_name,
            last_name        = v_input.last_name,
+           title            = v_input.title,
+           company          = v_input.company,
+           location         = v_input.location,
            phone            = v_input.phone,
            email            = v_input.email,
            gender           = v_input.gender,
@@ -594,10 +630,11 @@ begin
            'gender',     coalesce(p_participant ->> 'gender', v_gender)));
 
     insert into public.participants (
-      event_id, client_session_id, station_id, first_name, last_name, phone, email, gender,
+      event_id, client_session_id, station_id, first_name, last_name, title, company, location, phone, email, gender,
       consent_accepted, consent_version)
     values (
       v_event.id, p_client_session_id, v_input.station_id, v_input.first_name, v_input.last_name,
+      v_input.title, v_input.company, v_input.location,
       v_input.phone, v_input.email, v_input.gender, v_input.consent_accepted, v_input.consent_version)
     on conflict (client_session_id) do nothing
     returning id into v_participant_id;
@@ -723,7 +760,7 @@ begin
 end
 $$;
 
-comment on function public.register_participant(text, text, text, uuid, text, text, text, text, text, boolean, text)
+comment on function public.register_participant(text, text, text, uuid, text, text, text, text, text, text, text, text, boolean, text)
   is 'RPC: registers a participant (idempotent on client_session_id). Requires event slug + access code.';
 comment on function public.submit_result(text, text, text, uuid, uuid, jsonb, integer, integer, integer, integer, integer, text[], text, text, text, timestamptz, text)
   is 'RPC: stores a game result (idempotent on submission_id) and returns the current rank.';
@@ -769,6 +806,7 @@ alter function public.mt_fail(text, text)                                   owne
 alter function public.mt_squish(text)                                       owner to postgres;
 alter function public.mt_clean_name(text, text)                             owner to postgres;
 alter function public.mt_clean_phone(text)                                  owner to postgres;
+alter function public.mt_clean_profile_text(text, text)                     owner to postgres;
 alter function public.mt_clean_email(text)                                  owner to postgres;
 alter function public.mt_clean_gender(text)                                 owner to postgres;
 alter function public.mt_clean_status(text)                                 owner to postgres;
@@ -778,7 +816,7 @@ alter function public.mt_require_event(text, text)                          owne
 alter function public.mt_require_public_event(text)                         owner to postgres;
 alter function public.mt_display_name(text, text, text)                     owner to postgres;
 alter function public.mt_rank_of(uuid, uuid)                                owner to postgres;
-alter function public.register_participant(text, text, text, uuid, text, text, text, text, text, boolean, text) owner to postgres;
+alter function public.register_participant(text, text, text, uuid, text, text, text, text, text, text, text, text, boolean, text) owner to postgres;
 alter function public.submit_result(text, text, text, uuid, uuid, jsonb, integer, integer, integer, integer, integer, text[], text, text, text, timestamptz, text) owner to postgres;
 alter function public.get_leaderboard(text, integer)                        owner to postgres;
 alter function public.ping_event(text, text)                                owner to postgres;
@@ -796,7 +834,7 @@ begin
     select p.oid::regprocedure from pg_proc p
     join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'public' and p.proname = any(array[
-      'mt_set_updated_at','mt_fail','mt_squish','mt_clean_name','mt_clean_phone',
+      'mt_set_updated_at','mt_fail','mt_squish','mt_clean_name','mt_clean_phone','mt_clean_profile_text',
       'mt_clean_email','mt_clean_gender','mt_clean_status','mt_clean_optional_text',
       'mt_clean_participant','mt_require_event','mt_require_public_event',
       'mt_display_name','mt_rank_of','register_participant','submit_result',
@@ -809,7 +847,7 @@ $$;
 
 grant usage on schema public to anon, authenticated;
 
-grant execute on function public.register_participant(text, text, text, uuid, text, text, text, text, text, boolean, text) to anon, authenticated;
+grant execute on function public.register_participant(text, text, text, uuid, text, text, text, text, text, text, text, text, boolean, text) to anon, authenticated;
 grant execute on function public.submit_result(text, text, text, uuid, uuid, jsonb, integer, integer, integer, integer, integer, text[], text, text, text, timestamptz, text) to anon, authenticated;
 grant execute on function public.get_leaderboard(text, integer) to anon, authenticated;
 grant execute on function public.ping_event(text, text) to anon, authenticated;
