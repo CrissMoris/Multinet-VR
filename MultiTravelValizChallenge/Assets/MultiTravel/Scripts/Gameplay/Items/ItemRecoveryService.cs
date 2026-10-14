@@ -171,7 +171,7 @@ namespace MultiTravel.Gameplay.Items
 
             bool resting = item.IsAtRest(restLinearSpeed, restAngularSpeed);
             bool atHome = item.DistanceFromHome() <= homeTolerance;
-            bool inSuitcase = suitcase != null && suitcase.IsInsideVolume(item);
+            bool inSuitcase = suitcase != null && suitcase.IsRestingInSuitcase(item);
             if (!resting || atHome || inSuitcase)
             {
                 restTimers[index] = 0f;

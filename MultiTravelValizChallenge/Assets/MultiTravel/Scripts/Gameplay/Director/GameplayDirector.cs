@@ -71,6 +71,11 @@ namespace MultiTravel.Gameplay.Director
 
         [Header("Timing")]
         [SerializeField]
+        [Tooltip("\"Hazır ol!\" pause before the 3-2-1 numbers (seconds, only when the countdown is not 0).")]
+        [Min(0f)]
+        private float countdownLeadSeconds = 1.5f;
+
+        [SerializeField]
         [Tooltip("Interval of the completion poll while Playing (seconds).")]
         [Min(0.02f)]
         private float completionPollSeconds = 0.25f;
@@ -121,6 +126,9 @@ namespace MultiTravel.Gameplay.Director
 
         /// <summary>Remaining countdown seconds while in Countdown (0 otherwise).</summary>
         public int CountdownRemaining { get; private set; }
+
+        /// <summary>True when the countdown opens with a "Hazır ol!" pause before the numbers.</summary>
+        public bool HasCountdownLeadIn => countdownLeadSeconds > 0f;
 
         /// <summary>The product set of the current session (null before the first Loading and after a reset).</summary>
         public ProductSet ActiveSet { get; private set; }
@@ -708,6 +716,17 @@ namespace MultiTravel.Gameplay.Director
         private IEnumerator CountdownRoutine()
         {
             int seconds = Mathf.Max(0, session.CountdownSeconds);
+            if (seconds > 0 && countdownLeadSeconds > 0f)
+            {
+                // "Hazır ol!" first (StopwatchDisplay shows / says it on entering Countdown), then 3-2-1.
+                yield return new WaitForSecondsRealtime(countdownLeadSeconds);
+                if (session.State != SessionState.Countdown)
+                {
+                    countdownRoutine = null;
+                    yield break;
+                }
+            }
+
             for (int remaining = seconds; remaining > 0; remaining--)
             {
                 if (session.State != SessionState.Countdown)

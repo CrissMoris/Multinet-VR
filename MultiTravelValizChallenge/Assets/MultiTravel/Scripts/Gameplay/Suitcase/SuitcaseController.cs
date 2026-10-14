@@ -16,8 +16,8 @@ namespace MultiTravel.Gameplay.Suitcase
     /// The suitcase (ARCHITECTURE.md §2.8, OVERHAUL_PLAN §5). Owns the placement volume and the slots, places / removes items
     /// and applies score and completion progress.
     /// <para>
-    /// Placement is triggered by (a) a non-canceled release whose anchor is inside <see cref="PlacementVolume"/> (the funnel
-    /// may extend up to 0.20 m above the rim) or (b) <see cref="SettleWatcher"/> for unheld items that come to rest inside it.
+    /// Placement is triggered by (a) a non-canceled release over the suitcase (<see cref="IsReleasedOverSuitcase"/>: the
+    /// anchor inside <see cref="PlacementVolume"/>, or the anchor / pivot / releasing hand above its footprint) or (b) <see cref="SettleWatcher"/> for unheld items that come to rest inside it.
     /// No trigger callbacks are used: containment is a geometric test, and every path goes through <see cref="TryPlace"/>,
     /// which only accepts Free items that are not already placed. Together with <see cref="ScoreService.TryApplyPlacement"/>
     /// (once per id) physics jitter can never double-score.
@@ -240,6 +240,91 @@ namespace MultiTravel.Gameplay.Suitcase
             var local = placementVolume.transform.InverseTransformPoint(worldPosition) - placementVolume.center;
             var half = placementVolume.size * 0.5f;
             return Mathf.Abs(local.x) <= half.x && Mathf.Abs(local.y) <= half.y && Mathf.Abs(local.z) <= half.z;
+        }
+
+        /// <summary>Height (metres) above the placement volume that still counts as "over the suitcase" for a release.</summary>
+        public const float ReleaseFunnelHeight = 0.6f;
+
+        /// <summary>Height (metres) above the placement volume where a resting item still counts as lying in the suitcase.</summary>
+        public const float RestFunnelHeight = 0.12f;
+
+        /// <summary>Horizontal margin (metres) around the volume footprint (big garments overhang the rim).</summary>
+        public const float FootprintMargin = 0.06f;
+
+        /// <summary>
+        /// Release test. Large items (a hanging shirt is ~0.8 m tall) are held far from their anchor, so besides the anchor
+        /// the item pivot and the releasing hand also count: any of them above the suitcase footprint, up to
+        /// <see cref="ReleaseFunnelHeight"/> over the volume, means the participant dropped it into the suitcase.
+        /// </summary>
+        public bool IsReleasedOverSuitcase(ProductItem item, Transform interactor)
+        {
+            if (item == null)
+            {
+                return false;
+            }
+
+            return IsInsideVolume(item.AnchorPosition)
+                   || IsOverFootprint(item.AnchorPosition, ReleaseFunnelHeight)
+                   || IsOverFootprint(item.transform.position, ReleaseFunnelHeight)
+                   || (interactor != null && IsOverFootprint(interactor.position, ReleaseFunnelHeight));
+        }
+
+        /// <summary>
+        /// Rest test (settle placement, recovery): the anchor is inside the volume, or the anchor / pivot lies over the
+        /// footprint just above the rim (a big garment that landed across the suitcase).
+        /// </summary>
+        public bool IsRestingInSuitcase(ProductItem item)
+        {
+            if (item == null)
+            {
+                return false;
+            }
+
+            return IsInsideVolume(item.AnchorPosition)
+                   || IsOverFootprint(item.AnchorPosition, RestFunnelHeight)
+                   || IsOverFootprint(item.transform.position, RestFunnelHeight);
+        }
+
+        /// <summary>
+        /// True when <paramref name="worldPosition"/> is within the volume footprint (plus <see cref="FootprintMargin"/>)
+        /// and between the volume bottom and <paramref name="extraHeight"/> metres above its top. Works for any marker
+        /// orientation: the local axis closest to world up is treated as "up".
+        /// </summary>
+        private bool IsOverFootprint(Vector3 worldPosition, float extraHeight)
+        {
+            if (placementVolume == null)
+            {
+                return false;
+            }
+
+            var t = placementVolume.transform;
+            var local = t.InverseTransformPoint(worldPosition) - placementVolume.center;
+            var half = placementVolume.size * 0.5f;
+            var scale = t.lossyScale;
+            var upLocal = t.InverseTransformDirection(Vector3.up);
+            int up = Mathf.Abs(upLocal.x) >= Mathf.Abs(upLocal.y)
+                ? (Mathf.Abs(upLocal.x) >= Mathf.Abs(upLocal.z) ? 0 : 2)
+                : (Mathf.Abs(upLocal.y) >= Mathf.Abs(upLocal.z) ? 1 : 2);
+
+            for (int axis = 0; axis < 3; axis++)
+            {
+                float axisScale = Mathf.Max(1e-5f, Mathf.Abs(scale[axis]));
+                if (axis == up)
+                {
+                    // Signed height along world up, in local units.
+                    float height = local[axis] * Mathf.Sign(upLocal[axis]);
+                    if (height < -half[axis] || height > half[axis] + extraHeight / axisScale)
+                    {
+                        return false;
+                    }
+                }
+                else if (Mathf.Abs(local[axis]) > half[axis] + FootprintMargin / axisScale)
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         /// <summary>True when the item is placed in this suitcase.</summary>
@@ -642,7 +727,7 @@ namespace MultiTravel.Gameplay.Suitcase
                 return;
             }
 
-            if (IsInsideVolume(item))
+            if (IsReleasedOverSuitcase(item, interactor))
             {
                 TryPlace(item);
             }

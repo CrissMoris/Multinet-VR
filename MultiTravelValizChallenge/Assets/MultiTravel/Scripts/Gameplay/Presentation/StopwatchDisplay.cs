@@ -33,6 +33,12 @@ namespace MultiTravel.Gameplay.Presentation
         /// <summary>Text shown when the countdown reaches zero.</summary>
         public const string StartText = "BAŞLA!";
 
+        /// <summary>Shown (and said) before the 3-2-1 numbers.</summary>
+        public const string ReadyText = "HAZIR OL!";
+
+        /// <summary>Resources folder of the spoken countdown clips (countdown_hazir_ol, _3, _2, _1, _basla).</summary>
+        public const string VoiceResourcePrefix = "Voice/countdown_";
+
         /// <summary>Caption under the digits while counting down.</summary>
         public const string RemainingCaption = "KALAN SÜRE";
 
@@ -89,6 +95,15 @@ namespace MultiTravel.Gameplay.Presentation
         [Tooltip("Show the remaining time on a small label that follows the participant's gaze while playing.")]
         private bool gazeLabel = true;
 
+        [SerializeField]
+        [Tooltip("Say \"Hazır ol! Üç, iki, bir, başla!\" (Turkish voice clips under Resources/Voice).")]
+        private bool voiceCountdown = true;
+
+        [SerializeField]
+        [Range(0f, 1f)]
+        private float voiceVolume = 1f;
+
+        [SerializeField] private float gazeCountdownDrop = 0.05f;
         [SerializeField] private float gazeLabelDistance = 1.3f;
         [SerializeField] private float gazeLabelDrop = 0.32f;
         [SerializeField] private float gazeLabelFontSize = 0.55f;
@@ -100,6 +115,7 @@ namespace MultiTravel.Gameplay.Presentation
         private Camera gazeCamera;
         private bool gazePlaced;
         private bool warning;
+        private AudioSource voice;
         private bool sessionSubscribed;
         private GameplayDirector subscribedDirector;
         private SessionState shownState = (SessionState)(-1);
@@ -192,6 +208,13 @@ namespace MultiTravel.Gameplay.Presentation
             {
                 digits.text = StartText;
             }
+
+            if (gazeText != null && gazeText.gameObject.activeInHierarchy)
+            {
+                gazeText.text = remaining > 0 ? remaining.ToString() : StartText;
+            }
+
+            PlayVoice(remaining > 0 ? remaining.ToString() : "basla");
 
             Pop(0.3f, 0.3f);
         }
@@ -286,6 +309,10 @@ namespace MultiTravel.Gameplay.Presentation
 
                 UpdateGazeLabel();
             }
+            else if (state == SessionState.Countdown)
+            {
+                UpdateGazeLabel();
+            }
             else if (frozen)
             {
                 SetTime(frozenMs);
@@ -334,12 +361,35 @@ namespace MultiTravel.Gameplay.Presentation
             {
                 case SessionState.Countdown:
                     frozen = false;
-                    ShowGazeLabel(false);
                     SetWarning(false);
                     caption.text = VrUiTexts.CountdownHeading;
                     digits.fontSize = countdownFontSize;
-                    int remaining = director != null && director.CountdownRemaining > 0 ? director.CountdownRemaining : session.CountdownSeconds;
-                    OnCountdownTick(remaining);
+                    gazePlaced = false;
+                    ShowGazeLabel(gazeLabel);
+                    if (gazeText != null)
+                    {
+                        gazeText.fontSize = gazeLabelFontSize * 2f;
+                    }
+
+                    if (director != null && director.HasCountdownLeadIn && director.CountdownRemaining <= 0)
+                    {
+                        // Lead-in: "HAZIR OL!" until the director's first tick (3).
+                        digits.fontSize = idleFontSize;
+                        digits.text = ReadyText;
+                        if (gazeText != null)
+                        {
+                            gazeText.text = ReadyText;
+                        }
+
+                        PlayVoice("hazir_ol");
+                        Pop(0.2f, 0.4f);
+                    }
+                    else
+                    {
+                        int remaining = director != null && director.CountdownRemaining > 0 ? director.CountdownRemaining : session.CountdownSeconds;
+                        OnCountdownTick(remaining);
+                    }
+
                     break;
                 case SessionState.Playing:
                     frozen = false;
@@ -351,6 +401,10 @@ namespace MultiTravel.Gameplay.Presentation
                     Pop(0.15f, 0.25f);
                     gazePlaced = false;
                     ShowGazeLabel(gazeLabel && CountsDown);
+                    if (gazeText != null)
+                    {
+                        gazeText.fontSize = gazeLabelFontSize;
+                    }
                     break;
                 case SessionState.Completed:
                 case SessionState.Submitting:
@@ -577,7 +631,8 @@ namespace MultiTravel.Gameplay.Presentation
             }
 
             forward.Normalize();
-            var target = head.position + forward * gazeLabelDistance + Vector3.down * gazeLabelDrop;
+            float drop = session != null && session.State == SessionState.Countdown ? gazeCountdownDrop : gazeLabelDrop;
+            var target = head.position + forward * gazeLabelDistance + Vector3.down * drop;
             var root = gazeText.transform.parent;
             if (!gazePlaced)
             {
@@ -595,6 +650,34 @@ namespace MultiTravel.Gameplay.Presentation
             {
                 root.rotation = Quaternion.LookRotation(look.normalized, Vector3.up);
             }
+        }
+
+        /// <summary>Plays a spoken countdown clip (Resources/Voice/countdown_&lt;key&gt;), head-relative (2D).</summary>
+        private void PlayVoice(string key)
+        {
+            if (!voiceCountdown || !Application.isPlaying)
+            {
+                return;
+            }
+
+            var clip = Resources.Load<AudioClip>(VoiceResourcePrefix + key);
+            if (clip == null)
+            {
+                return;
+            }
+
+            if (voice == null)
+            {
+                voice = gameObject.AddComponent<AudioSource>();
+                voice.playOnAwake = false;
+                voice.spatialBlend = 0f;
+                voice.priority = 0;
+            }
+
+            voice.Stop();
+            voice.clip = clip;
+            voice.volume = voiceVolume;
+            voice.Play();
         }
 
         private void ResetNeedle()

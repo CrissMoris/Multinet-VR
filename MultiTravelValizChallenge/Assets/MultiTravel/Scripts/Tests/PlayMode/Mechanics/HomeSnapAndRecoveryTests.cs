@@ -101,6 +101,8 @@ namespace MultiTravel.Tests.PlayMode.Mechanics
         [UnityTest]
         public IEnumerator ReleaseVelocity_IsClampedTo1Point5()
         {
+            // Swing from the table, away from the suitcase (a release over the suitcase would place the item).
+            hand.transform.position = home;
             MechanicsFixtures.Grab(scene, hand, item);
             // Swing the hand fast (≈ 6 m/s); the held item follows it.
             for (int i = 0; i < 12; i++)
@@ -113,6 +115,17 @@ namespace MultiTravel.Tests.PlayMode.Mechanics
                 (UnityEngine.XR.Interaction.Toolkit.Interactables.IXRSelectInteractable)item.Grab);
             Assert.AreEqual(ProductItemState.Free, item.State);
             Assert.LessOrEqual(item.Body.linearVelocity.magnitude, ProductItem.MaxReleaseSpeed + 1e-3f);
+        }
+
+        [UnityTest]
+        public IEnumerator ReleaseHighAboveSuitcase_IsPlaced()
+        {
+            // Big garments are held far above their anchor: a release over the footprint, 0.4 m above the volume, counts.
+            hand.transform.position = home;
+            MechanicsFixtures.Grab(scene, hand, item);
+            yield return null;
+            MechanicsFixtures.ReleaseAt(scene, hand, item, GameplayTestScene.SuitcasePosition + new Vector3(0.1f, 0.9f, 0.05f));
+            Assert.AreEqual(ProductItemState.Placed, item.State);
         }
 
         [UnityTest]

@@ -69,7 +69,9 @@ namespace MultiTravel.Gameplay.Suitcase
                     continue;
                 }
 
-                if (!suitcase.IsInsideVolume(item) || !item.IsAtRest(restLinearSpeed, restAngularSpeed))
+                // An item docked at its own home (e.g. the practice item hanging on the suitcase handle) is never auto-placed.
+                bool atHome = item.IsDocked && item.DistanceFromHome() < 0.05f;
+                if (atHome || !suitcase.IsRestingInSuitcase(item) || !item.IsAtRest(restLinearSpeed, restAngularSpeed))
                 {
                     continue;
                 }
