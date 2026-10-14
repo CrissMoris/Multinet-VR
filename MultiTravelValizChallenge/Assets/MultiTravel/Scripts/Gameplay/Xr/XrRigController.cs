@@ -73,7 +73,7 @@ namespace MultiTravel.Gameplay.Xr
         private bool disableSampleHandVisualizer = true;
 
         [SerializeField]
-        [Tooltip("Disable the template's tunnelling vignette (comfort effect for locomotion; there is none).")]
+        [Tooltip("Disable the template's tunnelling vignette (the black comfort edge shown while walking with the stick).")]
         private bool disableTunnelingVignette = true;
 
         [SerializeField]
@@ -312,9 +312,9 @@ namespace MultiTravel.Gameplay.Xr
                 }
             }
 
-            // With walking the template's tunnelling vignette stays on (comfort); without locomotion it is removed.
-            bool walks = ServiceResolver.TryResolve(ref config) && config.Gameplay.EnableLocomotion;
-            if (disableTunnelingVignette && !walks)
+            // The template's tunnelling vignette blacks out the edges of the view on every stick move; at a booth it reads
+            // as the screen going dark, so it is removed with or without walking.
+            if (disableTunnelingVignette)
             {
                 xrOrigin.GetComponentsInChildren(true, vignettes);
                 for (int i = 0; i < vignettes.Count; i++)

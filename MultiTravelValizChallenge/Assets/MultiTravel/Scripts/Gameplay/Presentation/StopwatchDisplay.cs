@@ -1,3 +1,4 @@
+using MultiTravel.Core.Completion;
 using MultiTravel.Core.Session;
 using MultiTravel.Core.Timing;
 using MultiTravel.Gameplay.Audio;
@@ -6,6 +7,7 @@ using MultiTravel.Gameplay.Director;
 using MultiTravel.Gameplay.UI;
 using TMPro;
 using UnityEngine;
+using Math = System.Math;
 
 namespace MultiTravel.Gameplay.Presentation
 {
@@ -15,6 +17,12 @@ namespace MultiTravel.Gameplay.Presentation
     /// play shows <c>mm:ss.f</c> from the Core <see cref="GameTimer"/> (never frame counting) with a faint 1 Hz tick
     /// through <see cref="AudioDirector"/>, and completion freezes the final time with a pulse.
     /// Strings are only rebuilt when the displayed tenth changes (TMP <c>SetText</c>, no allocations per frame).
+    /// <para>
+    /// With a time limit (<see cref="CompletionEvaluator.TimeLimitSeconds"/> &gt; 0) the stopwatch counts DOWN: the digits
+    /// show the remaining time, the needle sweeps back to zero, and the last <see cref="warningSeconds"/> turn the digits
+    /// orange with a pop and a beep per second. A small lazy-follow label below the participant's gaze mirrors the
+    /// remaining time while playing, so it is visible wherever they look.
+    /// </para>
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class StopwatchDisplay : MonoBehaviour
@@ -24,6 +32,12 @@ namespace MultiTravel.Gameplay.Presentation
 
         /// <summary>Text shown when the countdown reaches zero.</summary>
         public const string StartText = "BAŞLA!";
+
+        /// <summary>Caption under the digits while counting down.</summary>
+        public const string RemainingCaption = "KALAN SÜRE";
+
+        /// <summary>Caption when the time limit ended the game.</summary>
+        public const string TimeUpCaption = "SÜRE DOLDU";
 
         [Header("Model")]
         [SerializeField]
@@ -60,8 +74,32 @@ namespace MultiTravel.Gameplay.Presentation
         [Tooltip("Play the faint 1 Hz tick through the AudioDirector while Playing.")]
         private bool tickSound = true;
 
+        [Header("Countdown (time limit)")]
+        [SerializeField]
+        [Tooltip("Last seconds highlighted in orange with a pop per second.")]
+        [Min(0)]
+        private int warningSeconds = 10;
+
+        [SerializeField]
+        [Tooltip("Last seconds that also play a warning beep.")]
+        [Min(0)]
+        private int beepSeconds = 5;
+
+        [SerializeField]
+        [Tooltip("Show the remaining time on a small label that follows the participant's gaze while playing.")]
+        private bool gazeLabel = true;
+
+        [SerializeField] private float gazeLabelDistance = 1.3f;
+        [SerializeField] private float gazeLabelDrop = 0.32f;
+        [SerializeField] private float gazeLabelFontSize = 0.55f;
+
         private SessionController session;
         private GameTimer timer;
+        private CompletionEvaluator completion;
+        private TextMeshPro gazeText;
+        private Camera gazeCamera;
+        private bool gazePlaced;
+        private bool warning;
         private bool sessionSubscribed;
         private GameplayDirector subscribedDirector;
         private SessionState shownState = (SessionState)(-1);
@@ -86,6 +124,12 @@ namespace MultiTravel.Gameplay.Presentation
         /// <summary>The digits text component.</summary>
         public TMP_Text Digits => digits;
 
+        /// <summary>Time limit in milliseconds (0 = no limit: the stopwatch counts up).</summary>
+        public long LimitMs => completion != null ? completion.TimeLimitSeconds * 1000L : 0L;
+
+        /// <summary>True while the stopwatch counts down.</summary>
+        public bool CountsDown => LimitMs > 0;
+
         /// <summary>Generator API.</summary>
         public void Configure(Transform needlePivot, Transform faceAnchor, GameplayDirector gameplayDirector, AudioDirector audio)
         {
@@ -103,8 +147,13 @@ namespace MultiTravel.Gameplay.Presentation
         }
 
         /// <summary>Test / generator API: explicit services (null = resolve from AppServices in Start).</summary>
-        public void Bind(SessionController sessionController, GameTimer gameTimer)
+        public void Bind(SessionController sessionController, GameTimer gameTimer, CompletionEvaluator evaluator = null)
         {
+            if (evaluator != null)
+            {
+                completion = evaluator;
+            }
+
             if (sessionController != null && sessionController != session)
             {
                 UnsubscribeSession();
@@ -174,6 +223,11 @@ namespace MultiTravel.Gameplay.Presentation
                 ok &= ServiceResolver.Resolve(ref timer, this, nameof(StopwatchDisplay));
             }
 
+            if (completion == null)
+            {
+                ServiceResolver.TryResolve(ref completion);
+            }
+
             if (director == null)
             {
                 director = FindAnyObjectByType<GameplayDirector>();
@@ -193,6 +247,16 @@ namespace MultiTravel.Gameplay.Presentation
             {
                 subscribedDirector.CountdownTick -= OnCountdownTick;
                 subscribedDirector = null;
+            }
+
+            ShowGazeLabel(false);
+        }
+
+        private void OnDestroy()
+        {
+            if (gazeText != null)
+            {
+                Destroy(gazeText.transform.parent.gameObject);
             }
         }
 
@@ -217,11 +281,10 @@ namespace MultiTravel.Gameplay.Presentation
                 if (second != lastTickSecond)
                 {
                     lastTickSecond = second;
-                    if (tickSound && audioDirector != null && second > 0)
-                    {
-                        audioDirector.PlayStopwatchTick(transform.position);
-                    }
+                    OnSecond(elapsed, second);
                 }
+
+                UpdateGazeLabel();
             }
             else if (frozen)
             {
@@ -271,6 +334,8 @@ namespace MultiTravel.Gameplay.Presentation
             {
                 case SessionState.Countdown:
                     frozen = false;
+                    ShowGazeLabel(false);
+                    SetWarning(false);
                     caption.text = VrUiTexts.CountdownHeading;
                     digits.fontSize = countdownFontSize;
                     int remaining = director != null && director.CountdownRemaining > 0 ? director.CountdownRemaining : session.CountdownSeconds;
@@ -279,10 +344,13 @@ namespace MultiTravel.Gameplay.Presentation
                 case SessionState.Playing:
                     frozen = false;
                     lastTickSecond = -1;
-                    caption.text = string.Empty;
+                    caption.text = CountsDown ? RemainingCaption : string.Empty;
                     digits.fontSize = playingFontSize;
+                    SetWarning(false);
                     SetTime(timer.ElapsedMs);
                     Pop(0.15f, 0.25f);
+                    gazePlaced = false;
+                    ShowGazeLabel(gazeLabel && CountsDown);
                     break;
                 case SessionState.Completed:
                 case SessionState.Submitting:
@@ -295,7 +363,12 @@ namespace MultiTravel.Gameplay.Presentation
                     frozen = true;
                     frozenMs = ms;
                     digits.fontSize = playingFontSize;
-                    caption.text = participant != null && participant.Outcome == SessionOutcome.Abandoned ? string.Empty : VrUiTexts.CompletedHeading;
+                    ShowGazeLabel(false);
+                    SetWarning(false);
+                    bool timeUp = result != null && result.Reason == CompletionReason.TimeLimit;
+                    caption.text = participant != null && participant.Outcome == SessionOutcome.Abandoned
+                        ? string.Empty
+                        : timeUp ? TimeUpCaption : VrUiTexts.CompletedHeading;
                     SetTime(ms);
                     if (!wasFrozen)
                     {
@@ -305,6 +378,8 @@ namespace MultiTravel.Gameplay.Presentation
                     break;
                 case SessionState.Loading:
                     frozen = false;
+                    ShowGazeLabel(false);
+                    SetWarning(false);
                     ResetNeedle();
                     digits.fontSize = idleFontSize;
                     digits.text = VrUiTexts.LoadingHeading;
@@ -312,6 +387,8 @@ namespace MultiTravel.Gameplay.Presentation
                     break;
                 default:
                     frozen = false;
+                    ShowGazeLabel(false);
+                    SetWarning(false);
                     ResetNeedle();
                     digits.fontSize = idleFontSize;
                     digits.text = IdleText;
@@ -327,6 +404,13 @@ namespace MultiTravel.Gameplay.Presentation
                 elapsedMs = 0;
             }
 
+            long limitMs = LimitMs;
+            if (limitMs > 0)
+            {
+                SetRemaining(Math.Max(0L, limitMs - elapsedMs));
+                return;
+            }
+
             long tenths = elapsedMs / 100;
             if (tenths != shownTenths)
             {
@@ -335,10 +419,181 @@ namespace MultiTravel.Gameplay.Presentation
                 digits.SetText("{0:00}:{1:00}.{2}", totalSeconds / 60, totalSeconds % 60, tenths % 10);
             }
 
-            needleAngle = (float)((elapsedMs / 1000d * 6d) % 360d);
+            SetNeedle(elapsedMs);
+        }
+
+        /// <summary>Countdown digits: <c>mm:ss</c>, with tenths in the warning window (rounded up so 0 means time is up).</summary>
+        private void SetRemaining(long remainingMs)
+        {
+            long tenths = (remainingMs + 99) / 100;
+            bool inWarning = remainingMs <= warningSeconds * 1000L;
+            long shown = inWarning ? tenths : (tenths + 9) / 10 * 10;
+            if (shown != shownTenths)
+            {
+                shownTenths = shown;
+                WriteRemaining(digits, shown, inWarning);
+                if (gazeText != null)
+                {
+                    WriteRemaining(gazeText, shown, inWarning);
+                }
+            }
+
+            SetNeedle(remainingMs);
+        }
+
+        private static void WriteRemaining(TMP_Text text, long tenths, bool withTenths)
+        {
+            long totalSeconds = tenths / 10;
+            if (withTenths)
+            {
+                text.SetText("{0:00}:{1:00}.{2}", totalSeconds / 60, totalSeconds % 60, tenths % 10);
+            }
+            else
+            {
+                text.SetText("{0:00}:{1:00}", totalSeconds / 60, totalSeconds % 60);
+            }
+        }
+
+        private void SetNeedle(long ms)
+        {
+            needleAngle = (float)((ms / 1000d * 6d) % 360d);
             if (needle != null)
             {
                 needle.localRotation = Quaternion.AngleAxis(needleAngle, needleAxis);
+            }
+        }
+
+        /// <summary>Once per elapsed second: the faint tick, and in countdown mode the warning pop / beeps.</summary>
+        private void OnSecond(long elapsedMs, long second)
+        {
+            long limitMs = LimitMs;
+            if (limitMs <= 0)
+            {
+                if (tickSound && audioDirector != null && second > 0)
+                {
+                    audioDirector.PlayStopwatchTick(transform.position);
+                }
+
+                return;
+            }
+
+            long remainingSeconds = Math.Max(0L, (limitMs - elapsedMs + 999) / 1000);
+            bool inWarning = remainingSeconds > 0 && remainingSeconds <= warningSeconds;
+            SetWarning(inWarning);
+            if (inWarning)
+            {
+                Pop(0.12f, 0.35f);
+            }
+
+            if (audioDirector == null || second <= 0)
+            {
+                return;
+            }
+
+            if (remainingSeconds > 0 && remainingSeconds <= beepSeconds)
+            {
+                // Rising pitch towards zero (beep 3 → 1 = +0 → +4 semitones).
+                audioDirector.PlayCountdownBeep((int)Math.Min(3L, remainingSeconds));
+            }
+            else if (tickSound)
+            {
+                audioDirector.PlayStopwatchTick(transform.position);
+            }
+        }
+
+        private void SetWarning(bool on)
+        {
+            if (warning == on || digits == null)
+            {
+                return;
+            }
+
+            warning = on;
+            var color = on ? PresentationStyle.Orange : PresentationStyle.Ivory;
+            digits.color = color;
+            if (gazeText != null)
+            {
+                gazeText.color = color;
+            }
+        }
+
+        private void ShowGazeLabel(bool show)
+        {
+            if (!show)
+            {
+                if (gazeText != null && gazeText.gameObject.activeSelf)
+                {
+                    gazeText.gameObject.SetActive(false);
+                }
+
+                return;
+            }
+
+            if (gazeText == null)
+            {
+                // Not parented to the stopwatch: it floats in front of the participant (world space, lazy follow).
+                var root = new GameObject("Time Left (gaze)").transform;
+                gazeText = PresentationStyle.CreateText("Digits", root, gazeLabelFontSize, PresentationStyle.Ivory, TextAlignmentOptions.Center, new Vector2(0.3f, 0.08f));
+                gazeText.fontStyle = FontStyles.Bold;
+                gazeText.outlineWidth = 0.2f;
+                gazeText.outlineColor = new Color32(0x07, 0x2A, 0x63, 0xFF);
+                // Always drawn on top so the suitcase or a shelf never hides the remaining time.
+                var material = gazeText.fontMaterial;
+                material.SetInt("unity_GUIZTestMode", (int)UnityEngine.Rendering.CompareFunction.Always);
+                material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Overlay - 1;
+            }
+
+            gazeText.color = warning ? PresentationStyle.Orange : PresentationStyle.Ivory;
+            gazeText.text = string.Empty;
+            shownTenths = long.MinValue; // next SetTime writes both texts
+            gazeText.transform.parent.gameObject.SetActive(true);
+            gazeText.gameObject.SetActive(true);
+        }
+
+        /// <summary>Keeps the label low in the field of view, easing after the head instead of being glued to it.</summary>
+        private void UpdateGazeLabel()
+        {
+            if (gazeText == null || !gazeText.gameObject.activeInHierarchy)
+            {
+                return;
+            }
+
+            if (gazeCamera == null || !gazeCamera.isActiveAndEnabled)
+            {
+                gazeCamera = Camera.main;
+                if (gazeCamera == null)
+                {
+                    return;
+                }
+            }
+
+            var head = gazeCamera.transform;
+            var forward = head.forward;
+            forward.y = 0f;
+            if (forward.sqrMagnitude < 1e-4f)
+            {
+                forward = head.up;
+                forward.y = 0f;
+            }
+
+            forward.Normalize();
+            var target = head.position + forward * gazeLabelDistance + Vector3.down * gazeLabelDrop;
+            var root = gazeText.transform.parent;
+            if (!gazePlaced)
+            {
+                root.position = target;
+                gazePlaced = true;
+            }
+            else
+            {
+                root.position = Vector3.Lerp(root.position, target, 1f - Mathf.Exp(-6f * Time.unscaledDeltaTime));
+            }
+
+            var look = root.position - head.position;
+            look.y = 0f;
+            if (look.sqrMagnitude > 1e-4f)
+            {
+                root.rotation = Quaternion.LookRotation(look.normalized, Vector3.up);
             }
         }
 

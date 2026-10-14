@@ -1,4 +1,5 @@
 using System.Collections;
+using MultiTravel.Core.Completion;
 using MultiTravel.Core.Services;
 using MultiTravel.Core.Session;
 using MultiTravel.Gameplay.Presentation;
@@ -84,6 +85,32 @@ namespace MultiTravel.Tests.PlayMode.Presentation
             yield return null;
             yield return null;
             Assert.AreEqual(frozen, display.DigitsText, "the final time stays frozen while the clock keeps running");
+        }
+
+        [UnityTest]
+        public IEnumerator TimeLimit_CountsDownWithWarningInTheLastSeconds()
+        {
+            display.Bind(scene.Session, scene.Timer, new CompletionEvaluator(scene.Set, CompletionMode.ManualConfirm, 45));
+            Assert.IsTrue(display.CountsDown);
+
+            scene.EnterPlaying();
+            yield return null;
+            Assert.AreEqual("00:45", display.DigitsText, "starts at the full limit");
+            Assert.AreEqual(270f, display.NeedleAngle, 0.05f, "needle shows the remaining seconds");
+
+            scene.Clock.Advance(12.4);
+            yield return null;
+            Assert.AreEqual("00:33", display.DigitsText, "whole seconds rounded up outside the warning window");
+            var normal = display.Digits.color;
+
+            scene.Clock.Advance(26.0);
+            yield return null;
+            Assert.AreEqual("00:06.6", display.DigitsText, "tenths in the last seconds");
+            Assert.AreNotEqual(normal, display.Digits.color, "warning colour in the last seconds");
+
+            scene.Clock.Advance(10.0);
+            yield return null;
+            Assert.AreEqual("00:00.0", display.DigitsText, "never below zero");
         }
 
         [UnityTest]
