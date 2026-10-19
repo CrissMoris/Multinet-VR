@@ -5,6 +5,7 @@ using MultiTravel.EditorTools.Art;
 using MultiTravel.EditorTools.Validation;
 using UnityEditor;
 using UnityEditor.Build.Reporting;
+using UnityEditor.XR.Management;
 using UnityEngine;
 
 namespace MultiTravel.EditorTools
@@ -65,14 +66,57 @@ namespace MultiTravel.EditorTools
             }
         }
 
+        /// <summary>Executable of the headset-free desktop demo.</summary>
+        public const string DesktopExecutableName = "MultiTravel Packing Challenge (Masaustu).exe";
+
+        /// <summary>Default desktop-demo output: <c>&lt;project&gt;/Build/WindowsDesktop/...</c>.</summary>
+        public static string DefaultDesktopOutputPath => Path.Combine(GeneratedAssetUtil.ProjectRoot, "Build", "WindowsDesktop", DesktopExecutableName);
+
+        /// <summary>
+        /// Command-line entry point of the headset-free desktop demo (<c>MT_DESKTOP</c>: keyboard / mouse play, XR not
+        /// started). Same arguments as <see cref="BuildWindows"/>; <c>-buildTarget OSXUniversal</c> style checks can pass
+        /// <c>-desktopTarget mac</c> to build a macOS app instead.
+        /// </summary>
+        public static void BuildWindowsDesktop()
+        {
+            var args = Environment.GetCommandLineArgs();
+            string output = GetArgValue(args, "-buildOutput", "--buildOutput", "-output-path", "--output-path");
+            bool development = GetFlag(args, "-development", "--development");
+            string stationConfig = GetArgValue(args, "-stationConfig", "--stationConfig");
+            bool mac = string.Equals(GetArgValue(args, "-desktopTarget", "--desktopTarget"), "mac", StringComparison.OrdinalIgnoreCase);
+
+            BuildOutcome outcome;
+            try
+            {
+                var target = mac ? BuildTarget.StandaloneOSX : BuildTarget.StandaloneWindows64;
+                string path = !string.IsNullOrWhiteSpace(output) ? output
+                    : mac ? Path.Combine(GeneratedAssetUtil.ProjectRoot, "Build", "MacDesktop", "MultiTravel Desktop.app")
+                    : DefaultDesktopOutputPath;
+                outcome = BuildWindowsTo(path, development, stationConfig, true, target);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[MultiTravel] Build threw: {ex}");
+                outcome = new BuildOutcome { Success = false };
+            }
+
+            if (!outcome.Success && Application.isBatchMode)
+            {
+                EditorApplication.Exit(1);
+            }
+        }
+
         /// <summary>
         /// Configures the project, validates it (aborting on errors) and builds StandaloneWindows64 to <paramref name="outputPath"/>.
+        /// <paramref name="desktop"/> builds the headset-free demo: scripting define <c>MT_DESKTOP</c> and XR not initialised
+        /// on start (the project setting is restored afterwards).
         /// Never exits the editor; callers decide.
         /// </summary>
         /// <summary>Repository-level deployment config copied into the player when no explicit station config is given.</summary>
         public static string DefaultStationConfigPath => Path.GetFullPath(Path.Combine(GeneratedAssetUtil.ProjectRoot, "..", "Deployment", "multitravel.config.json"));
 
-        public static BuildOutcome BuildWindowsTo(string outputPath, bool development, string stationConfigPath = null)
+        public static BuildOutcome BuildWindowsTo(string outputPath, bool development, string stationConfigPath = null, bool desktop = false,
+            BuildTarget target = BuildTarget.StandaloneWindows64)
         {
             var outcome = new BuildOutcome { Development = development };
             if (string.IsNullOrWhiteSpace(outputPath))
@@ -80,9 +124,9 @@ namespace MultiTravel.EditorTools
                 outputPath = DefaultOutputPath;
             }
 
-            if (!outputPath.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+            if (target == BuildTarget.StandaloneWindows64 && !outputPath.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
             {
-                outputPath = Path.Combine(outputPath, ExecutableName);
+                outputPath = Path.Combine(outputPath, desktop ? DesktopExecutableName : ExecutableName);
             }
 
             outputPath = Path.IsPathRooted(outputPath) ? outputPath : Path.GetFullPath(Path.Combine(GeneratedAssetUtil.ProjectRoot, outputPath));
@@ -138,13 +182,35 @@ namespace MultiTravel.EditorTools
             {
                 scenes = enabledScenes.ToArray(),
                 locationPathName = outputPath,
-                target = BuildTarget.StandaloneWindows64,
+                target = target,
                 targetGroup = BuildTargetGroup.Standalone,
-                options = development ? BuildOptions.Development : BuildOptions.None
+                options = development ? BuildOptions.Development : BuildOptions.None,
+                extraScriptingDefines = desktop ? new[] { "MT_DESKTOP" } : null
             };
 
-            Debug.Log($"[MultiTravel] Building {(development ? "development" : "release")} player to {outputPath} ({enabledScenes.Count} scene(s)).");
-            BuildReport report = BuildPipeline.BuildPlayer(options);
+            Debug.Log($"[MultiTravel] Building {(development ? "development" : "release")}{(desktop ? " DESKTOP" : string.Empty)} player to {outputPath} ({enabledScenes.Count} scene(s)).");
+            var xrGeneral = desktop ? XRGeneralSettingsPerBuildTarget.XRGeneralSettingsForBuildTarget(BuildTargetGroup.Standalone) : null;
+            bool xrInitBefore = xrGeneral != null && xrGeneral.InitManagerOnStart;
+            BuildReport report;
+            try
+            {
+                if (xrGeneral != null)
+                {
+                    // The desktop demo never starts OpenXR (no headset, no runtime prompts).
+                    xrGeneral.InitManagerOnStart = false;
+                }
+
+                report = BuildPipeline.BuildPlayer(options);
+            }
+            finally
+            {
+                if (xrGeneral != null)
+                {
+                    xrGeneral.InitManagerOnStart = xrInitBefore;
+                    EditorUtility.SetDirty(xrGeneral);
+                }
+            }
+
             var summary = report.summary;
             outcome.Result = summary.result.ToString();
             outcome.TotalErrors = summary.totalErrors;
@@ -182,7 +248,9 @@ namespace MultiTravel.EditorTools
         /// </summary>
         private static void FinalizeStationConfig(string exePath, string stationConfigPath, BuildOutcome outcome)
         {
-            string dataFolder = Path.Combine(Path.GetDirectoryName(exePath), Path.GetFileNameWithoutExtension(exePath) + "_Data", "StreamingAssets");
+            string dataFolder = exePath.EndsWith(".app", StringComparison.OrdinalIgnoreCase)
+                ? Path.Combine(exePath, "Contents", "Resources", "Data", "StreamingAssets")
+                : Path.Combine(Path.GetDirectoryName(exePath), Path.GetFileNameWithoutExtension(exePath) + "_Data", "StreamingAssets");
             string target = Path.Combine(dataFolder, "multitravel.config.json");
             string source = !string.IsNullOrWhiteSpace(stationConfigPath) ? Path.GetFullPath(stationConfigPath) : DefaultStationConfigPath;
             if (File.Exists(source))
