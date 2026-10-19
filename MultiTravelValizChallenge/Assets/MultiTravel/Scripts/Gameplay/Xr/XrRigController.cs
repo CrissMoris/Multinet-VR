@@ -5,6 +5,7 @@ using MultiTravel.Core.Config;
 using MultiTravel.Core.Services;
 using MultiTravel.Core.Xr;
 using MultiTravel.Gameplay.Common;
+using MultiTravel.Gameplay.Suitcase;
 using Unity.XR.CoreUtils;
 using UnityEngine;
 using UnityEngine.XR;
@@ -42,6 +43,12 @@ namespace MultiTravel.Gameplay.Xr
 
         /// <summary>Walking speed (m/s) of the left-stick smooth move.</summary>
         public const float WalkSpeed = 1.3f;
+
+        /// <summary>Right-stick smooth turn speed (deg/s). Snap turning (90 deg jumps) disorientated participants.</summary>
+        public const float TurnSpeed = 70f;
+
+        /// <summary>Clearance (m) the head keeps from the suitcase footprint while walking with the stick.</summary>
+        public const float SuitcaseClearance = 0.22f;
 
         private const string LocomotionChildName = "Locomotion";
         private const string TeleportInteractorName = "Teleport Interactor";
@@ -203,12 +210,21 @@ namespace MultiTravel.Gameplay.Xr
             {
                 if (providers[i] != null)
                 {
-                    // Walking = controller sticks only: smooth move, snap turn and gravity. Teleport, grab-move, climb and
-                    // jump stay off (the stage is walked, products are reached for).
+                    // Walking = controller sticks only: smooth move and smooth turn. Teleport, grab-move, climb, jump and
+                    // snap turn stay off. Gravity stays off too: the floor is flat, and its ground probe lifted the
+                    // participant onto the suitcase (sudden +0.5 m eye height) when they walked over it.
                     string typeName = providers[i].GetType().Name;
                     bool allowed = enableLocomotion && (typeName == "DynamicMoveProvider" || typeName == "ContinuousMoveProvider" ||
-                                                        typeName == "SnapTurnProvider" || typeName == "GravityProvider");
+                                                        typeName == "ContinuousTurnProvider");
                     providers[i].enabled = allowed;
+                    if (allowed && typeName == "ContinuousTurnProvider")
+                    {
+                        var turn = providers[i].GetType().GetProperty("turnSpeed");
+                        if (turn != null && turn.CanWrite)
+                        {
+                            turn.SetValue(providers[i], TurnSpeed);
+                        }
+                    }
                     if (allowed && (typeName == "DynamicMoveProvider" || typeName == "ContinuousMoveProvider"))
                     {
                         var speed = providers[i].GetType().GetProperty("moveSpeed");
@@ -233,6 +249,12 @@ namespace MultiTravel.Gameplay.Xr
                 if (behaviour != null && behaviour.GetType().Name == ControllerInputActionManagerTypeName)
                 {
                     behaviour.enabled = enableLocomotion;
+                    // The template routes the right stick to snap turn unless smooth turn is switched on.
+                    var smoothTurn = behaviour.GetType().GetProperty("smoothTurnEnabled");
+                    if (smoothTurn != null && smoothTurn.CanWrite)
+                    {
+                        smoothTurn.SetValue(behaviour, true);
+                    }
                 }
             }
 
@@ -400,6 +422,77 @@ namespace MultiTravel.Gameplay.Xr
         {
             // XROrigin rewrites the offset object's height when the tracking origin mode changes; keep our correction on top.
             ApplyFloorOffset();
+        }
+
+        private SuitcaseController keepOutSuitcase;
+        private Vector3 lastOriginPosition;
+        private bool hasLastOriginPosition;
+
+        /// <summary>
+        /// Stick walking stops at the suitcase: a locomotion step (origin moved this frame) that would bring the head into,
+        /// or deeper into, the suitcase footprint (+ <see cref="SuitcaseClearance"/>) is undone. Leaning over the suitcase
+        /// with the real body does not move the origin and is never blocked.
+        /// </summary>
+        private void LateUpdate()
+        {
+            if (xrOrigin == null || xrOrigin.Camera == null)
+            {
+                return;
+            }
+
+            var origin = xrOrigin.transform;
+            var position = origin.position;
+            if (LocomotionEnabled && hasLastOriginPosition && (position - lastOriginPosition).sqrMagnitude > 1e-10f)
+            {
+                if (keepOutSuitcase == null)
+                {
+                    keepOutSuitcase = FindAnyObjectByType<SuitcaseController>();
+                }
+
+                var head = xrOrigin.Camera.transform.position;
+                var moved = position - lastOriginPosition;
+                float after = SuitcaseDepth(head);
+                float before = SuitcaseDepth(head - moved);
+                if (after > 0f && after > before + 1e-4f)
+                {
+                    origin.position = lastOriginPosition;
+                    position = lastOriginPosition;
+                }
+            }
+
+            lastOriginPosition = position;
+            hasLastOriginPosition = true;
+        }
+
+        /// <summary>How far (m) a world point is inside the suitcase footprint grown by the clearance (0 = outside).</summary>
+        private float SuitcaseDepth(Vector3 world)
+        {
+            var volume = keepOutSuitcase != null ? keepOutSuitcase.PlacementVolume : null;
+            if (volume == null)
+            {
+                return 0f;
+            }
+
+            var t = volume.transform;
+            var local = t.InverseTransformPoint(world) - volume.center;
+            var scale = t.lossyScale;
+            var half = volume.size * 0.5f;
+            var up = t.InverseTransformDirection(Vector3.up);
+            int upAxis = Mathf.Abs(up.x) >= Mathf.Abs(up.y) ? (Mathf.Abs(up.x) >= Mathf.Abs(up.z) ? 0 : 2) : (Mathf.Abs(up.y) >= Mathf.Abs(up.z) ? 1 : 2);
+            float depth = float.MaxValue;
+            for (int axis = 0; axis < 3; axis++)
+            {
+                if (axis == upAxis)
+                {
+                    continue;
+                }
+
+                float s = Mathf.Max(1e-5f, Mathf.Abs(scale[axis]));
+                float inside = (half[axis] * s + SuitcaseClearance) - Mathf.Abs(local[axis]) * s;
+                depth = Mathf.Min(depth, inside);
+            }
+
+            return Mathf.Max(0f, depth);
         }
 
         private readonly List<XRInputSubsystem> inputSubsystems = new List<XRInputSubsystem>();
