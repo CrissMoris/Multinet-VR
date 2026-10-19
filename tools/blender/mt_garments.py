@@ -12,7 +12,8 @@ import bpy
 from mathutils import Vector
 
 import mt_layout as L
-from mtlib import (bake, box, cylinder, extrude_outline, from_bmesh, soft_body, sphere, sweep, torus, translate)
+from mtlib import (add_subsurf, bake, box, cylinder, dress_collar, extrude_outline, from_bmesh, soft_body, sphere, sweep,
+                   torus, translate)
 from mt_wardrobe import build_hanger
 
 BUILDERS = {}
@@ -64,7 +65,7 @@ def wrinkle(obj, strength=0.004, scale=0.06, solidify=0.004):
 
 
 def torso(name, mat, z_top, z_hem, w_top, w_chest, w_waist, w_hem, depth, fold_amp=0.008, folds=9, segs=40, rows=20,
-          open_front=0.0, flare_from=0.0):
+          open_front=0.0, flare_from=0.0, hem_curve=0.0, shoulder_drop=0.03):
     """Lofted torso: width profile (half-widths) from the shoulder line to the hem; chest towards +Y.
     open_front > 0 leaves a V opening at the front (jackets); flare_from in (0..1) starts the skirt flare."""
     rings = []
@@ -93,7 +94,9 @@ def torso(name, mat, z_top, z_hem, w_top, w_chest, w_waist, w_hem, depth, fold_a
             y = d * math.copysign(abs(s_) ** 0.9, s_) * fold
             zz = z
             if t < 0.08:
-                zz -= 0.03 * (abs(c) ** 2) * (1 - t / 0.08)   # shoulder drop at the sides
+                zz -= shoulder_drop * (abs(c) ** 2) * (1 - t / 0.08)   # shoulder drop at the sides
+            if hem_curve and t > 0.85:
+                zz += hem_curve * (abs(c) ** 2) * smooth01((t - 0.85) / 0.15)   # shirt tails: sides cut higher
             ring.append((x, y, zz))
         rings.append(ring)
     obj = loft(name, rings, mat, cap_top=True)
@@ -187,11 +190,6 @@ def hanging_top(name, mat, length_total=None, w_top=0.158, w_chest=0.15, w_waist
     return body, parts
 
 
-@builder("shirt-hanging")
-def shirt_hanging():
-    hanging_top("shirt", "shirt_blue", collar="shirt", buttons=6, pocket=True, yoke=True)
-
-
 @builder("blouse-hanging")
 def blouse_hanging():
     body, _ = hanging_top("blouse", "blouse_silk", w_top=0.15, w_chest=0.142, w_waist=0.128, w_hem=0.15, depth=0.05,
@@ -268,3 +266,80 @@ def bikini_hanging():
     b.location = (0, -0.012, -0.29)
     for s in (-1, 1):   # side ties looped over the hanger bar
         sweep("tie", [(s * 0.085, -0.012, -0.29), (s * 0.09, -0.006, -0.2), (s * 0.085, 0.0, -0.142)], 0.0025, "swim_tropical")
+
+
+# --------------------------------------------------------------------------------------------- dress shirt (v3)
+
+def front_point(x, t, w, d, lift=0.0):
+    """Point on the front of a torso() cross-section of half-width ``w`` / half-depth ``d`` at height fraction ``t``."""
+    c = min(1.0, abs(x) / max(w, 1e-4)) ** (1 / 0.8)
+    s_ = math.sqrt(max(0.0, 1 - c * c))
+    return d * (s_ ** 0.9) + lift
+
+
+def surface_patch(name, mat, xs, zs, y_of, thickness=0.0025):
+    """Thin patch (pocket, placket) lying on a curved front: grid over xs x zs, y from y_of(x, z), solidified."""
+    bm = bmesh.new()
+    grid = [[bm.verts.new((x, y_of(x, z), z)) for x in xs] for z in zs]
+    for r in range(len(zs) - 1):
+        for c in range(len(xs) - 1):
+            bm.faces.new((grid[r][c], grid[r][c + 1], grid[r + 1][c + 1], grid[r + 1][c]))
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    obj = from_bmesh(name, bm, mat)
+    sol = obj.modifiers.new("solid", "SOLIDIFY")
+    sol.thickness = thickness
+    sol.offset = 1
+    bake(obj)
+    return obj
+
+
+@builder("shirt-hanging")
+def shirt_hanging():
+    """Long-sleeved dress shirt on a hanger: real proportions (0.34 m wide, 0.6 m long), curved tails, turn-down collar,
+    placket and buttons lying on the chest, chest pocket, hanging sleeves with cuffs."""
+    mat = "shirt_blue"
+    build_hanger((0, 0, 0))
+    # the shoulder line follows the hanger arms (centre -0.085, ends -0.135) so the hanger hides inside the shirt
+    z_top, z_hem = -0.074, -0.60
+    w_top, w_chest, w_waist, w_hem, depth = 0.168, 0.172, 0.160, 0.164, 0.04
+    body = torso("shirt_body", mat, z_top, z_hem, w_top, w_chest, w_waist, w_hem, depth, fold_amp=0.008, folds=6,
+                 segs=64, rows=44, hem_curve=0.05, shoulder_drop=0.07)
+    wrinkle(body, strength=0.003, scale=0.07)
+    length = z_top - z_hem
+
+    def t_of(z):
+        return min(1.0, max(0.0, (z_top - z) / length))
+
+    def half_w(t):
+        if t < 0.3:
+            return w_top + (w_chest - w_top) * smooth01(t / 0.3)
+        if t < 0.65:
+            return w_chest + (w_waist - w_chest) * smooth01((t - 0.3) / 0.35)
+        return w_waist + (w_hem - w_waist) * smooth01((t - 0.65) / 0.35)
+
+    def y_front(x, z, lift=0.0015):
+        t = t_of(z)
+        return front_point(x, t, half_w(t), depth * (1 - 0.35 * t), lift)
+
+    # placket strip and buttons on the chest surface
+    zs = [z_top - 0.035 - (length - 0.05) * i / 12 for i in range(13)]
+    surface_patch("placket", mat, [-0.012, 0.0, 0.012], zs, y_front, thickness=0.0022)
+    for i in range(7):
+        z = z_top - 0.05 - i * 0.075
+        cylinder("button", 0.0052, 0.0024, (0, y_front(0, z, 0.0045), z), (math.radians(90), 0, 0), mat="button_pearl", segments=14, bevel=0.0007)
+    # chest pocket (wearer's left)
+    surface_patch("pocket", mat, [0.045 + 0.065 * i / 4 for i in range(5)], [z_top - 0.13 - 0.075 * i / 4 for i in range(5)], y_front)
+    dress_collar(mat, z_top + 0.004, center=(0, -0.004), front=1)
+    # sleeves: hang along the sides, slightly behind, tapering to buttoned cuffs
+    for s in (-1, 1):
+        # the sleeve head starts inside the shoulder (below the dropped shoulder line) so only the seam shows
+        x0, z0 = s * (w_top - 0.03), z_top - 0.085
+        pts = [(x0, -0.004, z0), (x0 + s * 0.022, -0.008, z0 - 0.05), (x0 + s * 0.032, -0.006, z0 - 0.2),
+               (x0 + s * 0.03, 0.006, z0 - 0.30), (x0 + s * 0.026, 0.014, z0 - 0.38)]
+        sl = sweep("sleeve", pts, 0.04, mat, segments=18, scale=(1.0, 0.55),
+                   radius_fn=lambda t: (0.75 + 0.25 * smooth01(min(1, t / 0.15))) * (1 - 0.4 * t))
+        add_subsurf(sl, 1)
+        wrinkle(sl, strength=0.002, scale=0.05, solidify=0)
+        cz, cx = z0 - 0.38, x0 + s * 0.026
+        sweep("cuff", [(cx, 0.014, cz + 0.006), (cx - s * 0.001, 0.016, cz - 0.05)], 0.0265, mat, segments=18, scale=(1.0, 0.68))
+        cylinder("cuff_button", 0.0042, 0.002, (cx, 0.016 + 0.019, cz - 0.025), (math.radians(90), 0, 0), mat="button_pearl", segments=12)

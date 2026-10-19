@@ -21,6 +21,29 @@ namespace MultiTravel.EditorTools.SceneBuild
             AssetDatabase.SaveAssets();
         }
 
+        /// <summary>
+        /// Art + scene refresh that keeps the product data (non-forced <see cref="ProductDataGenerator"/>: only missing
+        /// products are added, existing definitions are left as they are): data, import, build, bake, validate.
+        /// </summary>
+        public static void RefreshArtAndScene()
+        {
+            AssetDatabase.Refresh();
+            ProductDataGenerator.Generate(false).Log();
+            ArtImporter.ImportAll().Log();
+            MainSceneBuilder.Build();
+            MainSceneBuilder.BakeLighting();
+            ProjectValidator.Validate(true).Log();
+            AssetDatabase.SaveAssets();
+        }
+
+        /// <summary>Re-imports the production art (materials, models, product prefabs) only.</summary>
+        public static void ImportArt()
+        {
+            AssetDatabase.Refresh();
+            ArtImporter.ImportAll().Log();
+            AssetDatabase.SaveAssets();
+        }
+
         public static void BuildOnly()
         {
             MainSceneBuilder.Build();

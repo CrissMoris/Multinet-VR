@@ -70,7 +70,7 @@ namespace MultiTravel.EditorTools.Art
         /// <summary>Optional largest-dimension override (metres) for Poly Haven models whose real size is impractical in VR.</summary>
         private static readonly Dictionary<string, float> ModelMaxSize = new Dictionary<string, float>
         {
-            { "garden-gnome", 0.32f },
+            { "garden-gnome", 0.22f },     // fits between the shelf rows (0.32 m apart)
             { "rubber-duck", 0.16f },
             { "football", 0.22f },
             { "binoculars", 0.18f },

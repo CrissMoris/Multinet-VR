@@ -88,14 +88,48 @@ def shelf_unit(zone):
     accent = L.ACCENT[zone]
     used = [i for i, r in enumerate(rows) if r]
     lo, hi = sorted((side * (t0 - 0.4), side * (t1 + 0.4)))
+    # closed base cabinet under the shelves: recessed plinth, white lacquer doors with grooves and slim handles; its top
+    # carries the first shelf board
+    arc_slab("plinth", L.SHELF_IN + 0.04, L.BACK_IN, lo, hi, 0.0, 0.09, "lacquer_greige", steps=24)
+    arc_slab("cabinet", L.SHELF_IN + 0.012, L.BACK_IN, lo, hi, 0.09, L.CABINET_TOP, "lacquer_white", steps=24, bevel=0.003)
+    span = abs(hi - lo)
+    doors = max(1, round(math.radians(span) * L.SHELF_IN / 0.5))
+    for k in range(doors + 1):
+        t = lo + span * k / doors
+        if 0 < k < doors:
+            tangential_box("door_groove", L.SHELF_IN + 0.011, t, 0.006, 0.006, 0.1, L.CABINET_TOP - 0.01, "chrome_dark")
+        if k < doors:
+            tc = lo + span * (k + 0.5) / doors
+            tangential_box("door_handle", L.SHELF_IN + 0.006, tc, 0.16, 0.012, L.CABINET_TOP - 0.07, L.CABINET_TOP - 0.058, "chrome", bevel=0.002)
     for ri in used:
         z = L.ROW_Z[ri]
+        on_cabinet = ri == 0
         arc_slab("shelf", L.SHELF_IN + 0.012, L.SHELF_OUT, lo, hi, z - 0.024, z, "oak_warm", steps=24, bevel=0.003)
-        arc_slab("lip", L.SHELF_IN, L.SHELF_IN + 0.012, lo, hi, z - 0.05, z + 0.012, accent, steps=24)
+        arc_slab("lip", L.SHELF_IN, L.SHELF_IN + 0.012, lo, hi, z - 0.05 if not on_cabinet else z - 0.03, z + 0.012, accent, steps=24)
+        if on_cabinet:
+            continue
         arc_slab("EMISSIVE.led_" + zone, L.SHELF_IN + 0.03, L.SHELF_IN + 0.06, lo + 0.8, hi - 0.8, z - 0.032, z - 0.024, "led_strip", steps=24)
         for t in (t0 + 3.0, (t0 + t1) / 2, t1 - 3.0):
             tangential_box("bracket", L.SHELF_OUT - 0.1, side * t, 0.016, 0.20, z - 0.1, z - 0.024, "chrome_dark", bevel=0.002)
     slot_empties(L.wedge_slots(zone))
+    shelf_decor(zone)
+
+
+def shelf_decor(zone):
+    """Shelf-end decoration: a navy fabric storage box (UI.boxlogo marker on its front for the MultiTravel logo) or a
+    DECOR.plant marker where the scene builder puts a small potted plant."""
+    for name, pos, yaw, kind in L.decor_spots(zone):
+        x, y, z = pos
+        r = math.hypot(x, y)
+        t = math.degrees(math.atan2(x, y))
+        if kind == "box":
+            w, d, h = 0.24, 0.2, 0.15
+            tangential_box("decor_box", r, t, w, d, z, z + h, "velvet_navy", bevel=0.006)
+            tangential_box("decor_box_rim", r, t, w + 0.006, d + 0.006, z + h - 0.02, z + h, "leather_tan", bevel=0.004)
+            front = L.pol(r - d / 2 - 0.003, t, z + h * 0.48)
+            empty("UI.boxlogo." + name, front, rot=(0, 0, yaw))
+        else:
+            empty("DECOR.plant." + name, pos, rot=(0, 0, yaw))
 
 
 @builder("console-table-business")

@@ -524,3 +524,79 @@ def export_asset(name, out_dir, origin="bottom", sharp_angle=40.0, keep=False):
 def _unity_pos(v):
     """Authoring-frame point -> Unity (x, y, z)."""
     return (v.x, v.z, v.y)
+
+
+def ring_loft(name, mat, rings, thickness=0.002):
+    """Open strip lofted through rings of equal length (no wrap-around), solidified."""
+    bm = bmesh.new()
+    vr = [[bm.verts.new(p) for p in ring] for ring in rings]
+    for i in range(len(vr) - 1):
+        a, b = vr[i], vr[i + 1]
+        for k in range(len(a) - 1):
+            bm.faces.new((a[k], a[k + 1], b[k + 1], b[k]))
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    obj = from_bmesh(name, bm, mat)
+    sol = obj.modifiers.new("solid", "SOLIDIFY")
+    sol.thickness = thickness
+    sol.offset = 0
+    add_subsurf(obj, 1)
+    bake(obj)
+    return obj
+
+
+def _smooth01(t):
+    return t * t * (3 - 2 * t)
+
+
+def dress_collar(mat, z_neck, center=(0.0, 0.0), front=1, rx=0.054, ry=0.047, gap_deg=16.0, steps=40, tip_drop=0.052,
+                 band_h=0.017, tip_reach=1.32, tip_x=0.034):
+    """Shirt collar around a vertical (Z) neck axis: standing band, inside back, and a turn-down leaf whose points
+    rest on the chest. ``front`` = +1 / -1 picks the +Y / -Y side as the front (button opening)."""
+    cx, y0 = center
+    angles = [gap_deg + (360 - 2 * gap_deg) * i / steps for i in range(steps + 1)]
+
+    def ring(scale, z_fn, front_fn=None):
+        pts = []
+        for a in angles:
+            r = math.radians(a)
+            p = Vector((cx + rx * scale * math.sin(r), y0 + front * ry * scale * math.cos(r), z_fn(a)))
+            if front_fn:
+                p = front_fn(a, p)
+            pts.append(tuple(p))
+        return pts
+
+    band = ring_loft("collar_band", mat, [ring(1.0, lambda a: z_neck - 0.006), ring(1.0, lambda a: z_neck + band_h)])
+    # inside of the back neck (lining) so the collar does not read as an empty tube from above
+    cap = ring_loft("collar_inside", mat, [ring(1.0, lambda a: z_neck - 0.004), ring(0.25, lambda a: z_neck - 0.012)])
+
+    def from_front(a):
+        return min(a, 360 - a)            # 0 at the centre front, 180 at the back
+
+    def point_fold(a, p):
+        # towards the front the outer edge swings forward and down into the collar points
+        f = _smooth01(max(0.0, 1 - (from_front(a) - gap_deg) / 75.0))
+        side = 1 if a < 180 else -1
+        tip = Vector((cx + side * tip_x, y0 + front * ry * tip_reach, z_neck - tip_drop))
+        return p.lerp(tip, f)
+
+    # the leaf folds over the band: its outer edge hangs just outside the band, down to the band's foot; only the
+    # front points reach down onto the chest
+    roll = ring(1.09, lambda a: z_neck + band_h + 0.004)
+    outer = ring(1.2, lambda a: z_neck - 0.005, point_fold)
+    leaf = ring_loft("collar_leaf", mat, [ring(1.02, lambda a: z_neck + band_h + 0.001), roll, outer])
+    return [band, cap, leaf]
+
+
+def fabric_noise(obj, strength=0.0015, scale=0.03, subdivide=1):
+    """Soft, irregular fabric surface: optional subdivision + low-frequency cloud displacement, applied in place."""
+    if subdivide:
+        add_subsurf(obj, subdivide)
+    tex = bpy.data.textures.new(obj.name + "_n", "CLOUDS")
+    tex.noise_scale = scale
+    tex.noise_depth = 2
+    disp = obj.modifiers.new("fabric", "DISPLACE")
+    disp.texture = tex
+    disp.strength = strength
+    disp.mid_level = 0.5
+    bake(obj)
+    return obj

@@ -30,6 +30,13 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 553d1834381847040927787878d3e368, type: 2}
   - {fileID: 11400000, guid: 54f8a87fe82b0fb469731a7a35184cc1, type: 2}
   - {fileID: 11400000, guid: 70d3c73c10b6b1043ba5433b7c1327d8, type: 2}
+  - {fileID: 11400000, guid: 2a448f7090f3146798e0ba2bb366db21, type: 2}
+  - {fileID: 11400000, guid: c6f324545c6854b19b41e1339a8660da, type: 2}
+  - {fileID: 11400000, guid: 6f5cf08ae92af46e68efcfffe20249fe, type: 2}
+  - {fileID: 11400000, guid: c6b157a869231478b8f601f2c2f2ee5d, type: 2}
+  - {fileID: 11400000, guid: 3c064789348194558ab009be70d56020, type: 2}
+  - {fileID: 11400000, guid: a21d3cdaa3fe44e3189f328e7c13b2b7, type: 2}
+  - {fileID: 11400000, guid: 65c3c98d364a04cb29f4e2f9f4cb6312, type: 2}
   DefaultPositiveScore: 15
   DefaultNegativeScore: -5
   ShuffleSpawnPositions: 1

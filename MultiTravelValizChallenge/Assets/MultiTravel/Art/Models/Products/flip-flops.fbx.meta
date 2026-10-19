@@ -14,6 +14,11 @@ ModelImporter:
       assembly: UnityEngine.CoreModule
       name: flipflop_strap
     second: {fileID: 2100000, guid: 116c0321384138944a1da8402474a077, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: sole_rubber
+    second: {fileID: 2100000, guid: 7129ec570c94e3948bef2be2c743ed60, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0

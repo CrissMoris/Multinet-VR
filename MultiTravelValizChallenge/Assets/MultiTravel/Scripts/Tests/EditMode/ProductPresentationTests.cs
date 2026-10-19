@@ -26,20 +26,20 @@ namespace MultiTravel.Tests.EditMode
         {
             { DisplayZone.Hanging, 4 },
             { DisplayZone.Folded, 3 },
-            { DisplayZone.Shoes, 1 },
-            { DisplayZone.Accessories, 1 },
-            { DisplayZone.Business, 2 },
-            { DisplayZone.Leisure, 3 },
+            { DisplayZone.Shoes, 2 },
+            { DisplayZone.Accessories, 3 },
+            { DisplayZone.Business, 4 },
+            { DisplayZone.Leisure, 5 },
         };
 
         private static readonly Dictionary<DisplayZone, string[]> ZoneTable = new Dictionary<DisplayZone, string[]>
         {
             { DisplayZone.Hanging, new[] { "shirt", "blouse", "bikini" } },
             { DisplayZone.Folded, new[] { "men-trousers", "women-trousers", "swim-shorts", "beach-towel" } },
-            { DisplayZone.Shoes, new[] { "men-shoes", "women-shoes" } },
-            { DisplayZone.Accessories, new[] { "beach-hat", "straw-hat" } },
-            { DisplayZone.Business, new[] { "laptop", "laptop-charger" } },
-            { DisplayZone.Leisure, new[] { "snorkel-mask", "fins", "sea-bed" } },
+            { DisplayZone.Shoes, new[] { "men-shoes", "women-shoes", "flip-flops" } },
+            { DisplayZone.Accessories, new[] { "beach-hat", "straw-hat", "binoculars", "rubber-duck" } },
+            { DisplayZone.Business, new[] { "laptop", "laptop-charger", "garden-gnome", "kids-book" } },
+            { DisplayZone.Leisure, new[] { "snorkel-mask", "fins", "sea-bed", "football", "ukulele" } },
         };
 
         private ScriptableObjectFactory so;
@@ -151,7 +151,7 @@ namespace MultiTravel.Tests.EditMode
                 AssertPresentation(id, PackedKind.Flat, GripPreset.FoldedGarment, false);
             }
 
-            foreach (var id in new[] { "men-shoes", "women-shoes" })
+            foreach (var id in new[] { "men-shoes", "women-shoes", "flip-flops" })
             {
                 AssertPresentation(id, PackedKind.ShoeCorner, GripPreset.Shoe, false);
             }
@@ -159,7 +159,8 @@ namespace MultiTravel.Tests.EditMode
             AssertPresentation("laptop", PackedKind.Flat, GripPreset.FlatEdge, false);
             AssertPresentation("laptop-charger", PackedKind.Organiser, GripPreset.Dynamic, false);
 
-            foreach (var id in new[] { "snorkel-mask", "fins", "sea-bed", "beach-hat", "straw-hat" })
+            AssertPresentation("kids-book", PackedKind.Flat, GripPreset.FlatEdge, false);
+            foreach (var id in new[] { "snorkel-mask", "fins", "sea-bed", "beach-hat", "straw-hat", "garden-gnome", "binoculars", "rubber-duck", "football", "ukulele" })
             {
                 AssertPresentation(id, PackedKind.Top, GripPreset.Dynamic, false);
             }
@@ -176,7 +177,7 @@ namespace MultiTravel.Tests.EditMode
         // ----- the client's final product list -----
 
         [Test]
-        public void FinalProductList_FiveRequiredAndSixDistractorsPerGender()
+        public void FinalProductList_FiveRequiredAndThirteenDistractorsPerGender()
         {
             var catalog = so.Catalog(ProductDataGenerator.DefaultProducts.Select(Definition).ToArray());
             var resolver = new ProductSetResolver();
@@ -184,7 +185,8 @@ namespace MultiTravel.Tests.EditMode
             {
                 var set = resolver.Resolve(catalog, gender);
                 Assert.AreEqual(5, set.Required.Count, gender + " required");
-                Assert.AreEqual(11, set.Items.Count, gender + " items");
+                Assert.AreEqual(18, set.Items.Count, gender + " items");
+                Assert.IsTrue(set.Items.Any(p => p.Id == "flip-flops" && !p.IsCorrect), gender + ": flip-flops are a distractor");
             }
 
             CollectionAssert.AreEquivalent(
@@ -211,6 +213,13 @@ namespace MultiTravel.Tests.EditMode
             Assert.AreEqual("Deniz Yatağı", Spec("sea-bed").DisplayName);
             Assert.AreEqual("Plaj Şapkası", Spec("beach-hat").DisplayName);
             Assert.AreEqual("Hasır Şapka", Spec("straw-hat").DisplayName);
+            Assert.AreEqual("Plaj Terliği", Spec("flip-flops").DisplayName);
+            Assert.AreEqual("Bahçe Cücesi", Spec("garden-gnome").DisplayName);
+            Assert.AreEqual("Boyama Kitabı", Spec("kids-book").DisplayName);
+            Assert.AreEqual("Dürbün", Spec("binoculars").DisplayName);
+            Assert.AreEqual("Oyuncak Ördek", Spec("rubber-duck").DisplayName);
+            Assert.AreEqual("Futbol Topu", Spec("football").DisplayName);
+            Assert.AreEqual("Ukulele", Spec("ukulele").DisplayName);
         }
 
         [Test]
@@ -240,10 +249,10 @@ namespace MultiTravel.Tests.EditMode
             // Hand-checked worst case per zone: the shelf wall is exact-fit (every item has a slot).
             Assert.AreEqual(2, minimum[DisplayZone.Hanging]);
             Assert.AreEqual(3, minimum[DisplayZone.Folded]);
-            Assert.AreEqual(1, minimum[DisplayZone.Shoes]);
-            Assert.AreEqual(1, minimum[DisplayZone.Accessories]);
-            Assert.AreEqual(2, minimum[DisplayZone.Business]);
-            Assert.AreEqual(3, minimum[DisplayZone.Leisure]);
+            Assert.AreEqual(2, minimum[DisplayZone.Shoes]);
+            Assert.AreEqual(3, minimum[DisplayZone.Accessories]);
+            Assert.AreEqual(4, minimum[DisplayZone.Business]);
+            Assert.AreEqual(5, minimum[DisplayZone.Leisure]);
         }
 
         [Test]

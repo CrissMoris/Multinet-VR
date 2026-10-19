@@ -41,6 +41,8 @@ namespace MultiTravel.EditorTools.SceneBuild
             Shot(cam, outDir, "scene-eye-right", new Vector3(0f, 1.70f, 0f), Quaternion.Euler(10f, 75f, 0f));
             Shot(cam, outDir, "scene-eye-down", new Vector3(0f, 1.70f, 0f), Quaternion.Euler(50f, 0f, 0f));
             Shot(cam, outDir, "scene-overview", new Vector3(0f, 2.4f, -2.8f), Quaternion.Euler(22f, 0f, 0f));
+            Shot(cam, outDir, "scene-start", new Vector3(0f, 1.70f, -5.6f), Quaternion.Euler(6f, 0f, 0f));
+            Shot(cam, outDir, "scene-approach", new Vector3(0f, 1.70f, -2.6f), Quaternion.Euler(10f, 0f, 0f));
             Shot(cam, outDir, "scene-top", new Vector3(0f, 5.0f, 0.8f), Quaternion.Euler(90f, 0f, 0f));
             UnityEngine.Object.DestroyImmediate(camGo);
         }

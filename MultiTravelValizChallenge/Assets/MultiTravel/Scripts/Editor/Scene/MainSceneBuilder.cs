@@ -123,6 +123,7 @@ namespace MultiTravel.EditorTools.SceneBuild
             layout.SetSlots(spawnSlots);
             ValidateZoneCapacity(catalog, layout);
             AddZoneLabels(spawnSlots, environment);
+            AddShelfDecor(environment);
             AddBrandDecor(environment);
 
             var suitcase = BuildSuitcase(pool, out var lid, out var practiceSpawn);
@@ -272,10 +273,47 @@ namespace MultiTravel.EditorTools.SceneBuild
 
             CreateLogoQuad("Brand floor decal", environment, BrandAssets.LogoMaterial(BrandAssets.VerticalLight),
                 new Vector3(0f, floorTop, 1.2f), Quaternion.Euler(90f, 0f, 0f), new Vector2(0.8f, 0.447f));
+            AddIllustratedLogos(environment);
+        }
+
+        /// <summary>
+        /// The client's illustrated "M": large curved panels on the cabin's outer skin either side of the entrance (seen while
+        /// walking in from the room) and posters on the room's side walls and on the wall behind the start mark.
+        /// </summary>
+        private static void AddIllustratedLogos(Transform environment)
+        {
+            if (!System.IO.File.Exists(BrandAssets.MIllustration))
+            {
+                Debug.LogWarning("[MultiTravel] Illustrated logo missing: " + BrandAssets.MIllustration);
+                return;
+            }
+
+            var material = BrandAssets.LogoMaterial(BrandAssets.MIllustration);
+            var root = new GameObject("Illustrated logos").transform;
+            root.SetParent(environment, false);
+            const float aspect = BrandAssets.MIllustrationAspect;
+
+            // Cabin outer skin (radius ~2.0 m) beside the rear entrance (azimuth 180 deg = towards the start mark).
+            const float skinRadius = 2.03f;
+            foreach (float azimuth in new[] { 132f, -132f })
+            {
+                var panel = CreateCurvedLogo("Cabin skin logo", root, material, skinRadius, 1.22f, 1.15f, 1.15f / aspect, outward: true);
+                panel.transform.rotation = Quaternion.Euler(0f, azimuth, 0f);
+            }
+
+            // Room posters (room inner walls: x = +-4.23, back wall z = -7.93); the left wall carries the window and the rail
+            // further back, so its poster sits towards the front.
+            CreateLogoQuad("Room poster right", root, material, new Vector3(4.215f, 1.6f, -1.7f), Quaternion.Euler(0f, 90f, 0f), new Vector2(1.6f, 1.6f / aspect));
+            CreateLogoQuad("Room poster left", root, material, new Vector3(-4.215f, 1.6f, 0.7f), Quaternion.Euler(0f, -90f, 0f), new Vector2(1.6f, 1.6f / aspect));
+            CreateLogoQuad("Room poster back", root, material, new Vector3(0f, 1.65f, -7.915f), Quaternion.Euler(0f, 180f, 0f), new Vector2(2.0f, 2.0f / aspect));
         }
 
         /// <summary>Strip of a cylinder around the vertical axis through the origin, facing the participant (UV 0..1).</summary>
-        private static void CreateCurvedLogo(string name, Transform parent, Material material, float radius, float centreY, float width, float height)
+        /// <summary>Width / height of the horizontal logo artwork.</summary>
+        private const float LogoAspect = 0.92f / 0.246f;
+
+        private static GameObject CreateCurvedLogo(string name, Transform parent, Material material, float radius, float centreY, float width, float height,
+            bool outward = false)
         {
             const int segments = 24;
             var vertices = new Vector3[(segments + 1) * 2];
@@ -291,8 +329,9 @@ namespace MultiTravel.EditorTools.SceneBuild
                 {
                     int k = i * 2 + j;
                     vertices[k] = dir * radius + Vector3.up * (centreY + (j == 0 ? -height : height) * 0.5f);
-                    uv[k] = new Vector2(u, j);
-                    normals[k] = -dir;
+                    // Outward strips (cabin's outer skin) are seen from outside: mirror u so the artwork reads correctly.
+                    uv[k] = new Vector2(outward ? 1f - u : u, j);
+                    normals[k] = outward ? dir : -dir;
                 }
             }
 
@@ -301,9 +340,17 @@ namespace MultiTravel.EditorTools.SceneBuild
             {
                 int k = i * 2;
                 int t = i * 6;
-                // Clockwise seen from the participant (origin side), so the face points at the participant.
-                triangles[t] = k; triangles[t + 1] = k + 1; triangles[t + 2] = k + 2;
-                triangles[t + 3] = k + 1; triangles[t + 4] = k + 3; triangles[t + 5] = k + 2;
+                // Clockwise seen from the participant (origin side), so the face points at the participant; reversed outward.
+                if (outward)
+                {
+                    triangles[t] = k; triangles[t + 1] = k + 2; triangles[t + 2] = k + 1;
+                    triangles[t + 3] = k + 1; triangles[t + 4] = k + 2; triangles[t + 5] = k + 3;
+                }
+                else
+                {
+                    triangles[t] = k; triangles[t + 1] = k + 1; triangles[t + 2] = k + 2;
+                    triangles[t + 3] = k + 1; triangles[t + 4] = k + 3; triangles[t + 5] = k + 2;
+                }
             }
 
             var mesh = new Mesh { name = name };
@@ -318,6 +365,7 @@ namespace MultiTravel.EditorTools.SceneBuild
             renderer.sharedMaterial = material;
             renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             renderer.receiveShadows = false;
+            return go;
         }
 
         private static void CreateLogoQuad(string name, Transform parent, Material material, Vector3 position, Quaternion rotation, Vector2 size)
@@ -350,43 +398,61 @@ namespace MultiTravel.EditorTools.SceneBuild
             }
         }
 
-        /// <summary>Zone title on the header band of the shelf wall (<c>UI.header_&lt;zone&gt;</c> markers from the art).</summary>
+        /// <summary>
+        /// MultiTravel logo on every header band of the shelf wall (<c>UI.header_&lt;zone&gt;</c> markers from the art). The
+        /// shelves deliberately carry no category names (business / leisure …): the participant decides what a trip needs.
+        /// </summary>
         private static void AddZoneLabels(List<SpawnSlot> slots, Transform environment)
         {
-            var root = new GameObject("Zone labels").transform;
+            var root = new GameObject("Header logos").transform;
             root.SetParent(environment, false);
-            var font = FontAssetGeneratorLoad();
+            var material = BrandAssets.LogoMaterial(BrandAssets.HorizontalLight);
             foreach (DisplayZone zone in Enum.GetValues(typeof(DisplayZone)))
             {
-                string title = ZoneTitle(zone);
-                var marker = title == null ? null : FindMarker(environment, "UI.header_" + zone.ToString().ToLowerInvariant());
+                if (ZoneTitle(zone) == null)
+                {
+                    continue;
+                }
+
+                var marker = FindMarker(environment, "UI.header_" + zone.ToString().ToLowerInvariant());
                 if (marker == null)
                 {
                     continue;
                 }
 
-                var go = new GameObject("Zone label " + zone);
-                go.transform.SetParent(root, false);
-                var toEye = new Vector3(0f, 1.7f, 0f) - marker.position;
-                toEye.y = 0f;
-                float width = Mathf.Clamp(Mathf.Abs(marker.lossyScale.x) * 0.75f, 0.15f, 0.6f);
-                float radius = new Vector2(marker.position.x, marker.position.z).magnitude;
-                // The header band is a concave arc: lift the flat label by the sag over its width so its ends are not hidden.
-                float sag = radius - Mathf.Sqrt(Mathf.Max(0.01f, radius * radius - width * width * 0.25f));
-                go.transform.SetPositionAndRotation(marker.position + toEye.normalized * (sag + 0.008f), Quaternion.LookRotation(-toEye.normalized, Vector3.up));
-                var label = go.AddComponent<TMPro.TextMeshPro>();
-                label.font = font;
-                label.text = title;
-                label.fontSize = 1.0f;
-                label.enableAutoSizing = true;
-                label.fontSizeMin = 0.2f;
-                label.fontSizeMax = 1.0f;
-                label.alignment = TMPro.TextAlignmentOptions.Center;
-                label.fontStyle = TMPro.FontStyles.Bold;
-                label.color = Color.white;
-                label.textWrappingMode = TMPro.TextWrappingModes.NoWrap;
-                label.rectTransform.sizeDelta = new Vector2(width, 0.2f);
-                label.raycastTarget = false;
+                // Curved strip on the concave header band, just in front of it, centred on the marker's azimuth.
+                float radius = new Vector2(marker.position.x, marker.position.z).magnitude - 0.012f;
+                float width = Mathf.Clamp(Mathf.Abs(marker.lossyScale.x) * 0.8f, 0.2f, 0.56f);
+                float height = width / LogoAspect;
+                var logo = CreateCurvedLogo("Header logo " + zone, root, material, radius, marker.position.y, width, height);
+                logo.transform.rotation = Quaternion.Euler(0f, Mathf.Atan2(marker.position.x, marker.position.z) * Mathf.Rad2Deg, 0f);
+            }
+        }
+
+        /// <summary>
+        /// Shelf-end decoration from the art markers: the MultiTravel logo on the front of every storage box
+        /// (<c>UI.boxlogo.*</c>) and a ceramic vase (Poly Haven) at every <c>DECOR.plant.*</c>.
+        /// </summary>
+        private static void AddShelfDecor(Transform environment)
+        {
+            var root = new GameObject("Shelf decor").transform;
+            root.SetParent(environment, false);
+            var logo = BrandAssets.LogoMaterial(BrandAssets.VerticalLight);
+            int plants = 0;
+            foreach (var t in environment.GetComponentsInChildren<Transform>(true))
+            {
+                if (t.name.StartsWith("UI.boxlogo.", StringComparison.Ordinal))
+                {
+                    // Face the participant (cabin centre): the quad's front side looks along -Z.
+                    var away = t.position;
+                    away.y = 0f;
+                    CreateLogoQuad("Box logo", root, logo, t.position, Quaternion.LookRotation(away.normalized, Vector3.up), new Vector2(0.16f, 0.16f / 1.787f));
+                }
+                else if (t.name.StartsWith("DECOR.plant.", StringComparison.Ordinal))
+                {
+                    // The Poly Haven calathea file holds several small plants (too scattered at shelf scale): a ceramic vase.
+                    ImportFurniture("ceramic_vase_01", root, t.position, 0.13f, 37f * ++plants, worldMeasure: true);
+                }
             }
         }
 
@@ -611,7 +677,8 @@ namespace MultiTravel.EditorTools.SceneBuild
                 light.range = n.Contains("room_") ? 8f : 4f;
                 light.spotAngle = 55f;
                 light.innerSpotAngle = 30f;
-                light.intensity = n.Contains("room_") ? 1.1f : 1.6f;
+                // Cabin lights match the room level (they used to make the cabin look much brighter than the room).
+                light.intensity = n.Contains("room_") ? 1.1f : 0.9f;
                 light.shadows = LightShadows.None;
                 light.lightmapBakeType = LightmapBakeType.Baked;
                 if (n.Contains("suitcase"))
@@ -676,11 +743,12 @@ namespace MultiTravel.EditorTools.SceneBuild
             var go = new GameObject("Light probes");
             var group = go.AddComponent<LightProbeGroup>();
             var positions = new List<Vector3>();
-            for (float x = -1.2f; x <= 1.21f; x += 0.4f)
+            // Covers the widened cabin (shelf wall radius 1.8 m, backdrop 2.25 m).
+            for (float x = -1.8f; x <= 1.81f; x += 0.45f)
             {
                 for (float y = 0.5f; y <= 2.01f; y += 0.5f)
                 {
-                    for (float z = -0.6f; z <= 1.61f; z += 0.4f)
+                    for (float z = -1.35f; z <= 2.06f; z += 0.45f)
                     {
                         positions.Add(new Vector3(x, y, z));
                     }
@@ -694,7 +762,7 @@ namespace MultiTravel.EditorTools.SceneBuild
         {
             var probe = new GameObject("Stage reflection").AddComponent<ReflectionProbe>();
             probe.transform.position = new Vector3(0f, 1.3f, 0.35f);
-            probe.size = new Vector3(4.2f, 2.8f, 4.0f);
+            probe.size = new Vector3(5.0f, 2.8f, 4.8f);
             probe.boxProjection = true;
             probe.mode = ReflectionProbeMode.Baked;
             probe.resolution = 256;
@@ -787,7 +855,8 @@ namespace MultiTravel.EditorTools.SceneBuild
             return go;
         }
 
-        private static void ImportFurniture(string id, Transform parent, Vector3 position, float width, float yaw, bool hang = false)
+        private static void ImportFurniture(string id, Transform parent, Vector3 position, float width, float yaw, bool hang = false,
+            bool worldMeasure = false)
         {
             var folder = $"{ArtImporter.PolyHavenFolder}/{id}";
             var guids = AssetDatabase.FindAssets("t:Model", new[] { folder });
@@ -801,13 +870,32 @@ namespace MultiTravel.EditorTools.SceneBuild
             var go = (GameObject)PrefabUtility.InstantiatePrefab(model, parent);
             go.name = id;
             go.transform.localRotation = Quaternion.Euler(0f, yaw, 0f) * go.transform.localRotation;
-            var b = ArtImporter.RendererBounds(go);
+            // worldMeasure: some Poly Haven roots carry an import scale (e.g. the ceramic vase) that the root-local bounds do
+            // not see, which blew the model up; the room furniture keeps the original root-local measurement.
+            var b = worldMeasure ? WorldRendererBounds(go) : ArtImporter.RendererBounds(go);
             float horizontal = Mathf.Max(b.size.x, b.size.z);
             go.transform.localScale *= width / Mathf.Max(0.001f, horizontal);
-            var wb = ArtImporter.RendererBounds(go);
+            var wb = worldMeasure ? WorldRendererBounds(go) : ArtImporter.RendererBounds(go);
             float y = hang ? position.y - wb.size.y : position.y;
             go.transform.position += new Vector3(position.x, y, position.z) - new Vector3(wb.center.x, wb.min.y, wb.center.z);
             RemapPolyHavenMaterials(go, id);
+        }
+
+        private static Bounds WorldRendererBounds(GameObject root)
+        {
+            var renderers = root.GetComponentsInChildren<Renderer>();
+            if (renderers.Length == 0)
+            {
+                return new Bounds(root.transform.position, Vector3.one * 0.1f);
+            }
+
+            var bounds = renderers[0].bounds;
+            for (int i = 1; i < renderers.Length; i++)
+            {
+                bounds.Encapsulate(renderers[i].bounds);
+            }
+
+            return bounds;
         }
 
         private static void RemapPolyHavenMaterials(GameObject go, string id)

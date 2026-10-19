@@ -4,8 +4,9 @@ import math
 from mathutils import Vector
 
 import bmesh
-from mtlib import (arc_points, box, bake, cylinder, export_asset, extrude_outline, from_bmesh, mirror_x, rotate,
-                   rounded_rect, soft_body, sphere, sweep, text, torus, translate, add_bevel, add_subsurf)
+import bpy
+from mtlib import (arc_points, box, bake, cylinder, dress_collar, export_asset, extrude_outline, from_bmesh, mirror_x, rotate,
+                   rounded_rect, soft_body, sphere, sweep, text, torus, translate, add_bevel, add_subsurf, fabric_noise)
 
 BUILDERS = {}
 
@@ -39,10 +40,8 @@ def folded_top(name, mat, width=0.27, length=0.36, thick=0.035, collar="shirt", 
     parts.append(box("hem", (w * 0.97, 0.05, t * 0.25), (0, -l / 2 + 0.03, t)))
     neck_y = l / 2 - 0.07
     if collar == "shirt":
-        parts.append(torus("collar", 0.058, 0.010, (0, neck_y, t + 0.006), mat=mat, scale=(1, 2.0), segments=10))
-        for s in (-1, 1):
-            parts.append(box("collar_point", (0.045, 0.055, 0.007), (s * 0.03, neck_y - 0.06, t + 0.005), (0, 0, math.radians(s * 28))))
-        parts.append(box("placket", (0.024, l - 0.14, 0.004), (0, -0.07, t + 0.001)))
+        # placket from under the collar to the hem (the standing collar itself is added after the fabric body)
+        parts.append(box("placket", (0.024, l - 0.12, 0.004), (0, -0.06, t + 0.001)))
     elif collar == "crew":
         parts.append(torus("rib", 0.062, 0.008, (0, neck_y + 0.01, t + 0.002), mat=mat, scale=(1.6, 1.0), segments=10))
     elif collar == "vneck":
@@ -63,8 +62,12 @@ def folded_top(name, mat, width=0.27, length=0.36, thick=0.035, collar="shirt", 
     body.name = name
     top = t + 0.0035
     if collar == "shirt":
+        # retail fold: buttoned standing collar on top of the fold, leaf points lying towards the placket (-Y)
+        dress_collar(mat, t + 0.006, center=(0, neck_y), front=-1, rx=0.062, ry=0.046, tip_drop=0.003, gap_deg=12,
+                     tip_reach=1.9, tip_x=0.042)
+        cylinder("collar_button", 0.0045, 0.0024, (0, neck_y - 0.046, t + 0.016), (math.radians(90), 0, 0), mat=button_mat, segments=12)
         for i in range(buttons):
-            cylinder("button", 0.0052, 0.0028, (0, neck_y - 0.07 - i * 0.055, top), mat=button_mat, segments=14, bevel=0.0008)
+            cylinder("button", 0.0052, 0.0028, (0, neck_y - 0.085 - i * 0.052, top), mat=button_mat, segments=14, bevel=0.0008)
     elif buttons:
         for i in range(buttons):
             y = neck_y - 0.17 - i * 0.07 if lapels else neck_y - 0.06 - i * 0.05
@@ -209,11 +212,14 @@ def shoe(length, width, height, mat, sole_mat, heel_raise=0.0, pump=False, laces
     """One right shoe (toe +Y) built from lofted superellipse cross-sections."""
     n_len, n_arc = 24, 14
     keys = [0, 0.08, 0.3, 0.55, 0.72, 0.86, 0.95, 1.0]
-    w_prof = [0.6, 0.72, 0.74, 0.86, 1.0, 0.86, 0.6, 0.18]
     if pump:
-        h_prof = [0.85, 0.82, 0.62, 0.48, 0.38, 0.32, 0.25, 0.1]
+        # almond toe, low vamp, slim heel counter
+        w_prof = [0.56, 0.66, 0.7, 0.84, 0.96, 0.8, 0.5, 0.14]
+        h_prof = [0.6, 0.52, 0.4, 0.35, 0.35, 0.31, 0.24, 0.1]
     else:
-        h_prof = [0.9, 0.96, 0.92, 0.82, 0.62, 0.48, 0.38, 0.15]
+        # oxford last: heel counter, high instep, rounded toe box that stays tall to the tip
+        w_prof = [0.62, 0.74, 0.76, 0.88, 1.0, 0.92, 0.74, 0.34]
+        h_prof = [0.8, 0.88, 0.96, 1.0, 0.74, 0.56, 0.46, 0.3]
 
     def z_off(t):
         if heel_raise <= 0:
@@ -237,8 +243,8 @@ def shoe(length, width, height, mat, sole_mat, heel_raise=0.0, pump=False, laces
         for k in range(n_arc + 1):
             a = math.pi * k / n_arc
             c, s = math.cos(a), math.sin(a)
-            x = (w / 2) * math.copysign(abs(c) ** 0.7, c) - bias * 0.5
-            z = h * (abs(s) ** 0.55)
+            x = (w / 2) * math.copysign(abs(c) ** (0.7 if pump else 0.82), c) - bias * 0.5
+            z = h * (abs(s) ** (0.55 if pump else 0.68))
             ring.append(bm.verts.new((x, y, z + zo)))
         for k in (1, 2, 3):  # flat bottom chord, left -> right
             x = -w / 2 + w * k / 4 - bias * 0.5
@@ -253,14 +259,14 @@ def shoe(length, width, height, mat, sole_mat, heel_raise=0.0, pump=False, laces
     bm.faces.new(rings[-1][1])
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
     # opening (collar / topline)
-    open_end = 0.52 if pump else 0.36
+    open_end = 0.52 if pump else 0.33
     doomed = []
     for f in bm.faces:
         c = f.calc_center_median()
         t = c.y / length + 0.5
         _, _, h, _ = section(min(max(t, 0), 1))
         local_z = c.z - z_off(min(max(t, 0), 1))
-        thresh = (0.5 if pump else 0.7) * h
+        thresh = (0.4 if pump else 0.64) * h
         if t < open_end and local_z > thresh and t > -0.02:
             doomed.append(f)
     bmesh.ops.delete(bm, geom=doomed, context="FACES")
@@ -294,7 +300,7 @@ def shoe(length, width, height, mat, sole_mat, heel_raise=0.0, pump=False, laces
 
     # outsole following the bottom outline (and the heel rise), thickness downward
     sole_t = 0.004 if pump else 0.011
-    sole = strip("sole", sole_mat, 0.0, 1.0, 1.03, 0.001, sole_t + 0.001)
+    sole = strip("sole", sole_mat, 0.0, 1.0, 1.0 if pump else 1.07, 0.001, sole_t + 0.001)
     add_bevel(sole, 0.0015, 2, angle=50)
     objs = [upper, sole]
     # sock lining / insole visible through the opening, following the footbed slope
@@ -307,17 +313,44 @@ def shoe(length, width, height, mat, sole_mat, heel_raise=0.0, pump=False, laces
         y, w, _, b = section(0.1)
         objs.append(box("heel_block", (w * 0.98, length * 0.22, 0.018), (-b * 0.5, y + 0.01, -sole_t - 0.009 + 0.001), mat=sole_mat, bevel=0.002))
     if laces:
-        for j, t in enumerate((0.42, 0.47, 0.52, 0.57)):
-            y, w, h, b = section(t)
-            z = h + z_off(t) + 0.0005
-            objs.append(cylinder("lace", 0.0018, w * 0.34, (-b * 0.5, y, z), (0, math.radians(90), 0), mat=lace_mat, segments=8))
+        # closed oxford lacing: two eyelet facings meeting in the middle, five lace bars, eyelets, a tied bow
         for s in (-1, 1):
-            y, w, h, b = section(0.49)
-            objs.append(box("facing", (0.012, length * 0.2, 0.003), (-b * 0.5 + s * w * 0.2, y, h + 0.0005), (math.radians(-12), 0, 0), mat=mat, bevel=0.001))
+            pts = []
+            for i in range(7):
+                t = 0.36 + 0.24 * i / 6
+                y, w, h, b = section(t)
+                pts.append((-b * 0.5 + s * w * 0.13, y, h + z_off(t) - 0.0004))
+            objs.append(sweep("facing", pts, 0.011, mat, segments=10, scale=(1.0, 0.22)))
+        for j in range(5):
+            t = 0.38 + 0.05 * j
+            y, w, h, b = section(t)
+            z = h + z_off(t) + 0.0016
+            objs.append(cylinder("lace", 0.0016, w * 0.33, (-b * 0.5, y, z), (0, math.radians(90), 0), mat=lace_mat, segments=8))
+            for s in (-1, 1):
+                objs.append(cylinder("eyelet", 0.0022, 0.0012, (-b * 0.5 + s * w * 0.165, y, z - 0.0006), mat="chrome", segments=10))
+        y, w, h, b = section(0.37)
+        zb = h + z_off(0.37) + 0.003
+        for s in (-1, 1):
+            objs.append(torus("bow", 0.009, 0.0016, (-b * 0.5 + s * 0.009, y - 0.004, zb), (math.radians(70), 0, math.radians(s * 25)), mat=lace_mat, segments=6, steps=16))
+            objs.append(sweep("lace_end", [(-b * 0.5, y - 0.004, zb), (-b * 0.5 + s * 0.012, y - 0.02, zb - 0.006), (-b * 0.5 + s * 0.016, y - 0.03, zb - 0.014)], 0.0015, lace_mat, segments=6))
+        # toe-cap seam across the toe box
+        seam = []
+        y, w, h, b = section(0.8)
+        for k in range(15):
+            a = math.pi * (0.08 + 0.84 * k / 14)
+            c, s_ = math.cos(a), math.sin(a)
+            seam.append(((w / 2) * math.copysign(abs(c) ** 0.82, c) - b * 0.5, y, h * (abs(s_) ** 0.68) + z_off(0.8) + 0.0012))
+        objs.append(sweep("toe_seam", seam, 0.0011, mat, segments=6))
     # lift everything so the lowest point sits at z=0
     lowest = -sole_t - (0.018 if not pump else 0) if not pump else -sole_t
     translate(objs, (0, 0, -lowest))
     return objs
+
+
+def toes_to_participant():
+    """Turns everything built so far 180 deg about Z: the toes point at the participant (-Y here), as shoes are shown on
+    a shop shelf, instead of the heels."""
+    rotate([o for o in bpy.context.scene.objects if o.type == "MESH"], 180, "Z")
 
 
 def shoe_pair(build):
@@ -325,6 +358,7 @@ def shoe_pair(build):
     translate(right, (0.06, 0, 0))
     rotate(right, -4, "Z", (0.06, 0, 0))
     mirror_x(right)
+    toes_to_participant()
 
 
 @builder("men-shoes")
@@ -339,17 +373,44 @@ def women_shoes():
 
 @builder("flip-flops")
 def flip_flops():
+    """Pair of beach flip-flops: two-layer foam sole (coloured footbed on a dark rubber outsole) with a heel cup and toe
+    grip, flat Y straps meeting at a toe post."""
+    foot = [(0.0, 0.13), (0.03, 0.125), (0.045, 0.09), (0.047, 0.03), (0.038, -0.03), (0.04, -0.09), (0.03, -0.12),
+            (0.0, -0.13), (-0.03, -0.12), (-0.04, -0.08), (-0.036, -0.02), (-0.042, 0.05), (-0.035, 0.11), (-0.02, 0.128)]
+
+    def smooth_loop(pts, sub=6):
+        """Closed Catmull-Rom curve through the outline points (rounded sole edge instead of a polygon)."""
+        out, n = [], len(pts)
+        for i in range(n):
+            p0, p1, p2, p3 = pts[i - 1], pts[i], pts[(i + 1) % n], pts[(i + 2) % n]
+            for k in range(sub):
+                t = k / sub
+                t2, t3 = t * t, t * t * t
+                out.append(tuple(0.5 * (2 * p1[j] + (-p0[j] + p2[j]) * t + (2 * p0[j] - 5 * p1[j] + 4 * p2[j] - p3[j]) * t2
+                                        + (-p0[j] + 3 * p1[j] - 3 * p2[j] + p3[j]) * t3) for j in (0, 1)))
+        return out
+
+    foot = smooth_loop(foot)
+
     def one():
-        foot = [(0.0, 0.13), (0.03, 0.125), (0.045, 0.09), (0.047, 0.03), (0.038, -0.03), (0.04, -0.09), (0.03, -0.12),
-                (0.0, -0.13), (-0.03, -0.12), (-0.04, -0.08), (-0.036, -0.02), (-0.042, 0.05), (-0.035, 0.11), (-0.02, 0.128)]
-        sole = extrude_outline("foam", foot, 0.016, "flipflop_foam", bevel=0.004)
-        straps = [sweep("strap", [(-0.04, -0.01, 0.014), (-0.025, 0.04, 0.03), (-0.008, 0.085, 0.022), (0.0, 0.095, 0.016)], 0.005, "flipflop_strap", scale=(1, 0.5)),
-                  sweep("strap", [(0.042, -0.01, 0.014), (0.026, 0.04, 0.03), (0.008, 0.085, 0.022), (0.0, 0.095, 0.016)], 0.005, "flipflop_strap", scale=(1, 0.5)),
-                  cylinder("toe_post", 0.004, 0.014, (0, 0.095, 0.018), mat="flipflop_strap", segments=10)]
-        objs = [sole] + straps
+        outsole = extrude_outline("outsole", foot, 0.008, "sole_rubber", bevel=0.003)
+        footbed = extrude_outline("footbed", [(x * 0.985, y * 0.99) for x, y in foot], 0.009, "flipflop_foam", loc=(0, 0, 0.0075), bevel=0.004)
+        # soft footbed: a shallow heel cup and slightly raised toe grip
+        for v in footbed.data.vertices:
+            if v.co.z > 0.012:
+                y = v.co.y
+                v.co.z -= 0.0025 * max(0.0, 1 - abs(y + 0.085) / 0.05) - 0.001 * max(0.0, 1 - abs(y - 0.1) / 0.03)
+        straps = [sweep("strap", [(-0.042, -0.012, 0.016), (-0.03, 0.03, 0.03), (-0.012, 0.075, 0.027), (0.0, 0.094, 0.02)], 0.0065, "flipflop_strap", scale=(1, 0.38)),
+                  sweep("strap", [(0.044, -0.012, 0.016), (0.031, 0.03, 0.03), (0.012, 0.075, 0.027), (0.0, 0.094, 0.02)], 0.0065, "flipflop_strap", scale=(1, 0.38)),
+                  cylinder("toe_post", 0.0042, 0.016, (0, 0.096, 0.021), mat="flipflop_strap", segments=12, bevel=0.0015),
+                  cylinder("anchor", 0.0055, 0.0022, (0, 0.096, 0.0164), mat="flipflop_strap", segments=12)]
+        for s_ in (-1, 1):
+            straps.append(cylinder("anchor", 0.0052, 0.002, (s_ * 0.043, -0.012, 0.0164), mat="flipflop_strap", segments=12))
+        objs = [outsole, footbed] + straps
         translate(objs, (0.055, 0, 0))
         return objs
     mirror_x(one())
+    toes_to_participant()
 
 
 # --------------------------------------------------------------------------------------------- electronics & business
@@ -372,7 +433,7 @@ def phone():
 
 @builder("laptop")
 def laptop():
-    """13-inch laptop, lid open ~70 deg so it reads as a laptop at arm's length (keyboard + dark screen)."""
+    """13-inch laptop, lid open ~110 deg (screen leaning slightly back) so it reads as a laptop at arm's length."""
     w, d = 0.312, 0.221
     extrude_outline("base", rounded_rect(w, d, 0.012, 6), 0.0085, "aluminium", bevel=0.0025)
     box("keyboard", (0.27, 0.105, 0.0012), (0, 0.012, 0.0085), mat="keyboard_keys", bevel=0.0004)
@@ -383,8 +444,9 @@ def laptop():
     lid = [extrude_outline("lid", rounded_rect(w, d - 0.002, 0.012, 6), 0.0062, "aluminium", loc=(0, 0.001, 0.0094), bevel=0.0022),
            extrude_outline("screen", rounded_rect(w - 0.016, d - 0.02, 0.006, 4), 0.0006, "glass_screen", loc=(0, 0.001, 0.0088)),
            box("notch", (0.05, 0.004, 0.0012), (0, -d / 2 + 0.001, 0.0092), mat="space_grey", bevel=0.0004)]
-    # the screen faces down when closed; open the lid 70 deg about the hinge (far edge), screen towards the user
-    rotate(lid, 70, "X", (0, d / 2 - 0.002, 0.0085))
+    # the screen faces down when closed; open the lid 110 deg about the hinge (far edge): up and slightly back, screen
+    # towards the user (-Y). A positive angle would swing the lid down through the base.
+    rotate(lid, -110, "X", (0, d / 2 - 0.002, 0.0085))
     cylinder("hinge", 0.0045, w * 0.8, (0, d / 2 - 0.002, 0.0085), (0, math.radians(90), 0), mat="space_grey", segments=16)
     for x in (-1, 1):
         for y in (-1, 1):
@@ -537,19 +599,46 @@ def travel_bag():
 
 @builder("beach-towel")
 def beach_towel():
+    """Rolled terry beach towel: a real spiral of fabric (layers visible at both ends), outer edge lying loose,
+    slightly squashed where it rests; turquoise / white / orange stripes across the width."""
     bands = [("towel_turquoise", 0.13), ("towel_white", 0.04), ("towel_orange", 0.06), ("towel_white", 0.04), ("towel_turquoise", 0.13)]
-    x = -sum(b[1] for b in bands) / 2
-    for mat, wdt in bands:
-        o = cylinder("roll", 0.062, wdt, (x + wdt / 2, 0, 0.062), (0, math.radians(90), 0), mat=mat, segments=28)
-        x += wdt
-    # spiral visible at both ends
-    for s in (-1, 1):
-        pts = []
-        for i in range(70):
-            a = i * 0.32
-            r = 0.012 + a * 0.0023
-            pts.append((s * 0.2005, math.cos(a) * r, 0.062 + math.sin(a) * r))
-        sweep("spiral", pts, 0.0018, "towel_white", segments=6, scale=(0.4, 1))
+    width = sum(b[1] for b in bands)
+    sheet, pitch, r0, r_max, per_turn = 0.0042, 0.0058, 0.006, 0.058, 28
+    turns = (r_max - r0) / pitch
+    n = int(turns * per_turn)
+    outer, inner = [], []
+    for i in range(n + 1):
+        th = 2 * math.pi * i / per_turn
+        r = r0 + pitch * th / (2 * math.pi) + 0.0009 * math.sin(th * 0.37 + 1.3)   # hand-rolled: uneven layers
+        # the last half turn peels off a little: the loose outer edge
+        tail = max(0.0, (i - (n - per_turn * 0.5)) / (per_turn * 0.5))
+        r += 0.006 * tail * tail
+        c, s_ = math.cos(th), math.sin(th)
+        outer.append((r + sheet / 2, c, s_))
+        inner.append((r - sheet / 2, c, s_))
+    section = [(r * c, r * s_ * 0.86) for r, c, s_ in outer] + [(r * c, r * s_ * 0.86) for r, c, s_ in reversed(inner)]
+    z_lift = r_max * 0.86 + 0.004
+    x = -width / 2
+    for k, (mat, w) in enumerate(bands):
+        bm = bmesh.new()
+        a_ring = [bm.verts.new((x, py, pz + z_lift)) for py, pz in section]
+        b_ring = [bm.verts.new((x + w, py, pz + z_lift)) for py, pz in section]
+        m = len(section)
+        for j in range(m):
+            bm.faces.new((a_ring[j], a_ring[(j + 1) % m], b_ring[(j + 1) % m], b_ring[j]))
+        if k == 0:
+            bm.faces.new(list(reversed(a_ring)))
+        if k == len(bands) - 1:
+            bm.faces.new(b_ring)
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+        seg = from_bmesh("roll_" + mat, bm, mat)
+        for poly in seg.data.polygons:
+            poly.use_smooth = True
+        # gentle sag in the middle of the roll and a soft, slightly lumpy terry surface
+        for v in seg.data.vertices:
+            v.co.z -= 0.006 * math.cos(math.pi * v.co.x / width)
+        fabric_noise(seg, strength=0.0022, scale=0.02, subdivide=0)
+        x += w
 
 
 @builder("snorkel-mask")

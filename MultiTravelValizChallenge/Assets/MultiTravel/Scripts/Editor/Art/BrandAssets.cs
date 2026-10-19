@@ -16,6 +16,12 @@ namespace MultiTravel.EditorTools.Art
         public const string VerticalLight = Folder + "/mt-logo-vertical-light.png";
         public const string VerticalDark = Folder + "/mt-logo-vertical-dark.png";
 
+        /// <summary>Official illustrated "M" (travel scenes inside the M), supplied by the client in October 2026.</summary>
+        public const string MIllustration = Folder + "/mt-m-illustration.png";
+
+        /// <summary>Width / height of <see cref="MIllustration"/> (trimmed artwork).</summary>
+        public const float MIllustrationAspect = 2048f / 1403f;
+
         public static readonly Color Cyan = new Color32(0x5B, 0xC9, 0xEA, 255);
         public static readonly Color Blue = new Color32(0x25, 0xA9, 0xE0, 255);
         public static readonly Color Navy = new Color32(0x18, 0x15, 0x3D, 255);
@@ -23,7 +29,7 @@ namespace MultiTravel.EditorTools.Art
         /// <summary>Imports every logo as an alpha sprite (mip-mapped so it also works on 3D quads).</summary>
         public static void EnsureImported()
         {
-            foreach (var path in new[] { HorizontalLight, HorizontalDark, VerticalLight, VerticalDark })
+            foreach (var path in new[] { HorizontalLight, HorizontalDark, VerticalLight, VerticalDark, MIllustration })
             {
                 if (!File.Exists(path))
                 {
@@ -42,8 +48,9 @@ namespace MultiTravel.EditorTools.Art
                     continue;
                 }
 
+                int maxSize = path == MIllustration ? 2048 : 1024;
                 bool changed = importer.textureType != TextureImporterType.Sprite || !importer.alphaIsTransparency || !importer.mipmapEnabled ||
-                               importer.maxTextureSize != 1024 || importer.filterMode != FilterMode.Trilinear;
+                               importer.maxTextureSize != maxSize || importer.filterMode != FilterMode.Trilinear;
                 if (changed)
                 {
                     importer.textureType = TextureImporterType.Sprite;
@@ -51,7 +58,7 @@ namespace MultiTravel.EditorTools.Art
                     importer.alphaIsTransparency = true;
                     importer.mipmapEnabled = true;
                     importer.filterMode = FilterMode.Trilinear;
-                    importer.maxTextureSize = 1024;
+                    importer.maxTextureSize = maxSize;
                     importer.textureCompression = TextureImporterCompression.Uncompressed;
                     importer.SaveAndReimport();
                 }

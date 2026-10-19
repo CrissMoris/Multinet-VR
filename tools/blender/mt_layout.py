@@ -37,7 +37,7 @@ TOP_SHELF_T = 0.018               # top shelf board thickness (hanger hooks need
 GARMENT_LEN = 0.415               # hanging variants: hook top -> hem (hems at ~1.11)
 FOLDED_SHELVES = (0.98, 1.18, 1.40)   # bottom shelf 3 cm above the plan's 0.95: reach (it sits behind the console)
 DOOR_HINGE_R, DOOR_HINGE_T, DOOR_OPEN_DEG, DOOR_W = 0.85, 80.0, 125.0, 0.50
-BACKDROP_R, BACKDROP_ARC, BACKDROP_H = 1.90, 150.0, 2.60
+BACKDROP_R, BACKDROP_ARC, BACKDROP_H = 2.25, 150.0, 2.60   # behind the (wider) shelf wall; front room wall at 2.68
 STOPWATCH_Z, SCOREBOARD_T = 1.70, 22.0
 
 
@@ -103,11 +103,13 @@ def door_yaw(side):
 # scoreboard and logo, the rear (theta ~ 180) is the entrance from the hotel room.  Every zone owns an angular wedge with
 # its own accent colour and header band.  Items keep (almost) real size (ProductItem.DisplayScale) and the slots are sized by
 # item class:  S (<= 0.15 m wide), M (<= 0.26 m), W (wider).  Slot names carry the class: SLOT.<zone>.<nn>.<S|M|W>[T].
-WALL_R = 1.45                          # slot centre radius
-SHELF_IN, SHELF_OUT = 1.31, 1.59       # shelf boards, 0.28 m deep
-BACK_IN, BACK_OUT = 1.61, 1.63
-SKIN_OUT = 1.655                       # white outer skin seen from the hotel room
-ROW_Z = (0.85, 1.17, 1.49)             # shelf surface heights = slot heights (0.32 m apart: nothing is tall)
+WALL_R = 1.80                          # slot centre radius (was 1.45: the cabin felt too narrow, ~3.6 m across now)
+SHELF_IN, SHELF_OUT = WALL_R - 0.14, WALL_R + 0.14       # shelf boards, 0.28 m deep
+BACK_IN, BACK_OUT = WALL_R + 0.16, WALL_R + 0.18
+SKIN_OUT = WALL_R + 0.205              # white outer skin seen from the hotel room
+# Two display shelves at chest / eye height above a closed base cabinet (the knee-high third shelf always looked empty).
+ROW_Z = (1.02, 1.36)                   # shelf surface heights = slot heights (0.34 m apart: nothing is tall)
+CABINET_TOP = ROW_Z[0] - 0.024         # base cabinet body ends under the first shelf board
 TOP_ROW = len(ROW_Z) - 1
 FREE_ROW = 0                           # no row is clipped (the suitcase is far from the wall)
 WEDGE_MARGIN = 0.07                    # slot-free margin at each wedge boundary (m)
@@ -121,22 +123,25 @@ ENTRANCE_T = 152.0                     # wall ends here (rear opening = entrance
 
 # zone -> (side, class string of plain slots, class string of tall slots, accent material, front flag (unused))
 # Final product list (October 2026): laptop + charger (business), shirt / blouse + bikini (hanging), trousers + swim shorts +
-# beach towel (folded), classic shoes, hat (accessories), snorkel + fins + sea mattress (leisure).
+# beach towel (folded), classic shoes + flip-flops (shoes), hat (accessories), snorkel + fins + sea mattress (leisure).
 ZONES = {
-    "business": (-1, "SW", "", "velvet_navy", False),
+    "business": (-1, "SWMM", "", "velvet_navy", False),      # laptop, charger + garden gnome, colouring book
     "folded": (-1, "MWW", "", "towel_orange", False),
-    "leisure": (1, "MWW", "", "mat_teal", False),
-    "shoes": (1, "M", "", "leather_cognac", False),
-    "accessories": (1, "W", "", "walnut", False),
+    "leisure": (1, "MWWMW", "", "mat_teal", False),         # snorkel, fins, sea mattress + football, ukulele
+    "shoes": (1, "MM", "", "leather_cognac", False),     # classic shoes + flip-flops
+    "accessories": (1, "WMM", "", "walnut", False),         # hat + binoculars, rubber duck
 }
-ACCENT = {z: v[3] for z, v in ZONES.items()}
-ACCENT["hanging"] = "leather_tan"
+# One brand colour for every header band and shelf lip: the shelves must not read as categories (business / holiday …),
+# the participant decides what the trip needs. (Per-zone colours are kept in ZONES for reference only.)
+UNIFORM_ACCENT = "velvet_navy"
+ACCENT = {z: UNIFORM_ACCENT for z in ZONES}
+ACCENT["hanging"] = UNIFORM_ACCENT
 HANGING_SIDE = -1
 HANGING_WIDTH = 30.0       # minimum; the free angle of each side is shared out evenly
 SPREAD = True
 GAP_DEG = 1.6
 FIRST_T = FRONT_OPEN_T + 1.5
-RAILS = ((1.32, 1.86, 2), (1.45, 1.86, 2))      # hanging rails: (radius, height z, hooks); the rear rail is offset half a step
+RAILS = ((WALL_R - 0.13, 1.86, 2), (WALL_R, 1.86, 2))   # hanging rails: (radius, height z, hooks); the rear rail is offset half a step
 
 
 def row_start_angle(r=WALL_R):
@@ -149,7 +154,7 @@ def _row_avail(t0, t1, front, ri):
     return t0 + m, t1 - m
 
 
-def pack_zone(zone, t0, t1):
+def pack_zone(zone, t0, t1, spread=False):
     """Rows -> list of (class, tall) placed greedily, or None when the zone does not fit in the wedge."""
     side, plain, tall, accent, front = ZONES[zone]
     items = [(c, True) for c in tall] + [(c, False) for c in plain]
@@ -160,9 +165,15 @@ def pack_zone(zone, t0, t1):
         avail.append(math.radians(max(0.0, hi - lo)) * WALL_R)
     used = [0.0] * len(ROW_Z)
     rows = [[] for _ in ROW_Z]
-    order = [1, 2, 0] if len(ROW_Z) == 3 else list(range(len(ROW_Z)))        # middle shelf first: items sit side by side at chest height
+    order = [1, 2, 0] if len(ROW_Z) == 3 else list(range(len(ROW_Z)))        # tie-break: middle shelf, then top, then bottom
     for c, t in items:
-        cand = [TOP_ROW] if t else order
+        # spread the items over the rows (least-filled row first) so no shelf board stays empty and the wall looks stocked
+        if t:
+            cand = [TOP_ROW]
+        elif spread:
+            cand = sorted(order, key=lambda ri: (used[ri] / max(avail[ri], 1e-6), order.index(ri)))
+        else:
+            cand = order
         best = None
         for ri in cand:
             if used[ri] + SLOT_W[c] <= avail[ri] + 1e-9:
@@ -200,13 +211,43 @@ def _build_wedges():
             if zone == "hanging":
                 out[zone] = (side, t, t + w, None)
             else:
-                out[zone] = (side, t, t + w, pack_zone(zone, t, t + w))
+                # the wedge width comes from the one-shelf packing; the final layout spreads the items over all rows
+                out[zone] = (side, t, t + w, pack_zone(zone, t, t + w, spread=True))
             t += w + GAP_DEG
     return out
 
 
 WEDGES = _build_wedges()
 MAX_THETA = max(v[2] for v in WEDGES.values())
+
+
+DECOR_W = 0.26          # shelf-end decoration (storage box / small plant) reserved when the row has room for it
+DECOR_KINDS = ("box", "plant")
+
+
+def _decor_end(zone, ri):
+    """Which end of the row (0 = low angle, 1 = high angle) holds the decoration; alternates per zone and row."""
+    order = list(ZONES).index(zone) if zone in ZONES else 0
+    return (order + ri) % 2
+
+
+def decor_spots(zone):
+    """Shelf-end decorations of a zone: list of (name, pos, yaw, kind). Uses the same reservation as wedge_slots."""
+    side, t0, t1, rows = WEDGES[zone]
+    front = ZONES[zone][4]
+    out = []
+    for ri, row in enumerate(rows):
+        lo, hi = _row_avail(t0, t1, front, ri)
+        span = math.radians(hi - lo) * WALL_R
+        total = sum(SLOT_W[c] for c, _ in row)
+        if span - total < DECOR_W + 0.12 * max(1, len(row)):
+            continue
+        end = _decor_end(zone, ri)
+        centre = DECOR_W / 2 + 0.02 if end == 0 else span - DECOR_W / 2 - 0.02
+        t = side * (lo + math.degrees(centre / WALL_R))
+        kind = DECOR_KINDS[(list(ZONES).index(zone) + ri) % len(DECOR_KINDS)]
+        out.append((f"{zone}.{ri + 1:02d}", pol(WALL_R, t, ROW_Z[ri]), yaw_towards_player(t), kind))
+    return out
 
 
 def wedge_slots(zone):
@@ -220,8 +261,13 @@ def wedge_slots(zone):
         lo, hi = _row_avail(t0, t1, front, ri)
         total = sum(SLOT_W[c] for c, _ in row)
         span = math.radians(hi - lo) * WALL_R
+        offset = 0.0
+        if span - total >= DECOR_W + 0.12 * len(row):
+            # leave the decorated end free: the products share the rest of the row
+            span -= DECOR_W + 0.04
+            offset = DECOR_W + 0.04 if _decor_end(zone, ri) == 0 else 0.0
         gap = (span - total) / len(row)
-        x = gap / 2
+        x = offset + gap / 2
         for c, tall in row:
             centre = x + SLOT_W[c] / 2
             t = side * (lo + math.degrees(centre / WALL_R))

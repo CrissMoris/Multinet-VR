@@ -69,8 +69,10 @@ def stage_backdrop():
 def stage_floor():
     cylinder("platform", 2.5, 0.05, (0, 0, 0.025), mat="parquet_dark", segments=96)
     torus("edge_trim", 2.5, 0.025, (0, 0, 0.025), mat="stage_trim", steps=96, segments=10)
-    # a slim teal inlay ring marking the play area
-    arc_slab("inlay", 1.08, 1.12, -180, 180, 0.05, 0.052, "mat_teal", steps=96)
+    # a slim teal inlay ring marking the play area. Two half rings: a full 360 deg sector outline closes on itself and
+    # its cap filled the whole inner disc (a 2.2 m bright teal floor disc instead of a 4 cm line).
+    for t0 in (-180, 0):
+        arc_slab("inlay", 1.38, 1.42, t0, t0 + 180, 0.05, 0.052, "mat_teal", steps=48)
 
 
 @builder("floor-mat")

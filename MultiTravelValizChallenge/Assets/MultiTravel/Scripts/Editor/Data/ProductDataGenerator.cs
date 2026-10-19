@@ -114,7 +114,8 @@ namespace MultiTravel.EditorTools.Data
 
         /// <summary>
         /// The client's final product list (October 2026): five required items per gender (laptop, charger, shirt / blouse,
-        /// trousers, classic shoes) and six distractors (swimwear, snorkel, fins, hat, beach towel, sea mattress).
+        /// trousers, classic shoes) and thirteen distractors (swimwear, snorkel, fins, hat, beach towel, sea mattress, flip-flops,
+        /// garden gnome, colouring book, binoculars, rubber duck, football, ukulele).
         /// </summary>
         public static readonly IReadOnlyList<ProductSpec> DefaultProducts = new[]
         {
@@ -137,6 +138,14 @@ namespace MultiTravel.EditorTools.Data
             new ProductSpec("straw-hat", "Hasır Şapka", ProductCategory.Accessory, Male, false, 0.15f, Odd(DisplayZone.Accessories)),
             new ProductSpec("beach-towel", "Plaj Havlusu", ProductCategory.Leisure, Both, false, 0.6f, FoldedGarment()),
             new ProductSpec("sea-bed", "Deniz Yatağı", ProductCategory.Leisure, Both, false, 0.9f, Odd(DisplayZone.Leisure)),
+            new ProductSpec("flip-flops", "Plaj Terliği", ProductCategory.Shoes, Both, false, 0.25f, Shoe()),
+            // Shelf fillers (October 2026: "the shelves look empty"): photo-scanned Poly Haven models + the colouring book.
+            new ProductSpec("garden-gnome", "Bahçe Cücesi", ProductCategory.Other, Both, false, 1.0f, Odd(DisplayZone.Business)),
+            new ProductSpec("kids-book", "Boyama Kitabı", ProductCategory.Leisure, Both, false, 0.3f, FlatRigid(DisplayZone.Business)),
+            new ProductSpec("binoculars", "Dürbün", ProductCategory.Accessory, Both, false, 0.6f, Odd(DisplayZone.Accessories)),
+            new ProductSpec("rubber-duck", "Oyuncak Ördek", ProductCategory.Leisure, Both, false, 0.1f, Odd(DisplayZone.Accessories)),
+            new ProductSpec("football", "Futbol Topu", ProductCategory.Leisure, Both, false, 0.4f, Odd(DisplayZone.Leisure)),
+            new ProductSpec("ukulele", "Ukulele", ProductCategory.Leisure, Both, false, 0.5f, Odd(DisplayZone.Leisure)),
         };
 
         /// <summary>
@@ -150,9 +159,9 @@ namespace MultiTravel.EditorTools.Data
         public static readonly IReadOnlyList<string> RetiredProductIds = new[]
         {
             "crayons", "luggage-tag", "gamepad", "travel-bag", "socks", "men-tshirt", "women-tshirt", "dress", "jacket", "blazer",
-            "swimsuit", "tie", "flip-flops", "toiletry-bag", "laptop-bag", "notebook", "pen", "id-card", "passport", "phone",
-            "phone-cable", "headphones", "glasses", "sunglasses", "kids-book", "neck-pillow", "rubber-duck", "football", "ukulele",
-            "garden-gnome", "binoculars", "wristwatch", "cufflinks", "pearl-earrings", "minimal-necklace", "shell-necklace", "party-tiara"
+            "swimsuit", "tie", "toiletry-bag", "laptop-bag", "notebook", "pen", "id-card", "passport", "phone",
+            "phone-cable", "headphones", "glasses", "sunglasses", "neck-pillow",
+            "wristwatch", "cufflinks", "pearl-earrings", "minimal-necklace", "shell-necklace", "party-tiara"
         };
 
         public static string ProductPath(string id)
