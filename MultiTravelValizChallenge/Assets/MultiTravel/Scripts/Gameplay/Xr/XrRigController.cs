@@ -68,8 +68,8 @@ namespace MultiTravel.Gameplay.Xr
 
         [SerializeField]
         [Tooltip("Products must be reached and grabbed with the hand/controller (near casting only). Disables the template's " +
-                 "far (ray) grabbing on every Near-Far interactor.")]
-        private bool requirePhysicalReach = true;
+                 "far (ray) grabbing on every Near-Far interactor. Off: products can be picked with the controller ray from a distance.")]
+        private bool requirePhysicalReach = false;
 
         [SerializeField]
         [Tooltip("The XR Origin of the template rig. Found in the scene when empty.")]

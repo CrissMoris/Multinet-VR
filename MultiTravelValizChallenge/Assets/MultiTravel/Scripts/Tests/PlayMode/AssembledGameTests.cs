@@ -52,9 +52,8 @@ namespace MultiTravel.Tests.PlayMode
             yield return null;
             var rig=Object.FindAnyObjectByType<MultiTravel.Gameplay.Xr.XrRigController>();
             Assert.That(rig,Is.Not.Null);
-            Assert.That(rig.FarGrabDisabled,Is.True,"products must be grabbed by reaching, not by ray");
-            foreach(var nearFar in Object.FindObjectsByType<UnityEngine.XR.Interaction.Toolkit.Interactors.NearFarInteractor>(FindObjectsInactive.Include))
-                Assert.That(nearFar.enableFarCasting,Is.False,nearFar.name);
+            // October 2026: products can be picked with the controller ray (participants found reaching too fiddly).
+            Assert.That(rig.FarGrabDisabled,Is.False,"products may be grabbed with the ray from a distance");
             Assert.That(Object.FindAnyObjectByType<MultiTravel.Gameplay.Feedback.ProductNameTags>(),Is.Not.Null);
             foreach(var gender in new[]{Gender.Female,Gender.Male})
             {

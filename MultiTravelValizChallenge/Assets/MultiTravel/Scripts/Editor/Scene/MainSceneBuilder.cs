@@ -49,6 +49,12 @@ namespace MultiTravel.EditorTools.SceneBuild
         /// <summary>Where the participant enters the hotel room (door side), facing the cabin. Authored as MARK.start.</summary>
         public static readonly Vector3 DefaultStartPosition = new Vector3(0f, 0f, -5.6f);
 
+        /// <summary>
+        /// The suitcase (with its rack, floor mat and lights) stands towards the stopwatch / backdrop instead of in the middle
+        /// of the cabin, so walking between the shelves is free.
+        /// </summary>
+        public static readonly Vector3 SuitcaseShift = new Vector3(0f, 0f, 0.9f);
+
         public const string SuitcaseModel = "suitcase-open";
         public const string StopwatchModel = "stopwatch";
         public const string ScoreboardModel = "scoreboard";
@@ -104,6 +110,14 @@ namespace MultiTravel.EditorTools.SceneBuild
             var displays = new GameObject("Diegetic displays").transform;
             var stopwatch = InstantiateModel(StopwatchModel, displays);
             var scoreboard = InstantiateModel(ScoreboardModel, displays);
+            foreach (var name in new[] { "luggage-rack", "floor-mat" })
+            {
+                if (placed.TryGetValue(name, out var go) && go != null)
+                {
+                    go.transform.position += SuitcaseShift;
+                }
+            }
+
             AddDecor(environment);
             AddRoomFurniture(environment);
             AddStaticColliders(environment);
@@ -168,7 +182,7 @@ namespace MultiTravel.EditorTools.SceneBuild
             else
             {
                 // Above the closed lid, 1.1 m from the eyes, slightly below eye level, facing the participant.
-                resultGo.transform.SetPositionAndRotation(new Vector3(0f, 1.32f, 0.95f), Quaternion.identity);
+                resultGo.transform.SetPositionAndRotation(new Vector3(0f, 1.32f, 0.95f) + SuitcaseShift, Quaternion.identity);
             }
 
             resultGo.AddComponent<ResultCard>().Configure(lid, new Vector2(0.9f, 0.55f));
@@ -182,8 +196,8 @@ namespace MultiTravel.EditorTools.SceneBuild
             // ---------------------------------------------------------------- operator, rig
             new GameObject("Operator screen").AddComponent<OperatorScreen>();
             var spectator = new GameObject("Spectator camera");
-            spectator.transform.position = new Vector3(0.9f, 2.0f, 1.3f);
-            spectator.transform.LookAt(new Vector3(0f, 0.95f, -0.9f));
+            spectator.transform.position = new Vector3(1.0f, 2.0f, 1.9f);
+            spectator.transform.LookAt(new Vector3(0f, 0.95f, -0.4f));
             spectator.AddComponent<SpectatorCamera>();
 
             new GameObject("XR Interaction Manager").AddComponent<XRInteractionManager>();
@@ -272,7 +286,7 @@ namespace MultiTravel.EditorTools.SceneBuild
             }
 
             CreateLogoQuad("Brand floor decal", environment, BrandAssets.LogoMaterial(BrandAssets.VerticalLight),
-                new Vector3(0f, floorTop, 1.2f), Quaternion.Euler(90f, 0f, 0f), new Vector2(0.8f, 0.447f));
+                new Vector3(0f, floorTop, -0.6f), Quaternion.Euler(90f, 0f, 0f), new Vector2(0.8f, 0.447f));
             AddIllustratedLogos(environment);
         }
 
@@ -502,6 +516,7 @@ namespace MultiTravel.EditorTools.SceneBuild
         private static SuitcaseController BuildSuitcase(ItemPool pool, out SuitcaseLid lid, out Transform practiceSpawn)
         {
             var root = new GameObject("Open suitcase");
+            root.transform.position = SuitcaseShift;
             var model = InstantiateModel(SuitcaseModel, root.transform);
             model.name = "Suitcase model";
 
@@ -720,7 +735,7 @@ namespace MultiTravel.EditorTools.SceneBuild
             var fill = new GameObject("Suitcase key").AddComponent<Light>();
             fill.type = LightType.Point;
             fill.lightmapBakeType = LightmapBakeType.Realtime;
-            fill.transform.position = new Vector3(0f, 1.55f, 0.1f);
+            fill.transform.position = new Vector3(0f, 1.55f, 0.1f) + SuitcaseShift;
             fill.range = 2.2f;
             fill.intensity = 1.1f;
             fill.color = new Color(1f, 0.9f, 0.78f);
