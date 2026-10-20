@@ -234,7 +234,16 @@ namespace MultiTravel.EditorTools
                 return Fail(outcome, $"Build {summary.result} with {summary.totalErrors} error(s).");
             }
 
-            FinalizeStationConfig(outputPath, stationConfigPath, outcome);
+            if (desktop && string.IsNullOrWhiteSpace(stationConfigPath))
+            {
+                // The headset-free demo goes to customers: it never carries the event backend (access code), so demo games
+                // cannot reach the live leaderboard.
+                RemoveStationConfig(outputPath, outcome);
+            }
+            else
+            {
+                FinalizeStationConfig(outputPath, stationConfigPath, outcome);
+            }
             outcome.Success = true;
             Debug.Log($"[MultiTravel] Build succeeded: {outputPath} ({summary.totalSize / (1024 * 1024)} MB, {summary.totalTime.TotalSeconds:F0} s).");
             return outcome;
@@ -276,6 +285,20 @@ namespace MultiTravel.EditorTools
             {
                 outcome.Warnings.Add("Player has no multitravel.config.json; AppConfig defaults are used (no backend credentials unless set in AppConfig).");
             }
+        }
+
+        private static void RemoveStationConfig(string exePath, BuildOutcome outcome)
+        {
+            string dataFolder = exePath.EndsWith(".app", StringComparison.OrdinalIgnoreCase)
+                ? Path.Combine(exePath, "Contents", "Resources", "Data", "StreamingAssets")
+                : Path.Combine(Path.GetDirectoryName(exePath), Path.GetFileNameWithoutExtension(exePath) + "_Data", "StreamingAssets");
+            string target = Path.Combine(dataFolder, "multitravel.config.json");
+            if (File.Exists(target))
+            {
+                File.Delete(target);
+            }
+
+            outcome.Warnings.Add("Desktop demo: no station config (offline, results are not submitted).");
         }
 
         private static bool LooksLocal(string json)
