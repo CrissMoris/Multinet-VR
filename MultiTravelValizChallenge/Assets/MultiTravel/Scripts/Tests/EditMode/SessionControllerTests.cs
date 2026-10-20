@@ -364,6 +364,41 @@ namespace MultiTravel.Tests.EditMode
         }
 
         [Test]
+        public void AdmitQueuedParticipant_KeepsServerSessionAndGoesToInstructions()
+        {
+            Create();
+            controller.BeginRegistration();
+            var sessionId = Guid.NewGuid();
+            var participantId = Guid.NewGuid();
+            var input = TestData.ValidInput();
+            input.ConsentAccepted = true;
+            input.ConsentVersion = "web-v1";
+
+            var result = controller.AdmitQueuedParticipant(sessionId, participantId, input, Gender.Male);
+
+            Assert.IsTrue(result.IsValid);
+            Assert.AreEqual(SessionState.Instructions, controller.State, "web participants skip the form and the product-set step");
+            Assert.AreEqual(sessionId, controller.Current.ClientSessionId, "results are submitted under the web registration");
+            Assert.AreEqual(participantId, controller.Current.ParticipantId);
+            Assert.IsTrue(controller.Current.FromQueue);
+            Assert.AreEqual(Gender.Male, controller.Current.Gender);
+            Assert.AreEqual("web-v1", controller.Current.Input.ConsentVersion);
+        }
+
+        [Test]
+        public void AdmitQueuedParticipant_InvalidData_StaysInRegistration()
+        {
+            Create();
+            controller.BeginRegistration();
+            var input = TestData.ValidInput();
+            input.Email = "not-an-email";
+
+            Assert.IsFalse(controller.AdmitQueuedParticipant(Guid.NewGuid(), Guid.NewGuid(), input, Gender.Female).IsValid);
+            Assert.AreEqual(SessionState.Registration, controller.State);
+            Assert.IsNull(controller.Current);
+        }
+
+        [Test]
         public void SubmitRegistration_Null_Throws()
         {
             Create();

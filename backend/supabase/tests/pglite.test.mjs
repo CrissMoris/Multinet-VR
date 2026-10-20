@@ -12,7 +12,7 @@ import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PGlite } from '@electric-sql/pglite';
-import { RpcError, SIGNATURES, registerContractTests, uniq } from './lib/contract.mjs';
+import { RpcError, SIGNATURES, expectCode, registerContractTests, submitArgs, uniq } from './lib/contract.mjs';
 import { SEEDED_EVENT, throwawayEvent } from './fixtures.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -175,7 +175,7 @@ test('the four RPCs are SECURITY DEFINER, owned by postgres, with a fixed search
   }
 });
 
-test('anon and authenticated may execute exactly the four RPCs and nothing else in public', async () => {
+test('anon and authenticated may execute exactly the public RPCs and nothing else in public', async () => {
   const rows = await ctx.admin.query(`
     select p.proname,
            has_function_privilege('anon', p.oid, 'execute') as anon_exec,
@@ -183,7 +183,8 @@ test('anon and authenticated may execute exactly the four RPCs and nothing else 
       from pg_proc p join pg_namespace n on n.oid = p.pronamespace
      where n.nspname = 'public'
      order by p.proname`);
-  const allowed = new Set(['register_participant', 'submit_result', 'get_leaderboard', 'ping_event']);
+  const allowed = new Set(['register_participant', 'submit_result', 'get_leaderboard', 'ping_event',
+    'enqueue_participant', 'list_waiting_participants', 'claim_participant', 'release_participant', 'remove_from_queue']);
   const anonAllowed = rows.filter((r) => r.anon_exec).map((r) => r.proname).sort();
   const authAllowed = rows.filter((r) => r.auth_exec).map((r) => r.proname).sort();
   assert.deepEqual(anonAllowed, [...allowed].sort());
@@ -236,6 +237,76 @@ test('results ranking index exists with the contract ordering', async () => {
   const rows = await ctx.admin.query("select indexdef from pg_indexes where schemaname = 'public' and indexname = 'results_leaderboard_idx'");
   assert.equal(rows.length, 1);
   assert.match(rows[0].indexdef, /\(event_id, status, score DESC, completion_ms, completed_at\)/);
+});
+
+// ---------------------------------------------------------------------------
+// Web registration queue
+// ---------------------------------------------------------------------------
+function enqueueArgs(overrides = {}) {
+  return {
+    p_event_slug: ctx.event.slug,
+    p_access_code: ctx.event.accessCode,
+    p_first_name: 'Ayşe',
+    p_last_name: 'yılmaz',
+    p_title: 'Müdür',
+    p_company: 'Test A.Ş.',
+    p_location: 'İstanbul',
+    p_phone: '05321112233',
+    p_email: 'ayse@example.com',
+    p_gender: 'female',
+    p_consent_accepted: true,
+    p_consent_version: 'web-v1',
+    ...overrides,
+  };
+}
+
+test('web queue: enqueue -> list (no PII) -> claim (full record, once) -> submit_result with the same session', async () => {
+  const queued = await ctx.rpc('enqueue_participant', enqueueArgs());
+  assert.ok(queued.participant_id);
+  assert.ok(queued.queue_number >= 1);
+
+  const list = await ctx.rpc('list_waiting_participants', { p_event_slug: ctx.event.slug, p_access_code: ctx.event.accessCode, p_limit: 50 });
+  const row = list.find((r) => r.participant_id === queued.participant_id);
+  assert.ok(row, 'queued participant is listed');
+  assert.equal(row.display_name, 'Ayşe Y.');
+  assert.deepEqual(Object.keys(row).sort(), ['display_name', 'gender', 'participant_id', 'waiting_since']);
+
+  const claimArgs = { p_event_slug: ctx.event.slug, p_access_code: ctx.event.accessCode, p_participant_id: queued.participant_id, p_station_id: 'VR-01' };
+  const claimed = await ctx.rpc('claim_participant', claimArgs);
+  assert.equal(claimed.first_name, 'Ayşe');
+  assert.equal(claimed.email, 'ayse@example.com');
+  assert.equal(claimed.consent_accepted, true);
+  assert.ok(claimed.client_session_id);
+  await expectCode(ctx, 'claim_participant', claimArgs, 'QUEUE_NOT_WAITING');
+
+  const after = await ctx.rpc('list_waiting_participants', { p_event_slug: ctx.event.slug, p_access_code: ctx.event.accessCode, p_limit: 50 });
+  assert.ok(!after.some((r) => r.participant_id === queued.participant_id), 'claimed participant leaves the list');
+
+  const receipt = await ctx.rpc('submit_result', submitArgs(ctx, {
+    p_client_session_id: claimed.client_session_id,
+    p_participant: { first_name: 'Ayşe', last_name: 'Yılmaz', phone: '05321112233', email: 'ayse@example.com', gender: 'female', consent_accepted: true, consent_version: 'web-v1' },
+    p_gender: 'female',
+  }));
+  assert.equal(receipt.participant_id, queued.participant_id, 'the result belongs to the web registration');
+});
+
+test('web queue: release puts a claimed participant back, remove takes a waiting one out', async () => {
+  const queued = await ctx.rpc('enqueue_participant', enqueueArgs({ p_first_name: 'Mehmet', p_email: 'mehmet@example.com', p_gender: 'male' }));
+  const base = { p_event_slug: ctx.event.slug, p_access_code: ctx.event.accessCode, p_participant_id: queued.participant_id };
+  await ctx.rpc('claim_participant', { ...base, p_station_id: 'VR-01' });
+  assert.equal((await ctx.rpc('release_participant', base)).ok, true);
+  let list = await ctx.rpc('list_waiting_participants', { p_event_slug: ctx.event.slug, p_access_code: ctx.event.accessCode, p_limit: 50 });
+  assert.ok(list.some((r) => r.participant_id === queued.participant_id));
+  assert.equal((await ctx.rpc('remove_from_queue', base)).ok, true);
+  list = await ctx.rpc('list_waiting_participants', { p_event_slug: ctx.event.slug, p_access_code: ctx.event.accessCode, p_limit: 50 });
+  assert.ok(!list.some((r) => r.participant_id === queued.participant_id));
+});
+
+test('web queue: wrong access code, missing consent and bad phone are rejected', async () => {
+  await expectCode(ctx, 'enqueue_participant', enqueueArgs({ p_access_code: 'wrong-code' }), 'EVENT_ACCESS_DENIED');
+  await expectCode(ctx, 'list_waiting_participants', { p_event_slug: ctx.event.slug, p_access_code: 'wrong-code', p_limit: 5 }, 'EVENT_ACCESS_DENIED');
+  await expectCode(ctx, 'enqueue_participant', enqueueArgs({ p_consent_accepted: false }), 'VALIDATION_FAILED:consent_accepted');
+  await expectCode(ctx, 'enqueue_participant', enqueueArgs({ p_phone: '12' }), 'VALIDATION_FAILED:phone');
 });
 
 // ---------------------------------------------------------------------------

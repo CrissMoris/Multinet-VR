@@ -74,6 +74,42 @@ export const SIGNATURES = {
     p_event_slug: 'text',
     p_access_code: 'text',
   },
+  // Web registration queue (migration 20261020120000_web_registration.sql).
+  enqueue_participant: {
+    p_event_slug: 'text',
+    p_access_code: 'text',
+    p_first_name: 'text',
+    p_last_name: 'text',
+    p_title: 'text',
+    p_company: 'text',
+    p_location: 'text',
+    p_phone: 'text',
+    p_email: 'text',
+    p_gender: 'text',
+    p_consent_accepted: 'boolean',
+    p_consent_version: 'text',
+  },
+  list_waiting_participants: {
+    p_event_slug: 'text',
+    p_access_code: 'text',
+    p_limit: 'integer',
+  },
+  claim_participant: {
+    p_event_slug: 'text',
+    p_access_code: 'text',
+    p_participant_id: 'uuid',
+    p_station_id: 'text',
+  },
+  release_participant: {
+    p_event_slug: 'text',
+    p_access_code: 'text',
+    p_participant_id: 'uuid',
+  },
+  remove_from_queue: {
+    p_event_slug: 'text',
+    p_access_code: 'text',
+    p_participant_id: 'uuid',
+  },
 };
 
 export const LEADERBOARD_KEYS = ['rank', 'display_name', 'score', 'completion_ms', 'gender', 'completed_at'];

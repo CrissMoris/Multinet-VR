@@ -6,7 +6,7 @@ namespace MultiTravel.Gameplay.UI
         public const string WelcomeHint = "Görevli oyunu birazdan başlatacak.";
 
         public const string RegistrationHeading = "Kayıt";
-        public const string RegistrationBody = "Görevli kayıt bilgilerinizi giriyor.\nLütfen bekleyin.";
+        public const string RegistrationBody = "Görevli sıradaki katılımcıyı oyuna alıyor.\nLütfen bekleyin.";
 
         public const string GenderHeading = "Ürün Seti";
         public const string GenderBody = "Görevli size uygun ürün setini seçiyor.";

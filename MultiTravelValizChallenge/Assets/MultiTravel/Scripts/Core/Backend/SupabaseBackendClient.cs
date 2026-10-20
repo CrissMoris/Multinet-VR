@@ -20,6 +20,10 @@ namespace MultiTravel.Core.Backend
         public const string SubmitResultFunction = "submit_result";
         public const string LeaderboardFunction = "get_leaderboard";
         public const string PingFunction = "ping_event";
+        public const string ListWaitingFunction = "list_waiting_participants";
+        public const string ClaimFunction = "claim_participant";
+        public const string ReleaseFunction = "release_participant";
+        public const string RemoveFromQueueFunction = "remove_from_queue";
 
         public const int DefaultLeaderboardLimit = 100;
         public const int MaxLeaderboardLimit = 1000;
@@ -121,6 +125,65 @@ namespace MultiTravel.Core.Backend
             };
 
             return CallRpcAsync<PingReceipt>(PingFunction, request, cancellationToken);
+        }
+
+        public Task<BackendResult<WaitingParticipant[]>> ListWaitingAsync(int limit, CancellationToken cancellationToken = default)
+        {
+            if (!config.Backend.IsConfigured)
+            {
+                return Task.FromResult(BackendResult<WaitingParticipant[]>.Failure(BackendError.ConfigurationMissing()));
+            }
+
+            var request = new ListWaitingRequest
+            {
+                EventSlug = config.Backend.EventSlug,
+                AccessCode = config.Backend.EventAccessCode,
+                Limit = Math.Max(1, Math.Min(100, limit))
+            };
+            return CallRpcAsync<WaitingParticipant[]>(ListWaitingFunction, request, cancellationToken);
+        }
+
+        public Task<BackendResult<ClaimedParticipant>> ClaimParticipantAsync(Guid participantId, CancellationToken cancellationToken = default)
+        {
+            if (!config.Backend.IsConfigured)
+            {
+                return Task.FromResult(BackendResult<ClaimedParticipant>.Failure(BackendError.ConfigurationMissing()));
+            }
+
+            var request = new ClaimParticipantRequest
+            {
+                EventSlug = config.Backend.EventSlug,
+                AccessCode = config.Backend.EventAccessCode,
+                ParticipantId = participantId,
+                StationId = config.Backend.StationId
+            };
+            return CallRpcAsync<ClaimedParticipant>(ClaimFunction, request, cancellationToken);
+        }
+
+        public Task<BackendResult<QueueAck>> ReleaseParticipantAsync(Guid participantId, CancellationToken cancellationToken = default)
+        {
+            return QueueCallAsync(ReleaseFunction, participantId, cancellationToken);
+        }
+
+        public Task<BackendResult<QueueAck>> RemoveFromQueueAsync(Guid participantId, CancellationToken cancellationToken = default)
+        {
+            return QueueCallAsync(RemoveFromQueueFunction, participantId, cancellationToken);
+        }
+
+        private Task<BackendResult<QueueAck>> QueueCallAsync(string function, Guid participantId, CancellationToken cancellationToken)
+        {
+            if (!config.Backend.IsConfigured)
+            {
+                return Task.FromResult(BackendResult<QueueAck>.Failure(BackendError.ConfigurationMissing()));
+            }
+
+            var request = new QueueParticipantRequest
+            {
+                EventSlug = config.Backend.EventSlug,
+                AccessCode = config.Backend.EventAccessCode,
+                ParticipantId = participantId
+            };
+            return CallRpcAsync<QueueAck>(function, request, cancellationToken);
         }
 
         /// <summary>Builds the <c>register_participant</c> body from config + session (pure; used by tests).</summary>

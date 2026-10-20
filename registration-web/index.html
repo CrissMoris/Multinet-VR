@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="description" content="MultiTravel: Packing Challenge katılımcı kaydı">
+  <title>MultiTravel Kayıt</title>
+  <link rel="icon" href="assets/mt-m-illustration.png">
+  <style>
+    :root {
+      --navy: #18153D;
+      --blue-900: #0B3C8C;
+      --blue-700: #0E4DB5;
+      --blue-500: #25A9E0;
+      --blue-100: #E3EBFA;
+      --teal: #19B394;
+      --orange: #F39200;
+      --bg: #F3F6FB;
+      --card: #FFFFFF;
+      --ink: #0F1B33;
+      --muted: #5B6B8A;
+      --line: #D6DEEC;
+      --danger: #C93838;
+      --danger-100: #FDECEC;
+      --ok-100: #DDF5EE;
+      --radius: 18px;
+      --shadow: 0 12px 34px rgba(11, 60, 140, 0.12);
+      --font: "Segoe UI", Inter, Roboto, Arial, "Helvetica Neue", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--ink);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+    .topbar {
+      background: linear-gradient(100deg, var(--navy) 0%, #1C2D74 62%, var(--blue-500) 140%);
+      color: #fff;
+      padding: 18px 16px;
+    }
+    .topbar-inner { max-width: 1080px; margin: 0 auto; display: flex; align-items: center; gap: 16px; }
+    .topbar img { height: 34px; width: auto; display: block; }
+    .topbar .title { font-size: 18px; opacity: .85; margin-left: auto; text-align: right; }
+    main { max-width: 1080px; margin: 0 auto; padding: 24px 16px 48px; }
+    .layout { display: grid; grid-template-columns: 1fr 340px; gap: 24px; align-items: start; }
+    .card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 28px; }
+    .side { text-align: center; }
+    .side img { width: 100%; max-width: 300px; height: auto; }
+    .side h2 { margin: 12px 0 6px; font-size: 22px; }
+    .side p { margin: 0; color: var(--muted); line-height: 1.5; }
+    h1 { margin: 0 0 4px; font-size: 30px; }
+    .lead { margin: 0 0 22px; color: var(--muted); font-size: 17px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 18px; }
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .field.full { grid-column: 1 / -1; }
+    label { font-weight: 600; font-size: 15px; }
+    label .opt { font-weight: 400; color: var(--muted); }
+    input[type=text], input[type=tel], input[type=email], input[type=password] {
+      font: inherit; font-size: 19px; padding: 14px 16px; border: 1.5px solid var(--line); border-radius: 12px;
+      background: #fff; color: var(--ink); width: 100%; outline: none; transition: border-color .15s, box-shadow .15s;
+    }
+    input:focus { border-color: var(--blue-700); box-shadow: 0 0 0 4px var(--blue-100); }
+    .field.invalid input { border-color: var(--danger); background: var(--danger-100); }
+    .err { color: var(--danger); font-size: 14px; min-height: 0; }
+    .sets { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .set {
+      position: relative; border: 2px solid var(--line); border-radius: 14px; padding: 16px; cursor: pointer;
+      display: flex; align-items: center; gap: 12px; font-size: 19px; font-weight: 600; background: #fff; user-select: none;
+    }
+    .set input { position: absolute; opacity: 0; pointer-events: none; }
+    .set .dot { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--line); flex: none; }
+    .set.on { border-color: var(--blue-700); background: var(--blue-100); }
+    .set.on .dot { border-color: var(--blue-700); background: radial-gradient(var(--blue-700) 45%, transparent 50%); }
+    .consent { display: flex; gap: 12px; align-items: flex-start; font-size: 16px; line-height: 1.45; cursor: pointer; }
+    .consent input { width: 26px; height: 26px; flex: none; margin: 0; accent-color: var(--blue-700); }
+    .linkbtn { background: none; border: 0; padding: 0; font: inherit; color: var(--blue-700); text-decoration: underline; cursor: pointer; }
+    .actions { margin-top: 24px; display: flex; gap: 12px; align-items: center; }
+    .btn {
+      font: inherit; font-size: 20px; font-weight: 700; border: 0; border-radius: 14px; padding: 16px 28px; cursor: pointer;
+      background: var(--blue-900); color: #fff; min-width: 220px; transition: transform .05s, opacity .15s;
+    }
+    .btn:active { transform: translateY(1px); }
+    .btn[disabled] { opacity: .55; cursor: progress; }
+    .btn.ghost { background: transparent; color: var(--muted); min-width: 0; padding: 16px 12px; font-weight: 600; }
+    .banner { border-radius: 12px; padding: 12px 16px; margin-bottom: 18px; font-size: 16px; display: none; }
+    .banner.show { display: block; }
+    .banner.error { background: var(--danger-100); color: var(--danger); }
+    .done { text-align: center; padding: 56px 28px; }
+    .done .check {
+      width: 92px; height: 92px; border-radius: 50%; background: var(--ok-100); color: var(--teal); margin: 0 auto 18px;
+      display: grid; place-items: center; font-size: 56px; font-weight: 800;
+    }
+    .done h1 { font-size: 36px; }
+    .done .queue { font-size: 22px; margin: 12px 0 4px; }
+    .done .queue b { font-size: 46px; color: var(--blue-900); display: block; margin-top: 4px; }
+    .done .next { color: var(--muted); margin-top: 22px; }
+    .hidden { display: none !important; }
+    dialog { border: 0; border-radius: var(--radius); padding: 0; width: min(760px, 94vw); box-shadow: var(--shadow); }
+    dialog::backdrop { background: rgba(15, 27, 51, .55); }
+    .dlg-head { padding: 18px 22px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 12px; }
+    .dlg-head h3 { margin: 0; font-size: 19px; flex: 1; }
+    .dlg-body { padding: 18px 22px; max-height: 64vh; overflow: auto; white-space: pre-wrap; line-height: 1.55; font-size: 15px; }
+    .dlg-foot { padding: 14px 22px; border-top: 1px solid var(--line); text-align: right; }
+    .setup { max-width: 520px; margin: 40px auto; }
+    .setup p { color: var(--muted); line-height: 1.5; }
+    .foot { margin-top: 18px; text-align: center; color: var(--muted); font-size: 13px; }
+    .foot button { background: none; border: 0; color: var(--muted); text-decoration: underline; cursor: pointer; font: inherit; }
+    @media (max-width: 860px) {
+      .layout { grid-template-columns: 1fr; }
+      .side { display: none; }
+    }
+    @media (max-width: 560px) {
+      .grid, .sets { grid-template-columns: 1fr; }
+      .card { padding: 20px; }
+      h1 { font-size: 25px; }
+      .btn { width: 100%; }
+      .topbar .title { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <img src="assets/mt-logo-horizontal-light.png" alt="MultiTravel">
+      <div class="title">Packing Challenge · Katılımcı Kaydı</div>
+    </div>
+  </header>
+
+  <main>
+    <!-- Device setup: the staff enters the event code once per device. -->
+    <section id="setup" class="card setup hidden" aria-labelledby="setup-title">
+      <h1 id="setup-title">Kayıt cihazı kurulumu</h1>
+      <p>Bu cihazın kayıt alabilmesi için etkinlik kodunu girin. Kod cihazda saklanır; katılımcılar görmez.</p>
+      <div id="setup-banner" class="banner error" role="alert"></div>
+      <div class="field">
+        <label for="code">Etkinlik kodu</label>
+        <input id="code" type="password" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="actions">
+        <button id="setup-save" class="btn" type="button">Kaydet ve başla</button>
+      </div>
+    </section>
+
+    <!-- Registration form -->
+    <div id="form-view" class="layout hidden">
+      <section class="card" aria-labelledby="form-title">
+        <h1 id="form-title">Oyuna kaydol</h1>
+        <p class="lead">Bilgilerini doldur, sıran gelince görevli seni oyuna çağıracak.</p>
+        <div id="form-banner" class="banner error" role="alert"></div>
+        <form id="form" novalidate autocomplete="off">
+          <div class="grid">
+            <div class="field" data-f="first_name">
+              <label for="first_name">Ad</label>
+              <input id="first_name" type="text" maxlength="60" autocapitalize="words" required>
+              <div class="err"></div>
+            </div>
+            <div class="field" data-f="last_name">
+              <label for="last_name">Soyad</label>
+              <input id="last_name" type="text" maxlength="60" autocapitalize="words" required>
+              <div class="err"></div>
+            </div>
+            <div class="field" data-f="title">
+              <label for="title">Ünvan <span class="opt">(isteğe bağlı)</span></label>
+              <input id="title" type="text" maxlength="100">
+              <div class="err"></div>
+            </div>
+            <div class="field" data-f="company">
+              <label for="company">Kurum <span class="opt">(isteğe bağlı)</span></label>
+              <input id="company" type="text" maxlength="100">
+              <div class="err"></div>
+            </div>
+            <div class="field" data-f="location">
+              <label for="location">Şirket lokasyonu (İl/İlçe) <span class="opt">(isteğe bağlı)</span></label>
+              <input id="location" type="text" maxlength="100">
+              <div class="err"></div>
+            </div>
+            <div class="field" data-f="phone">
+              <label for="phone">Cep telefonu</label>
+              <input id="phone" type="tel" inputmode="tel" maxlength="20" placeholder="05XX XXX XX XX" required>
+              <div class="err"></div>
+            </div>
+            <div class="field full" data-f="email">
+              <label for="email">E-posta</label>
+              <input id="email" type="email" inputmode="email" maxlength="254" placeholder="ornek@alanadi.com" required>
+              <div class="err"></div>
+            </div>
+            <div class="field full" data-f="gender">
+              <label id="set-label">Hangi ürün setiyle oynamak istersin?</label>
+              <div class="sets" role="radiogroup" aria-labelledby="set-label">
+                <label class="set" data-v="female"><input type="radio" name="gender" value="female"><span class="dot"></span>Kadın ürün seti</label>
+                <label class="set" data-v="male"><input type="radio" name="gender" value="male"><span class="dot"></span>Erkek ürün seti</label>
+              </div>
+              <div class="err"></div>
+            </div>
+            <div class="field full" data-f="consent">
+              <label class="consent">
+                <input id="consent" type="checkbox">
+                <span><button type="button" class="linkbtn" id="open-kvkk">Kullanıcı Aydınlatma Metni</button>'ni okudum, anladım ve onaylıyorum.</span>
+              </label>
+              <div class="err"></div>
+            </div>
+          </div>
+          <div class="actions">
+            <button id="submit" class="btn" type="submit">Kaydı tamamla</button>
+            <button id="clear" class="btn ghost" type="button">Temizle</button>
+          </div>
+        </form>
+      </section>
+      <aside class="card side">
+        <img src="assets/mt-m-illustration.png" alt="">
+        <h2>Valizini hazırla!</h2>
+        <p>Arabayla, 1 gece konaklamalı bir toplantı seyahati için doğru ürünleri bul, valize koy. En yüksek puan valizi kazanır.</p>
+      </aside>
+    </div>
+
+    <!-- Success -->
+    <section id="done-view" class="card done hidden" aria-live="polite">
+      <div class="check">✓</div>
+      <h1>Kaydın alındı, <span id="done-name"></span>!</h1>
+      <div class="queue">Sıra numaran <b id="done-number">—</b></div>
+      <div id="done-ahead"></div>
+      <p class="next">Sıran gelince görevli seni oyuna çağıracak. <span id="done-reset"></span></p>
+      <div class="actions" style="justify-content:center">
+        <button id="done-new" class="btn" type="button">Yeni kayıt</button>
+      </div>
+    </section>
+
+    <div class="foot"><span id="event-name"></span> · <button id="change-code" type="button">Cihaz ayarı</button></div>
+  </main>
+
+  <dialog id="kvkk-dialog" aria-labelledby="kvkk-title">
+    <div class="dlg-head"><h3 id="kvkk-title">Kullanıcı Aydınlatma Metni</h3></div>
+    <div class="dlg-body" id="kvkk-body">Yükleniyor…</div>
+    <div class="dlg-foot"><button class="btn" type="button" id="kvkk-ok">Okudum</button></div>
+  </dialog>
+
+  <script src="config.js"></script>
+  <script>
+  (function () {
+    'use strict';
+    var cfg = window.MT_REG_CONFIG || {};
+    var CODE_KEY = 'mt-reg-code:' + (cfg.EVENT_SLUG || '');
+    var RESET_SECONDS = 10;
+    var $ = function (id) { return document.getElementById(id); };
+
+    function readCode() { try { return localStorage.getItem(CODE_KEY) || ''; } catch (e) { return ''; } }
+    function writeCode(v) { try { if (v) { localStorage.setItem(CODE_KEY, v); } else { localStorage.removeItem(CODE_KEY); } } catch (e) {} }
+
+    // ?kod=... pre-fills the device code once and is removed from the address bar.
+    (function () {
+      var params = new URLSearchParams(location.search);
+      var code = params.get('kod');
+      if (code) {
+        writeCode(code.trim());
+        params.delete('kod');
+        var q = params.toString();
+        history.replaceState(null, '', location.pathname + (q ? '?' + q : '') + location.hash);
+      }
+    })();
+
+    function rpc(name, body) {
+      return fetch(cfg.SUPABASE_URL.replace(/\/+$/, '') + '/rest/v1/rpc/' + name, {
+        method: 'POST',
+        headers: {
+          'apikey': cfg.SUPABASE_ANON_KEY,
+          'Authorization': 'Bearer ' + cfg.SUPABASE_ANON_KEY,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body)
+      }).then(function (res) {
+        return res.json().catch(function () { return null; }).then(function (data) {
+          if (!res.ok) {
+            var err = new Error((data && data.message) || ('HTTP ' + res.status));
+            err.code = data && data.message;
+            err.detail = data && data.details;
+            throw err;
+          }
+          return data;
+        });
+      });
+    }
+
+    var MESSAGES = {
+      'EVENT_ACCESS_DENIED': 'Etkinlik kodu geçersiz. Görevliye haber verin.',
+      'EVENT_INACTIVE': 'Etkinlik şu anda aktif değil.',
+      'VALIDATION_FAILED:first_name': 'Adınızı kontrol edin.',
+      'VALIDATION_FAILED:last_name': 'Soyadınızı kontrol edin.',
+      'VALIDATION_FAILED:phone': 'Telefon numaranızı kontrol edin.',
+      'VALIDATION_FAILED:email': 'E-posta adresinizi kontrol edin.',
+      'VALIDATION_FAILED:gender': 'Bir ürün seti seçin.',
+      'VALIDATION_FAILED:consent_accepted': 'Devam etmek için aydınlatma metnini onaylayın.'
+    };
+
+    // ---------------------------------------------------------------- views
+    function show(view) {
+      ['setup', 'form-view', 'done-view'].forEach(function (id) { $(id).classList.toggle('hidden', id !== view); });
+    }
+
+    function banner(id, text) {
+      var el = $(id);
+      el.textContent = text || '';
+      el.classList.toggle('show', !!text);
+    }
+
+    function start() {
+      if (!cfg.SUPABASE_URL || !cfg.SUPABASE_ANON_KEY || !cfg.EVENT_SLUG) {
+        show('setup');
+        banner('setup-banner', 'Sayfa yapılandırılmamış (config.js).');
+        $('setup-save').disabled = true;
+        return;
+      }
+      if (!readCode()) { show('setup'); $('code').focus(); return; }
+      rpc('ping_event', { p_event_slug: cfg.EVENT_SLUG, p_access_code: readCode() }).then(function (r) {
+        $('event-name').textContent = (r && r.event_name) || '';
+        resetForm();
+        show('form-view');
+      }).catch(function (err) {
+        if (err.code === 'EVENT_ACCESS_DENIED') { writeCode(''); show('setup'); banner('setup-banner', MESSAGES[err.code]); return; }
+        resetForm();
+        show('form-view');
+        banner('form-banner', err.code === 'EVENT_INACTIVE' ? MESSAGES.EVENT_INACTIVE : 'Sunucuya ulaşılamıyor. İnternet bağlantısını kontrol edin.');
+      });
+    }
+
+    $('setup-save').addEventListener('click', function () {
+      var code = $('code').value.trim();
+      if (!code) { banner('setup-banner', 'Etkinlik kodunu girin.'); return; }
+      $('setup-save').disabled = true;
+      rpc('ping_event', { p_event_slug: cfg.EVENT_SLUG, p_access_code: code }).then(function () {
+        writeCode(code);
+        $('code').value = '';
+        banner('setup-banner', '');
+        start();
+      }).catch(function (err) {
+        banner('setup-banner', MESSAGES[err.code] || 'Sunucuya ulaşılamıyor.');
+      }).then(function () { $('setup-save').disabled = false; });
+    });
+    $('code').addEventListener('keydown', function (e) { if (e.key === 'Enter') { $('setup-save').click(); } });
+    $('change-code').addEventListener('click', function () { show('setup'); banner('setup-banner', ''); $('code').focus(); });
+
+    // ---------------------------------------------------------------- form
+    var gender = '';
+    document.querySelectorAll('.set').forEach(function (el) {
+      el.addEventListener('click', function () {
+        gender = el.getAttribute('data-v');
+        document.querySelectorAll('.set').forEach(function (o) { o.classList.toggle('on', o === el); });
+        setError('gender', '');
+      });
+    });
+
+    function setError(field, text) {
+      var f = document.querySelector('.field[data-f="' + field + '"]');
+      if (!f) { return; }
+      f.classList.toggle('invalid', !!text);
+      f.querySelector('.err').textContent = text || '';
+    }
+
+    function squish(v) { return (v || '').replace(/\s+/g, ' ').trim(); }
+    function phoneDigits(v) { return (v || '').replace(/[\s()\-.]/g, ''); }
+
+    function validate() {
+      var ok = true;
+      var data = {
+        first_name: squish($('first_name').value),
+        last_name: squish($('last_name').value),
+        title: squish($('title').value),
+        company: squish($('company').value),
+        location: squish($('location').value),
+        phone: phoneDigits($('phone').value),
+        email: squish($('email').value).toLowerCase()
+      };
+      ['first_name', 'last_name', 'title', 'company', 'location', 'phone', 'email', 'gender', 'consent'].forEach(function (f) { setError(f, ''); });
+      if (!data.first_name) { setError('first_name', 'Adınızı yazın.'); ok = false; }
+      if (!data.last_name) { setError('last_name', 'Soyadınızı yazın.'); ok = false; }
+      if (!/^\+?[0-9]{10,15}$/.test(data.phone)) { setError('phone', 'Geçerli bir cep telefonu yazın (örn. 0532 123 45 67).'); ok = false; }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(data.email)) { setError('email', 'Geçerli bir e-posta adresi yazın.'); ok = false; }
+      if (!gender) { setError('gender', 'Bir ürün seti seçin.'); ok = false; }
+      if (!$('consent').checked) { setError('consent', 'Devam etmek için aydınlatma metnini onaylayın.'); ok = false; }
+      return ok ? data : null;
+    }
+
+    function resetForm() {
+      $('form').reset();
+      gender = '';
+      document.querySelectorAll('.set').forEach(function (o) { o.classList.remove('on'); });
+      ['first_name', 'last_name', 'title', 'company', 'location', 'phone', 'email', 'gender', 'consent'].forEach(function (f) { setError(f, ''); });
+      banner('form-banner', '');
+      $('submit').disabled = false;
+    }
+
+    $('clear').addEventListener('click', function () { resetForm(); $('first_name').focus(); });
+
+    $('form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      banner('form-banner', '');
+      var data = validate();
+      if (!data) { var bad = document.querySelector('.field.invalid input'); if (bad) { bad.focus(); } return; }
+      $('submit').disabled = true;
+      $('submit').textContent = 'Kaydediliyor…';
+      rpc('enqueue_participant', {
+        p_event_slug: cfg.EVENT_SLUG,
+        p_access_code: readCode(),
+        p_first_name: data.first_name,
+        p_last_name: data.last_name,
+        p_title: data.title || null,
+        p_company: data.company || null,
+        p_location: data.location || null,
+        p_phone: data.phone,
+        p_email: data.email,
+        p_gender: gender,
+        p_consent_accepted: true,
+        p_consent_version: cfg.CONSENT_VERSION || 'web'
+      }).then(function (r) {
+        showDone(data.first_name, r);
+      }).catch(function (err) {
+        var field = err.code && err.code.indexOf('VALIDATION_FAILED:') === 0 ? err.code.split(':')[1] : null;
+        if (field) { setError(field === 'consent_accepted' ? 'consent' : field, MESSAGES[err.code] || 'Bu alanı kontrol edin.'); }
+        if (err.code === 'EVENT_ACCESS_DENIED') { writeCode(''); }
+        banner('form-banner', MESSAGES[err.code] || 'Kayıt gönderilemedi. İnternet bağlantısını kontrol edip tekrar deneyin.');
+      }).then(function () {
+        $('submit').disabled = false;
+        $('submit').textContent = 'Kaydı tamamla';
+      });
+    });
+
+    // ---------------------------------------------------------------- success (kiosk: resets for the next person)
+    var resetTimer = null;
+    function showDone(name, r) {
+      $('done-name').textContent = name;
+      $('done-number').textContent = r && r.queue_number ? r.queue_number : '—';
+      var ahead = r ? r.waiting_ahead : null;
+      $('done-ahead').textContent = ahead === 0 ? 'Sırada senden önce kimse yok.' : (ahead > 0 ? 'Önünde ' + ahead + ' kişi var.' : '');
+      show('done-view');
+      var left = RESET_SECONDS;
+      $('done-reset').textContent = '';
+      clearInterval(resetTimer);
+      resetTimer = setInterval(function () {
+        left -= 1;
+        $('done-reset').textContent = left > 0 ? '(' + left + ' sn sonra yeni kayıt ekranı)' : '';
+        if (left <= 0) { newRegistration(); }
+      }, 1000);
+    }
+    function newRegistration() {
+      clearInterval(resetTimer);
+      resetForm();
+      show('form-view');
+      window.scrollTo(0, 0);
+    }
+    $('done-new').addEventListener('click', newRegistration);
+
+    // ---------------------------------------------------------------- KVKK
+    var kvkkLoaded = false;
+    $('open-kvkk').addEventListener('click', function (e) {
+      e.preventDefault();
+      var dlg = $('kvkk-dialog');
+      if (!kvkkLoaded) {
+        fetch('kvkk.txt').then(function (r) { return r.text(); }).then(function (t) { $('kvkk-body').textContent = t; kvkkLoaded = true; })
+          .catch(function () { $('kvkk-body').textContent = 'Metin yüklenemedi.'; });
+      }
+      if (dlg.showModal) { dlg.showModal(); } else { dlg.setAttribute('open', ''); }
+    });
+    $('kvkk-ok').addEventListener('click', function () {
+      $('kvkk-dialog').close();
+      $('consent').checked = true;
+      setError('consent', '');
+    });
+
+    start();
+  })();
+  </script>
+</body>
+</html>

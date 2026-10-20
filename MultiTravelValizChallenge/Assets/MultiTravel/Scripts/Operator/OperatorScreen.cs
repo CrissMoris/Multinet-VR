@@ -197,8 +197,9 @@ namespace MultiTravel.Operator
             // Panels only touch Context.Modal / Context.Toast after Build (inside event handlers), so the overlays may be
             // created after the panels; the context properties are assigned in BuildUi.
             panels.Add(new WelcomePanel(context));
-            panels.Add(new RegistrationPanel(context));
-            panels.Add(new GenderPanel(context));
+            // Registration happens on the registration web page (no form / contact data on this mirrored screen): the
+            // queue panel takes the next participant and covers the product-set step too.
+            panels.Add(new QueuePanel(context));
             panels.Add(new InstructionsPanel(context));
             panels.Add(new LoadingPanel(context));
             panels.Add(new PlayingPanel(context));

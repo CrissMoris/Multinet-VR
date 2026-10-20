@@ -157,6 +157,13 @@ namespace MultiTravel.Operator.Panels
 
         private void CancelSession()
         {
+            // A participant taken from the web queue goes back to the front of the queue (they have not played yet).
+            var current = Context.Session.Current;
+            if (current != null && current.FromQueue && current.ParticipantId.HasValue && Context.Backend != null)
+            {
+                _ = Context.Backend.ReleaseParticipantAsync(current.ParticipantId.Value, System.Threading.CancellationToken.None);
+            }
+
             if (Context.Run(SessionState.Instructions, Context.Session.AbandonSession, "AbandonSession"))
             {
                 Context.Run(OperatorContext.CanReset, Context.Session.ResetForNextParticipant, "ResetForNextParticipant");

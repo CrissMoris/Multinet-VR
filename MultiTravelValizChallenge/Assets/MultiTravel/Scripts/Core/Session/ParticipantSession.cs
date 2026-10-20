@@ -39,6 +39,9 @@ namespace MultiTravel.Core.Session
         /// <summary>Server participant uuid; null until the backend acknowledged a registration or submission.</summary>
         public Guid? ParticipantId { get; internal set; }
 
+        /// <summary>True when the participant registered on the web page and was taken from the queue.</summary>
+        public bool FromQueue { get; internal set; }
+
         /// <summary>UTC time the <c>Playing</c> state was entered; null before that.</summary>
         public DateTime? StartedAtUtc { get; internal set; }
 

@@ -16,7 +16,7 @@ namespace MultiTravel.Operator
         /// <summary>Number of steps.</summary>
         public const int StepCount = 6;
 
-        private static readonly string[] Labels = { "Karşılama", "Kayıt", "Cinsiyet", "Talimat", "Oyun", "Sonuç" };
+        private static readonly string[] Labels = { "Karşılama", "Sıra", "Ürün Seti", "Talimat", "Oyun", "Sonuç" };
 
         private readonly OperatorContext context;
         private readonly Step[] steps = new Step[StepCount];

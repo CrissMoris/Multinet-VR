@@ -128,6 +128,39 @@ namespace MultiTravel.Core.Session
             return validation;
         }
 
+        /// <summary>
+        /// Registration → Instructions for a participant who registered on the web page (taken from the queue): the server's
+        /// client session id is kept (results are submitted under the web registration), the product set comes from the
+        /// registration, consent was given on the page. Returns the validation of the received data; on failure nothing
+        /// changes.
+        /// </summary>
+        public ValidationResult AdmitQueuedParticipant(Guid clientSessionId, Guid participantId, ParticipantInput input, Gender gender)
+        {
+            Require(SessionState.Registration, nameof(AdmitQueuedParticipant));
+            if (input == null)
+            {
+                throw new ArgumentNullException(nameof(input));
+            }
+
+            var validation = ParticipantValidator.Validate(input, config.Privacy.IsConsentRequired);
+            if (!validation.IsValid)
+            {
+                return validation;
+            }
+
+            var normalized = validation.Normalized;
+            normalized.ConsentAccepted = input.ConsentAccepted;
+            normalized.ConsentVersion = input.ConsentVersion;
+            Current = new ParticipantSession(clientSessionId, normalized, DateTime.UtcNow)
+            {
+                FromQueue = true,
+                ParticipantId = participantId
+            };
+            TransitionTo(SessionState.GenderSelection);
+            SelectGender(gender);
+            return validation;
+        }
+
         /// <summary>GenderSelection → Instructions. Starts a non-blocking background registration when a backend client is available.</summary>
         public void SelectGender(Gender gender)
         {
