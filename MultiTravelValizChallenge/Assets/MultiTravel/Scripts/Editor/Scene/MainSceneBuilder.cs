@@ -53,7 +53,7 @@ namespace MultiTravel.EditorTools.SceneBuild
         /// The suitcase (with its rack, floor mat and lights) stands towards the stopwatch / backdrop instead of in the middle
         /// of the cabin, so walking between the shelves is free.
         /// </summary>
-        public static readonly Vector3 SuitcaseShift = new Vector3(0f, 0f, 0.9f);
+        public static readonly Vector3 SuitcaseShift = new Vector3(0f, 0f, 1.45f);   // back ~0.1 m in front of the stopwatch wall (2.25 m)
 
         public const string SuitcaseModel = "suitcase-open";
         public const string StopwatchModel = "stopwatch";
@@ -182,7 +182,8 @@ namespace MultiTravel.EditorTools.SceneBuild
             else
             {
                 // Above the closed lid, 1.1 m from the eyes, slightly below eye level, facing the participant.
-                resultGo.transform.SetPositionAndRotation(new Vector3(0f, 1.32f, 0.95f) + SuitcaseShift, Quaternion.identity);
+                // Above the back of the open suitcase, in front of the backdrop.
+                resultGo.transform.SetPositionAndRotation(new Vector3(0f, 1.32f, SuitcaseShift.z + 0.35f), Quaternion.identity);
             }
 
             resultGo.AddComponent<ResultCard>().Configure(lid, new Vector2(0.9f, 0.55f));
@@ -623,7 +624,8 @@ namespace MultiTravel.EditorTools.SceneBuild
             }
 
             // Hidden unless the completion mode allows a manual confirmation; sits on the rack's right edge.
-            var bounds = ArtImporter.RendererBounds(suitcaseRoot.gameObject);
+            // World bounds: the suitcase root is moved (SuitcaseShift), root-local bounds would leave the button behind.
+            var bounds = WorldRendererBounds(suitcaseRoot.gameObject);
             root.transform.position = new Vector3(bounds.max.x + 0.16f, bounds.min.y + 0.58f, bounds.min.z + 0.08f);
         }
 
@@ -719,7 +721,7 @@ namespace MultiTravel.EditorTools.SceneBuild
                 var spot = new GameObject("Suitcase spot").AddComponent<Light>();
                 spot.type = LightType.Spot;
                 spot.lightmapBakeType = LightmapBakeType.Mixed;
-                var target = ArtImporter.RendererBounds(suitcaseRoot.gameObject).center;
+                var target = WorldRendererBounds(suitcaseRoot.gameObject).center;
                 spot.transform.position = target + new Vector3(0f, 1.6f, -0.35f);
                 spot.transform.LookAt(target);
                 spot.spotAngle = 55f;

@@ -191,6 +191,10 @@ namespace MultiTravel.EditorTools
             Debug.Log($"[MultiTravel] Building {(development ? "development" : "release")}{(desktop ? " DESKTOP" : string.Empty)} player to {outputPath} ({enabledScenes.Count} scene(s)).");
             var xrGeneral = desktop ? XRGeneralSettingsPerBuildTarget.XRGeneralSettingsForBuildTarget(BuildTargetGroup.Standalone) : null;
             bool xrInitBefore = xrGeneral != null && xrGeneral.InitManagerOnStart;
+            // The build time is part of the player version ("Sürüm 1.0.0 (21.10.2026 09:20)" on the operator screen), so the
+            // stand can tell which exe it runs. The project setting itself is restored afterwards.
+            string versionBefore = PlayerSettings.bundleVersion;
+            PlayerSettings.bundleVersion = versionBefore + " (" + DateTime.Now.ToString("dd.MM.yyyy HH:mm", System.Globalization.CultureInfo.InvariantCulture) + ")";
             BuildReport report;
             try
             {
@@ -204,6 +208,7 @@ namespace MultiTravel.EditorTools
             }
             finally
             {
+                PlayerSettings.bundleVersion = versionBefore;
                 if (xrGeneral != null)
                 {
                     xrGeneral.InitManagerOnStart = xrInitBefore;
