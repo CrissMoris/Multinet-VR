@@ -19,7 +19,7 @@
   "texts": {
     "welcomeTitle": "MultiTravel: Packing Challenge",
     "welcomeSubtitle": "Arabayla, 1 gece konaklamalı toplantı seyahati",
-    "instructionsText": "Odanın girişindesin: sol çubukla kabine yürü, sağ çubukla dön. Valiz için gerekli 5 ürünü bul ve valize koy: doğru ürün +15, yanlış ürün -5 puan. 45 saniyen var!",
+    "instructionsText": "Odanın girişindesin: sol çubukla kabine yürü, sağ çubukla dön. Valiz için gerekli 9 ürünü bul ve valize koy: doğru ürün +15, yanlış ürün -5 puan. 45 saniyen var!",
     "scenarioText": "Arabayla, 1 gece konaklamalı toplantı seyahati"
   },
   "privacy": {

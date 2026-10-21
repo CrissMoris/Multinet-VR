@@ -171,10 +171,10 @@
   },
   "console-table-business": {
     "name": "console-table-business",
-    "tris": 5084,
+    "tris": 5284,
     "dims_xyz": [
-      1.0859,
-      1.283,
+      1.1523,
+      2.0832,
       1.372
     ],
     "materials": [
@@ -189,7 +189,7 @@
     ],
     "nodes": {
       "console-table-business": {
-        "tris": 5084,
+        "tris": 5284,
         "parent": null
       }
     },
@@ -197,33 +197,57 @@
       "SLOT.business.01.W": {
         "parent": null,
         "pos_unity": [
-          -1.4012,
+          -1.4376,
           1.02,
-          1.1298
+          1.0831
         ]
       },
-      "SLOT.business.02.S": {
+      "SLOT.business.02.M": {
         "parent": null,
         "pos_unity": [
-          -1.6528,
+          -1.7295,
           1.02,
-          0.7129
+          0.4988
         ]
       },
-      "SLOT.business.03.M": {
+      "SLOT.business.03.S": {
         "parent": null,
         "pos_unity": [
-          -1.145,
-          1.36,
-          1.3889
+          -1.7999,
+          1.02,
+          -0.0214
         ]
       },
       "SLOT.business.04.M": {
         "parent": null,
         "pos_unity": [
-          -1.4754,
+          -1.1389,
           1.36,
-          1.0312
+          1.3939
+        ]
+      },
+      "SLOT.business.05.M": {
+        "parent": null,
+        "pos_unity": [
+          -1.4617,
+          1.36,
+          1.0505
+        ]
+      },
+      "SLOT.business.06.M": {
+        "parent": null,
+        "pos_unity": [
+          -1.6842,
+          1.36,
+          0.6351
+        ]
+      },
+      "SLOT.business.07.S": {
+        "parent": null,
+        "pos_unity": [
+          -1.7858,
+          1.36,
+          0.2259
         ]
       },
       "UI.boxlogo.business.01": {
@@ -237,9 +261,9 @@
       "DECOR.plant.business.02": {
         "parent": null,
         "pos_unity": [
-          -1.6641,
+          -1.7966,
           1.36,
-          0.686
+          -0.1098
         ]
       }
     },
@@ -1760,8 +1784,8 @@
     "name": "wardrobe-carcass",
     "tris": 10840,
     "dims_xyz": [
-      4.0698,
-      3.746,
+      4.0691,
+      3.8193,
       2.23
     ],
     "materials": [
@@ -1781,49 +1805,49 @@
       "LIGHT.wardrobe_business": {
         "parent": null,
         "pos_unity": [
-          -0.7097,
+          -0.8157,
           2.45,
-          0.5535
+          0.3804
         ]
       },
       "UI.header_business": {
         "parent": null,
         "pos_unity": [
-          -1.5329,
+          -1.7619,
           2.03,
-          1.1955
+          0.8216
         ]
       },
       "LIGHT.wardrobe_hanging": {
         "parent": null,
         "pos_unity": [
-          -0.8998,
+          -0.8012,
           2.45,
-          -0.0196
+          -0.41
         ]
       },
       "UI.header_hanging": {
         "parent": null,
         "pos_unity": [
-          -1.9435,
+          -1.7306,
           2.03,
-          -0.0424
+          -0.8856
         ]
       },
       "LIGHT.wardrobe_folded": {
         "parent": null,
         "pos_unity": [
-          -0.6899,
+          -0.3704,
           2.45,
-          -0.5779
+          -0.8203
         ]
       },
       "UI.header_folded": {
         "parent": null,
         "pos_unity": [
-          -1.4903,
+          -0.8,
           2.03,
-          -1.2483
+          -1.7718
         ]
       },
       "LIGHT.wardrobe_leisure": {
@@ -1861,17 +1885,17 @@
       "LIGHT.wardrobe_accessories": {
         "parent": null,
         "pos_unity": [
-          0.5265,
+          0.4875,
           2.45,
-          -0.73
+          -0.7565
         ]
       },
       "UI.header_accessories": {
         "parent": null,
         "pos_unity": [
-          1.1372,
+          1.0531,
           2.03,
-          -1.5767
+          -1.6341
         ]
       }
     },
@@ -1922,10 +1946,10 @@
   },
   "wardrobe-door-right": {
     "name": "wardrobe-door-right",
-    "tris": 4884,
+    "tris": 5084,
     "dims_xyz": [
-      1.1644,
-      0.9496,
+      1.3338,
+      0.9954,
       1.372
     ],
     "materials": [
@@ -1940,7 +1964,7 @@
     ],
     "nodes": {
       "wardrobe-door-right": {
-        "tris": 4884,
+        "tris": 5084,
         "parent": null
       }
     },
@@ -1948,25 +1972,33 @@
       "SLOT.accessories.01.W": {
         "parent": null,
         "pos_unity": [
-          0.9278,
+          0.9988,
           1.02,
-          -1.5425
+          -1.4974
         ]
       },
-      "SLOT.accessories.02.M": {
+      "SLOT.accessories.02.S": {
         "parent": null,
         "pos_unity": [
-          1.2602,
-          1.36,
-          -1.2853
+          0.5624,
+          1.02,
+          -1.7099
         ]
       },
       "SLOT.accessories.03.M": {
         "parent": null,
         "pos_unity": [
-          0.8218,
+          1.28,
           1.36,
-          -1.6015
+          -1.2656
+        ]
+      },
+      "SLOT.accessories.04.M": {
+        "parent": null,
+        "pos_unity": [
+          0.8953,
+          1.36,
+          -1.5616
         ]
       },
       "UI.boxlogo.accessories.01": {
@@ -1976,6 +2008,14 @@
           1.092,
           -1.129
         ]
+      },
+      "DECOR.plant.accessories.02": {
+        "parent": null,
+        "pos_unity": [
+          0.5354,
+          1.36,
+          -1.7185
+        ]
       }
     },
     "folder": "Environment"
@@ -1984,8 +2024,8 @@
     "name": "wardrobe-folded-module",
     "tris": 5084,
     "dims_xyz": [
-      1.1002,
-      1.2378,
+      1.3714,
+      0.8205,
       1.51
     ],
     "materials": [
@@ -2008,33 +2048,33 @@
       "SLOT.folded.01.W": {
         "parent": null,
         "pos_unity": [
-          -1.5378,
+          -0.978,
           1.02,
-          -0.9355
+          -1.5111
         ]
       },
       "SLOT.folded.02.M": {
         "parent": null,
         "pos_unity": [
-          -1.1295,
+          -0.4092,
           1.02,
-          -1.4015
+          -1.7529
         ]
       },
       "SLOT.folded.03.W": {
         "parent": null,
         "pos_unity": [
-          -1.2789,
+          -0.6016,
           1.36,
-          -1.2667
+          -1.6965
         ]
       },
       "UI.boxlogo.folded.02": {
         "parent": null,
         "pos_unity": [
-          -1.5392,
+          -1.0748,
           1.432,
-          -0.7146
+          -1.3133
         ]
       }
     },
@@ -2044,8 +2084,8 @@
     "name": "wardrobe-hanging-module",
     "tris": 1196,
     "dims_xyz": [
-      0.3578,
-      0.9892,
+      0.6616,
+      0.9295,
       0.04
     ],
     "materials": [
@@ -2061,65 +2101,65 @@
       "HOOK.01": {
         "parent": null,
         "pos_unity": [
-          -1.6621,
+          -1.5663,
           1.871,
-          0.1625
+          -0.5793
         ]
       },
       "SLOT.hanging.01.WT": {
         "parent": null,
         "pos_unity": [
-          -1.6621,
+          -1.5663,
           1.871,
-          0.1625
+          -0.5793
         ]
       },
       "HOOK.02": {
         "parent": null,
         "pos_unity": [
-          -1.6683,
+          -1.4682,
           1.871,
-          -0.0762
+          -0.7958
         ]
       },
       "SLOT.hanging.02.WT": {
         "parent": null,
         "pos_unity": [
-          -1.6683,
+          -1.4682,
           1.871,
-          -0.0762
+          -0.7958
         ]
       },
       "HOOK.03": {
         "parent": null,
         "pos_unity": [
-          -1.8,
+          -1.6219,
           1.871,
-          0.0048
+          -0.7807
         ]
       },
       "SLOT.hanging.03.WT": {
         "parent": null,
         "pos_unity": [
-          -1.8,
+          -1.6219,
           1.871,
-          0.0048
+          -0.7807
         ]
       },
       "HOOK.04": {
         "parent": null,
         "pos_unity": [
-          -1.7813,
+          -1.4907,
           1.871,
-          -0.2589
+          -1.0088
         ]
       },
       "SLOT.hanging.04.WT": {
         "parent": null,
         "pos_unity": [
-          -1.7813,
+          -1.4907,
           1.871,
-          -0.2589
+          -1.0088
         ]
       },
       "LIGHT.spot_hanging": {

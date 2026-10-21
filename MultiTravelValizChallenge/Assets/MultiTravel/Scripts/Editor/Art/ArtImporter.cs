@@ -59,6 +59,7 @@ namespace MultiTravel.EditorTools.Art
             { "ukulele", "Ukulele_01" },
             { "garden-gnome", "garden_gnome" },
             { "binoculars", "binoculars" },
+            { "stapler", "vintage_stapler" },
         };
 
         /// <summary>Optional per-product pose fix (degrees, applied to the model child) so items rest naturally on a shelf.</summary>
@@ -74,6 +75,7 @@ namespace MultiTravel.EditorTools.Art
             { "rubber-duck", 0.16f },
             { "football", 0.22f },
             { "binoculars", 0.18f },
+            { "stapler", 0.19f },
         };
 
         private static JObject palette;
@@ -753,6 +755,10 @@ namespace MultiTravel.EditorTools.Art
             {
                 KeepRoundestRenderer(visual);
             }
+            else if (productId == "stapler")
+            {
+                KeepLargestRenderer(visual);   // the scan has a loose strip of staples next to the stapler
+            }
 
             return visual;
         }
@@ -774,6 +780,24 @@ namespace MultiTravel.EditorTools.Art
             float Roundness(Renderer r) => Mathf.Min(r.bounds.size.x, Mathf.Min(r.bounds.size.y, r.bounds.size.z)) /
                                            Mathf.Max(0.0001f, Mathf.Max(r.bounds.size.x, Mathf.Max(r.bounds.size.y, r.bounds.size.z)));
             var keep = renderers.OrderByDescending(Roundness).First();
+            foreach (var r in renderers)
+            {
+                if (r != keep)
+                {
+                    r.gameObject.SetActive(false);
+                }
+            }
+        }
+
+        private static void KeepLargestRenderer(GameObject root)
+        {
+            var renderers = root.GetComponentsInChildren<MeshRenderer>();
+            if (renderers.Length < 2)
+            {
+                return;
+            }
+
+            var keep = renderers.OrderByDescending(r => r.bounds.size.sqrMagnitude).First();
             foreach (var r in renderers)
             {
                 if (r != keep)

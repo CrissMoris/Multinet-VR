@@ -113,8 +113,8 @@ namespace MultiTravel.EditorTools.Data
         private static PresentationSpec Odd(DisplayZone zone) => Pres(zone, PackedKind.Top, GripPreset.Dynamic);
 
         /// <summary>
-        /// The client's final product list (October 2026): five required items per gender (laptop, charger, shirt / blouse,
-        /// trousers, classic shoes) and thirteen distractors (swimwear, snorkel, fins, hat, beach towel, sea mattress, flip-flops,
+        /// The client's final product list (October 2026): nine required items per gender (laptop, charger, shirt / blouse,
+        /// trousers, classic shoes, notebook, fountain pen, stapler, phone) and thirteen distractors (swimwear, snorkel, fins, hat, beach towel, sea mattress, flip-flops,
         /// garden gnome, colouring book, binoculars, rubber duck, football, ukulele).
         /// </summary>
         public static readonly IReadOnlyList<ProductSpec> DefaultProducts = new[]
@@ -128,6 +128,11 @@ namespace MultiTravel.EditorTools.Data
             new ProductSpec("men-trousers", "Kumaş Pantolon", ProductCategory.Clothing, Male, true, 0.5f, FoldedGarment()),
             new ProductSpec("women-shoes", "Klasik Ayakkabı", ProductCategory.Shoes, Female, true, 0.6f, Shoe()),
             new ProductSpec("men-shoes", "Klasik Ayakkabı", ProductCategory.Shoes, Male, true, 0.9f, Shoe()),
+            // Added on the client's request (21 Oct 2026): nine required items per gender.
+            new ProductSpec("notebook", "Ajanda", ProductCategory.Business, Both, true, 0.4f, FlatRigid(DisplayZone.Business)),
+            new ProductSpec("pen", "Dolma Kalem", ProductCategory.Business, Both, true, 0.05f, Small(DisplayZone.Business)),
+            new ProductSpec("stapler", "Tel Zımba", ProductCategory.Business, Both, true, 0.5f, Small(DisplayZone.Business)),
+            new ProductSpec("phone", "Telefon", ProductCategory.Electronics, Both, true, 0.2f, Small(DisplayZone.Accessories)),
 
             // Not needed for the trip (-5 each).
             new ProductSpec("bikini", "Bikini", ProductCategory.Clothing, Female, false, 0.1f, HangingGarment()),
@@ -159,7 +164,7 @@ namespace MultiTravel.EditorTools.Data
         public static readonly IReadOnlyList<string> RetiredProductIds = new[]
         {
             "crayons", "luggage-tag", "gamepad", "travel-bag", "socks", "men-tshirt", "women-tshirt", "dress", "jacket", "blazer",
-            "swimsuit", "tie", "toiletry-bag", "laptop-bag", "notebook", "pen", "id-card", "passport", "phone",
+            "swimsuit", "tie", "toiletry-bag", "laptop-bag", "id-card", "passport",
             "phone-cable", "headphones", "glasses", "sunglasses", "neck-pillow",
             "wristwatch", "cufflinks", "pearl-earrings", "minimal-necklace", "shell-necklace", "party-tiara"
         };

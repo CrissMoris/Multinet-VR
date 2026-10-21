@@ -125,11 +125,11 @@ ENTRANCE_T = 152.0                     # wall ends here (rear opening = entrance
 # Final product list (October 2026): laptop + charger (business), shirt / blouse + bikini (hanging), trousers + swim shorts +
 # beach towel (folded), classic shoes + flip-flops (shoes), hat (accessories), snorkel + fins + sea mattress (leisure).
 ZONES = {
-    "business": (-1, "SWMM", "", "velvet_navy", False),      # laptop, charger + garden gnome, colouring book
+    "business": (-1, "SWMMMSM", "", "velvet_navy", False),   # laptop, charger, notebook, pen, stapler + gnome, colouring book
     "folded": (-1, "MWW", "", "towel_orange", False),
     "leisure": (1, "MWWMW", "", "mat_teal", False),         # snorkel, fins, sea mattress + football, ukulele
     "shoes": (1, "MM", "", "leather_cognac", False),     # classic shoes + flip-flops
-    "accessories": (1, "WMM", "", "walnut", False),         # hat + binoculars, rubber duck
+    "accessories": (1, "WMMS", "", "walnut", False),        # hat, phone + binoculars, rubber duck
 }
 # One brand colour for every header band and shelf lip: the shelves must not read as categories (business / holiday …),
 # the participant decides what the trip needs. (Per-zone colours are kept in ZONES for reference only.)

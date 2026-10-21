@@ -27,8 +27,8 @@ namespace MultiTravel.Tests.EditMode
             { DisplayZone.Hanging, 4 },
             { DisplayZone.Folded, 3 },
             { DisplayZone.Shoes, 2 },
-            { DisplayZone.Accessories, 3 },
-            { DisplayZone.Business, 4 },
+            { DisplayZone.Accessories, 4 },
+            { DisplayZone.Business, 7 },
             { DisplayZone.Leisure, 5 },
         };
 
@@ -37,8 +37,8 @@ namespace MultiTravel.Tests.EditMode
             { DisplayZone.Hanging, new[] { "shirt", "blouse", "bikini" } },
             { DisplayZone.Folded, new[] { "men-trousers", "women-trousers", "swim-shorts", "beach-towel" } },
             { DisplayZone.Shoes, new[] { "men-shoes", "women-shoes", "flip-flops" } },
-            { DisplayZone.Accessories, new[] { "beach-hat", "straw-hat", "binoculars", "rubber-duck" } },
-            { DisplayZone.Business, new[] { "laptop", "laptop-charger", "garden-gnome", "kids-book" } },
+            { DisplayZone.Accessories, new[] { "beach-hat", "straw-hat", "binoculars", "rubber-duck", "phone" } },
+            { DisplayZone.Business, new[] { "laptop", "laptop-charger", "garden-gnome", "kids-book", "notebook", "pen", "stapler" } },
             { DisplayZone.Leisure, new[] { "snorkel-mask", "fins", "sea-bed", "football", "ukulele" } },
         };
 
@@ -160,6 +160,12 @@ namespace MultiTravel.Tests.EditMode
             AssertPresentation("laptop-charger", PackedKind.Organiser, GripPreset.Dynamic, false);
 
             AssertPresentation("kids-book", PackedKind.Flat, GripPreset.FlatEdge, false);
+            AssertPresentation("notebook", PackedKind.Flat, GripPreset.FlatEdge, false);
+            foreach (var id in new[] { "pen", "stapler", "phone" })
+            {
+                AssertPresentation(id, PackedKind.Organiser, GripPreset.Dynamic, false);
+            }
+
             foreach (var id in new[] { "snorkel-mask", "fins", "sea-bed", "beach-hat", "straw-hat", "garden-gnome", "binoculars", "rubber-duck", "football", "ukulele" })
             {
                 AssertPresentation(id, PackedKind.Top, GripPreset.Dynamic, false);
@@ -177,23 +183,23 @@ namespace MultiTravel.Tests.EditMode
         // ----- the client's final product list -----
 
         [Test]
-        public void FinalProductList_FiveRequiredAndThirteenDistractorsPerGender()
+        public void FinalProductList_NineRequiredAndThirteenDistractorsPerGender()
         {
             var catalog = so.Catalog(ProductDataGenerator.DefaultProducts.Select(Definition).ToArray());
             var resolver = new ProductSetResolver();
             foreach (var gender in new[] { Gender.Female, Gender.Male })
             {
                 var set = resolver.Resolve(catalog, gender);
-                Assert.AreEqual(5, set.Required.Count, gender + " required");
-                Assert.AreEqual(18, set.Items.Count, gender + " items");
+                Assert.AreEqual(9, set.Required.Count, gender + " required");
+                Assert.AreEqual(22, set.Items.Count, gender + " items");
                 Assert.IsTrue(set.Items.Any(p => p.Id == "flip-flops" && !p.IsCorrect), gender + ": flip-flops are a distractor");
             }
 
             CollectionAssert.AreEquivalent(
-                new[] { "laptop", "laptop-charger", "blouse", "women-trousers", "women-shoes" },
+                new[] { "laptop", "laptop-charger", "blouse", "women-trousers", "women-shoes", "notebook", "pen", "stapler", "phone" },
                 resolver.Resolve(catalog, Gender.Female).Required.Select(p => p.Id));
             CollectionAssert.AreEquivalent(
-                new[] { "laptop", "laptop-charger", "shirt", "men-trousers", "men-shoes" },
+                new[] { "laptop", "laptop-charger", "shirt", "men-trousers", "men-shoes", "notebook", "pen", "stapler", "phone" },
                 resolver.Resolve(catalog, Gender.Male).Required.Select(p => p.Id));
             var femaleOnly = new[] { "bikini", "beach-hat" };
             var maleOnly = new[] { "swim-shorts", "straw-hat" };
@@ -220,6 +226,10 @@ namespace MultiTravel.Tests.EditMode
             Assert.AreEqual("Oyuncak Ördek", Spec("rubber-duck").DisplayName);
             Assert.AreEqual("Futbol Topu", Spec("football").DisplayName);
             Assert.AreEqual("Ukulele", Spec("ukulele").DisplayName);
+            Assert.AreEqual("Ajanda", Spec("notebook").DisplayName);
+            Assert.AreEqual("Dolma Kalem", Spec("pen").DisplayName);
+            Assert.AreEqual("Tel Zımba", Spec("stapler").DisplayName);
+            Assert.AreEqual("Telefon", Spec("phone").DisplayName);
         }
 
         [Test]
@@ -250,8 +260,8 @@ namespace MultiTravel.Tests.EditMode
             Assert.AreEqual(2, minimum[DisplayZone.Hanging]);
             Assert.AreEqual(3, minimum[DisplayZone.Folded]);
             Assert.AreEqual(2, minimum[DisplayZone.Shoes]);
-            Assert.AreEqual(3, minimum[DisplayZone.Accessories]);
-            Assert.AreEqual(4, minimum[DisplayZone.Business]);
+            Assert.AreEqual(4, minimum[DisplayZone.Accessories]);
+            Assert.AreEqual(7, minimum[DisplayZone.Business]);
             Assert.AreEqual(5, minimum[DisplayZone.Leisure]);
         }
 

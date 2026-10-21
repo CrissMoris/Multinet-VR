@@ -37,6 +37,10 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 3c064789348194558ab009be70d56020, type: 2}
   - {fileID: 11400000, guid: a21d3cdaa3fe44e3189f328e7c13b2b7, type: 2}
   - {fileID: 11400000, guid: 65c3c98d364a04cb29f4e2f9f4cb6312, type: 2}
+  - {fileID: 11400000, guid: 6b63206865b9d4bacad6219a0aee1315, type: 2}
+  - {fileID: 11400000, guid: 996643e5f9a6840669cedd4352a3558d, type: 2}
+  - {fileID: 11400000, guid: c556dd3c550c24097bf08ba009b0c1e9, type: 2}
+  - {fileID: 11400000, guid: 141f38ba36c1e4be5a91241a72973184, type: 2}
   DefaultPositiveScore: 15
   DefaultNegativeScore: -5
   ShuffleSpawnPositions: 1
