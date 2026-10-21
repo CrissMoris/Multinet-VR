@@ -8,13 +8,11 @@ namespace MultiTravel.Operator.Panels
 {
     /// <summary>
     /// Attract / idle screen over the spectator view: big brand lockup, configured subtitle and scenario, the primary
-    /// "Yeni Katılımcı" action (Welcome → Registration; Enter works too) and the top-10 leaderboard that refreshes every 30 s.
+    /// "Yeni Katılımcı" action (Welcome → Registration; Enter works too). No leaderboard since October 2026: the operator
+    /// screen is mirrored to the stand TV (results stay on the server and on the public leaderboard page).
     /// </summary>
     public sealed class WelcomePanel : OperatorPanel
     {
-        private const float LeaderboardRefreshSeconds = 30f;
-
-        private readonly LeaderboardView board;
         private TextMeshProUGUI title;
         private TextMeshProUGUI subtitle;
         private TextMeshProUGUI scenario;
@@ -25,7 +23,6 @@ namespace MultiTravel.Operator.Panels
 
         public WelcomePanel(OperatorContext context) : base(context)
         {
-            board = new LeaderboardView(context);
         }
 
         public override bool HandlesState(SessionState state)
@@ -74,18 +71,7 @@ namespace MultiTravel.Operator.Panels
                 FontStyles.Normal, TextAlignmentOptions.Left);
             UiFactory.MakeSingleLine(hint);
 
-            // ----- leaderboard -----
-            var card = UiFactory.CreateSurface(row, "BoardCard", OperatorUiStyle.Card, OperatorUiStyle.RadiusCard, true, true, out _);
-            UiFactory.SetLayout(card, 540f, -1f, 0f, 0f, 540f);
-            UiFactory.AddVerticalLayout(card.gameObject, 12f, new RectOffset(24, 24, 24, 24), TextAnchor.UpperLeft, true, true, true, false);
-            var header = UiFactory.CreateRow(card, "Header", 12f, TextAnchor.MiddleLeft, false);
-            UiFactory.CreateIcon(header, "Icon", UiIcon.Trophy, 32f, OperatorUiStyle.Warning);
-            var headerTitle = UiFactory.CreateLabel(header, "Title", "Liderlik Tablosu", OperatorUiStyle.FontHeading, OperatorUiStyle.TextPrimary, FontStyles.Bold);
-            UiFactory.MakeSingleLine(headerTitle);
-            UiFactory.CreateLabel(card, "Subtitle", "İlk 10 · her 30 saniyede güncellenir", OperatorUiStyle.FontLabel, OperatorUiStyle.TextMuted);
-            UiFactory.CreateDivider(card);
-            board.AutoRefreshSeconds = LeaderboardRefreshSeconds;
-            board.Build(card);
+            // No leaderboard card here any more (the screen is mirrored to the stand TV); results stay on the server.
         }
 
         protected override void OnShow(SessionState state)
@@ -107,12 +93,6 @@ namespace MultiTravel.Operator.Panels
             scenario.text = texts.ScenarioText;
             UiFactory.SetActive(scenarioCard, !string.IsNullOrWhiteSpace(texts.ScenarioText));
             startButton.Interactable = true;
-            board.Refresh();
-        }
-
-        public override void Refresh()
-        {
-            board.Tick(Time.realtimeSinceStartup);
         }
 
         public override void Tick()
@@ -127,11 +107,6 @@ namespace MultiTravel.Operator.Panels
             {
                 OnStart();
             }
-        }
-
-        public override void Dispose()
-        {
-            board.Dispose();
         }
 
         private void OnStart()

@@ -69,6 +69,9 @@ namespace MultiTravel.Operator
 
             leaderboardButton = UiFactory.CreateButton(bar.rectTransform, "LeaderboardToggle", "Liderlik Tablosu", ButtonStyle.Secondary,
                 () => onLeaderboardToggle?.Invoke(), OperatorUiStyle.ButtonHeightSmall + 8f, OperatorUiStyle.FontLabel, -1f, UiIcon.Trophy);
+            // Hidden since October 2026: the operator screen is mirrored to the stand TV and must not show the
+            // leaderboard (the results stay on the server and on the public leaderboard page).
+            leaderboardButton.GameObject.SetActive(false);
 
             var version = UiFactory.CreateLabel(bar.rectTransform, "Version", "Sürüm " + Application.version, OperatorUiStyle.FontLabel,
                 OperatorUiStyle.TextMuted, FontStyles.Normal, TextAlignmentOptions.Right);
