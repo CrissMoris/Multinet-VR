@@ -307,6 +307,9 @@ test('web queue: wrong access code, missing consent and bad phone are rejected',
   await expectCode(ctx, 'list_waiting_participants', { p_event_slug: ctx.event.slug, p_access_code: 'wrong-code', p_limit: 5 }, 'EVENT_ACCESS_DENIED');
   await expectCode(ctx, 'enqueue_participant', enqueueArgs({ p_consent_accepted: false }), 'VALIDATION_FAILED:consent_accepted');
   await expectCode(ctx, 'enqueue_participant', enqueueArgs({ p_phone: '12' }), 'VALIDATION_FAILED:phone');
+  // Title / company / location are required (the registration page marks them as required fields).
+  await expectCode(ctx, 'enqueue_participant', enqueueArgs({ p_title: null }), 'VALIDATION_FAILED:title');
+  await expectCode(ctx, 'enqueue_participant', enqueueArgs({ p_company: '' }), 'VALIDATION_FAILED:company');
 });
 
 // ---------------------------------------------------------------------------
